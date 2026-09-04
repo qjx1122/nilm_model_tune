@@ -1,0 +1,34 @@
+seed: 42
+device: auto
+
+data:
+  path: ""
+  appliance: kettle
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  max_samples_train: 30000
+  max_samples_val: 6000
+  max_samples_test: 6000
+
+search:
+  trials: 12
+  objective: val_mae
+
+model_search:
+  window_size: [64, 128, 256]
+  d_model: [32, 64, 128]
+  nhead: [2, 4, 8]
+  num_layers: [1, 2, 4]
+  dim_feedforward: [64, 128, 256]
+  dropout: [0.0, 0.1, 0.2, 0.3]
+
+training_search:
+  batch_size: [64, 128]
+  lr: [0.0001, 0.0003, 0.0005, 0.001]
+  weight_decay: [0.0, 0.00001, 0.0001, 0.001]
+  epochs: 25
+  patience: 5
+
+metrics:
+  on_threshold_watts: 500.0
