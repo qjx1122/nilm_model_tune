@@ -87,7 +87,8 @@ pip install -r requirements.txt        # 默认 PyPI（含 CUDA 版 torch；纯 
 
 ```bash
 python scripts/run_smoke.py            # 代码链路冒烟测试（合成数据，非 UK-DALE 结果）
-python -m pytest tests/ -v             # 单元测试（需先 pip install pytest）
+pip install -r requirements-dev.txt    # 开发依赖（pytest）
+python -m pytest tests/ -v             # 单元测试（须在仓库根目录用 python -m pytest 运行）
 ```
 
 ## 4. 项目结构

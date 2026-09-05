@@ -45,7 +45,11 @@ class NILMTransformer(nn.Module):
             norm_first=True,
             activation="gelu",
         )
-        self.encoder = nn.TransformerEncoder(layer, num_layers=num_layers)
+        # norm_first=True 时 nested tensor 路径不可用，torch 会自动禁用并发 UserWarning；
+        # 显式关闭以消除告警（行为与数值结果与默认一致）。
+        self.encoder = nn.TransformerEncoder(
+            layer, num_layers=num_layers, enable_nested_tensor=False
+        )
         self.norm = nn.LayerNorm(d_model)
         self.head = nn.Sequential(
             nn.Linear(d_model, d_model // 2),
