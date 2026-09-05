@@ -74,6 +74,22 @@ pip install -r requirements.txt
 
 GPU 用户请先按自己的 CUDA 版本安装对应 PyTorch，再安装其余依赖。
 
+### Linux / macOS（无 Conda 的开发沙箱、CI）
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt        # 默认 PyPI（含 CUDA 版 torch；纯 CPU 环境会自动回退 CPU 运行）
+```
+
+- 本仓库 `.gitignore` 已忽略 `.venv/`、`__pycache__/`、`data/`、`checkpoints/`、`logs/`，环境与数据产物不入库。
+- 运行全部验证：
+
+```bash
+python scripts/run_smoke.py            # 代码链路冒烟测试（合成数据，非 UK-DALE 结果）
+python -m pytest tests/ -v             # 单元测试（需先 pip install pytest）
+```
+
 ## 4. 项目结构
 
 ```text

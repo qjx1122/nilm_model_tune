@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# 项目运行时产物（大文件不入库）
+data/
+checkpoints/
+logs/
