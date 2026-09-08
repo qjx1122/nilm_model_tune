@@ -64,6 +64,17 @@ conda activate transformer_nilm
 python scripts\inspect_h5.py --path D:\datasets\ukdale.h5
 ```
 
+### 数据制备（h5 → npz，真实数据统一入口）
+
+训练/调参的真实数据入口统一为 **npz**（含 `aggregate` / `target` 两个 float32 一维等长数组，6 秒采样，单位 W），因此需要先把 ukdale.h5 制备成 npz：
+
+```powershell
+python scripts\prepare_ukdale.py --h5-path D:\datasets\ukdale.h5 --list-meters
+python scripts\prepare_ukdale.py --h5-path D:\datasets\ukdale.h5 --mains-ids 1,2 --kettle-meter-id <上一步输出的表号> --out D:\datasets\ukdale_prepared.npz
+```
+
+产物为 `ukdale_prepared.npz` + `ukdale_prepared.data_spec.json`。后者是**数据口径留痕**（来源文件 / 表号 / 时间范围 / 缺口处理策略 / 样本数），以后所有 KPI 都以它为准，请随实验一起归档。
+
 ## 3. Windows + Conda
 
 ```powershell
@@ -93,6 +104,7 @@ transformer_nilm_project/
 │   └── experiment.py
 ├── scripts/
 │   ├── inspect_h5.py
+│   ├── prepare_ukdale.py
 │   ├── train.py
 │   ├── evaluate.py
 │   ├── tune.py
@@ -135,10 +147,10 @@ batch_size: 128
 epochs: 30
 ```
 
-运行：
+运行（`--data-path` 指向 §2 制备好的 npz）：
 
 ```powershell
-python scripts\train.py --config configs\baseline.yaml --data-path D:\datasets\ukdale.h5
+python scripts\train.py --config configs\baseline.yaml --data-path D:\datasets\ukdale_prepared.npz --out reports\baseline
 python scripts\evaluate.py --run-dir reports\baseline
 ```
 
@@ -164,17 +176,20 @@ Validation 最优
 Test 一次
 ```
 
-运行：
+运行（`--data-path` 指向 §2 制备好的 npz）：
 
 ```powershell
-python scripts\tune.py --config configs\tuning.yaml --data-path D:\datasets\ukdale.h5
+python scripts\tune.py --config configs\tuning.yaml --data-path D:\datasets\ukdale_prepared.npz --out reports\tuning
 ```
+
+> 口径约束（与 `configs/tuning.yaml` / `REPORT_TEST.md` 方案一致）：
+> 搜索全程**只按 Validation 指标决策**（默认业务综合分 `S = 0.4·(MAE/2000) + 0.4·(1−F1) + 0.2·|能量误差|`，先过业务硬门槛再排名）；**Test 在搜索中默认不评估**（`search.report_test: false`），最终锁定配置后用 `train.py` + `evaluate.py` 单独碰一次 Test。
 
 调优结果会保存到：
 
 ```text
-reports/tuning_summary.csv
-reports/best_config.yaml
+reports/tuning_summary.csv   # 每 trial 的 val 全套指标 + 超参 + seed + git commit
+reports/best_config.yaml     # 排名第 1 的完整配置（可直接喂给 train.py）
 ```
 
 ## 8. 指标驱动的调优规则
