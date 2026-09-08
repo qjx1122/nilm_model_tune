@@ -5,8 +5,8 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】调参执行：粗搜 32 trials 已在用户机器完成（门槛 31/32，top S=0.0372 @ w128 d64 L2 lr3e-4）→ 细搜设计已交付（REPORT_TEST.md 执行实录 1），等待用户执行与 csv 细节回传
-- 本任务角色：实验/调参教练（细搜指导）+ 待用户确认是否实现「细搜脚本」
+- 【进行中·用户任务】调参执行：粗搜完成（门槛 31/32，top S=0.0372）→ 完整 top-5 已回传判读 → 细搜批次 v1.1 设计已交付（REPORT_TEST.md 执行实录 1 补充），等待用户执行批次 1（8 配置 × 3–5 seeds）
+- 本任务角色：实验/调参教练（细搜指导）+ 待用户确认是否实现「细搜 run/summarize 配套脚本」
 
 ## 已完成
 - [x] 2026-09-08 开局仪式：git 现状核对 / 续接文件读取 / 环境检查
@@ -23,16 +23,17 @@
   - 仓库卫生：移除误入库的 `__pycache__/*.pyc`，新增 `.gitignore`
   - 验证：`pytest tests/` 10 passed；`run_smoke.py` 默认路径通过（CPU，MAE 59.8，与用户 GPU 61.1 同量级）；tune 复合口径烟雾通过（门槛过滤→按 val 排序、test 列为空、best_config.yaml 可复现）；sandbox 搭好 torch 2.14.0+cu130 CPU 环境（/tmp/tvenv，不入库）；用户 smoke 历史产物已备份恢复、未改动
 - [x] 2026-09-08 **调参执行·粗搜完成（用户机器回传）+ 细搜设计交付**：32 trials、门槛 31/32；top-5 判读 + 细搜设计 v1（锚 trial13、批次 1 七变体 ×3 seeds、批次 2/锁定规则）已落盘 REPORT_TEST.md「执行实录 1」
+- [x] 2026-09-08 **完整 top-5 参数行回传判读 → 细搜批次 v1.1 落盘**（REPORT_TEST.md 执行实录 1 补充）：锚 best_epoch=4 快收敛、do0.2 最强单因子证据（trial18 MAE/F1/P/R 全优但 EE +5.5% 反超失败——S 拆解算例）、P<R 假阳偏多、nhead8 独苗验证、ff128=2×d64 容量检查、lr 只测下行
 
 ## 进行中
-- （用户侧）细搜执行：待用户跑批次 1（锚×3 + 变体×3 seeds）并回传汇总；另待回传锚的完整参数行（dropout/ff/bs/wd/nhead/precision/recall/train_mae）以钉死 V5/V6 取值
-- （本侧可选任务）细搜脚本工具：tune.py 目前是随机搜索，细搜需「指定候选 × N seeds 自动汇总 mean±std」入口——待用户确认是否立项实现
+- （用户侧）细搜批次 1 执行：待用户生成 8 个 fine 配置（V0–V7）并跑 ×3–5 seeds，回传 mean±std 汇总
+- （本侧可选任务）细搜 run/summarize 配套脚本：8 配置 × 5 seeds = 40 次 train.py 手跑繁琐，若用户确认则做 `run_fine.ps1` + 汇总脚本（复用 tune.py 产物格式）——已两次询问，待确认
 
 ## 下一步（TODO）
-1. 用户回传：trial 13/16/18/30/14 完整 csv 行（含 dropout/ff/nhead/bs/wd + val_precision/val_recall）+ 锚的 train_mae + 单 trial 实测耗时
-2. 用户跑细搜批次 1（21 runs）→ 回传 mean±std 汇总 → 判读后给批次 2 / 锁定指令
-3. 锁定配置 → epochs=30/patience=7 复核 ×3 seeds → Test 一次 → 执行实录 2 落盘
-4. 真实结果稳定后：KPI 口径与推荐配置进入 REPORT.md；TUNING_GUIDE.md 补「战史」（本批经验：S 中 MAE 项可忽略、F1 主导；seed 噪声≈0.002–0.003；EE 差异决定同 MAE/F1 配置的排名等）
+1. 用户确认：自己手跑（REPORT_TEST.md 执行实录 1 补充·手动运行参考）还是我做配套脚本
+2. 用户跑细搜批次 1（8 配置 × 3–5 seeds ≈ 24–40 runs ≈ 20–50 min）→ 回传 mean±std 汇总（S/mae/f1/P/R/EE/best_epoch）
+3. 判读 → 批次 2（赢家组合/加密）或直接锁定 → epochs=30/patience=7 复核 ×3 seeds → Test 一次 → 执行实录 2 落盘
+4. 真实结果稳定后：KPI 口径与推荐配置进入 REPORT.md；TUNING_GUIDE.md 补「战史」（候选经验：S 中 MAE 项可忽略、F1 主导、EE 是决胜项；do0.2 防过拟合+拉平 P/R；快收敛+早停=廉价 trial；nhead8/ff2× 等）
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
 
 ## 决策记录 / 踩坑
@@ -44,6 +45,7 @@
 - 2026-09-08（方案要点）：KPI 综合分 S=0.4·(MAE/2000)+0.4·(1−F1)+0.2·|EE|，先硬门槛（F1≥0.75、recall≥0.7、|EE|≤0.15，待 baseline 摸底校准）再按 S 排序；Test 集冻结（House1 后 15%），全程只在阶段 0 与最终锁定各碰一次
 - 2026-09-08（配套改造·实现决策）：综合分收敛到 `src/objective.py`（纯函数无 torch 依赖）；fit 默认 mae 向后兼容；tune 默认不评估 test（eval_test=false）；`--trials` 覆盖供烟雾；prepare_ukdale.py 契约= NILMTK 风格布局 + `--list-meters` 探表号，布局不符报错+键树提示不硬解
 - 2026-09-08（粗搜判读）：S 构成中 MAE 项仅 0.001 级、F1 主导 + EE 次之 → 细搜主战场是 F1 2–4 个百分点与 EE 收敛；trial18 MAE/F1 全优却输 trial13（EE +0.055 vs +0.012）→ 综合分防住了「MAE 刷分、总量跑偏」；w256 家族 F1 齐 0.868 落后 → 排除长窗，w160 封顶；trial13 vs 18 同家族 S 差 0.0022 → 细搜判定噪声基线 ≈0.002–0.003，改善需 mean±std 判定
+- 2026-09-08（细搜 v1.1 判读）：锚 trial13 best_epoch=4（~9 epoch 早停）→ 收敛极快+轻度过拟合；dropout 0.1→0.2 是最大单因子嫌疑（trial18 证据：MAE 3.80/F1/P=R 0.931/best_epoch 14）；锚 P=0.900<R=0.931 假阳偏多（与 EE +1.2% 同向）→ do 方向正确；S 拆解算例：trial18 F1 赢 0.0063 但 EE 恶化 +0.043 倒输 0.0022 → 三列同看；nhead8 独苗、ff=2×d64 非标准 → 入批次验证；lr 5e-4 两败 → 只测 2e-4；锚家族单 trial 46–65s → 5 seeds/变体预算可行（40 runs ≈ 35–50 min）
 - 2026-09-08（踩坑·torch 依赖）：PyPI torch 2.14.0+cu130 Linux wheel 不在 wheel 内带 CUDA 运行库，需按 `nvidia-*` 包补齐；cu13 系 pip 包已改名（`nvidia-cuda-runtime-cu13` 等旧名报「请用不带后缀新名」）；cudnn/nccl/cusparselt/nvshmem 仍用 `-cu13` 后缀且版本由 torch METADATA 钉死；cufft/cusparse/cusolver/curand 用不带后缀新名（soname .12）；`nvidia-nccl`（新名）sdist 损坏 → 装 `nvidia-nccl-cu13==2.30.7`；小坑：nvidia-cuda-profiler-api 不含 libcupti，需 `nvidia-cuda-cupti`。安装时用 `--only-binary :all:` 避免 sdist 回退
 - 2026-09-08（踩坑·工程）：①`reports/smoke/*` 是 git 跟踪的历史产物（commit 7824bb4），本地验证先备份、跑完恢复，勿覆盖；②仓库历史误提交 `__pycache__/*.pyc` → 本次清理出库并加 `.gitignore`；③prepare 脚本 `meter_groups` 曾对 h5py Group 对象二次索引报 TypeError → 已修（单测捕获）；④合成 h5 测试的 mains 需包含 kettle 事件才物理自洽
 
