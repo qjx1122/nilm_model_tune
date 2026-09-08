@@ -1,0 +1,106 @@
+# REPORT_TEST.md — 专题报告台账（NILM_AC）
+
+> 依据 BOOTSTRAP.md v2.1：用户 / 实验 / 验证专题一律**只追加**到本文件，按专题分节，不新建文件。
+> 首次创建于 2026-09-08（协议 v2.1 建立后第一个专题）。
+
+---
+
+## [2026-09-08] 专题：Transformer-NILM（UK-DALE House1 Kettle）调参方案设计 v1
+
+- **类型**：用户专题（含后续执行配套的完整实验方案）
+- **本任务角色**：实验/调参教练（交付物含面向无算法背景工程师的 TUNING_GUIDE.md，本文件为正式方案与决策记录）
+- **目标与假设**：
+  - 输入：UK-DALE House1、6 秒采样、aggregate（总负荷）→ 输出 kettle 功率的 Transformer Encoder Seq2Point（现有 `src/` 代码）。
+  - 目标：在**规范口径**（Test 全程冻结、只按 Validation 决策）下，产出一个比 baseline 更好且可复现的推荐配置；业务侧优先把「烧水壶开/关辨识准（ON/OFF F1）+ 总耗电量算得准（Energy Error）」做好，MAE 为辅。
+  - 假设：用户按 README 用 Windows + Conda + 单张消费级 GPU（3060/4060 级）执行；真实数据未跑过（已确认）。
+- **方法 / 数据 / 参数**：
+
+### 0. 必须遵守的三条铁律（否则结果不算数）
+1. **Test 冻结**：Test = House1 最后 15% 时间区间，全程只看一次（阶段 0 基线 + 最终锁定后），任何搜索 / 早停 / 选型只用 Validation。**现有 `tune.py` 按 test MAE 排名，属数据泄漏，执行前必须先改造（见代码改造清单 #1）。**
+2. **同口径对比**：任何两个配置的对比，必须同数据切分、同预处理、同种子；跨 seed 结论报 mean±std。
+3. **留档可复现**：每个 trial 记录 seed / 完整配置 / git commit / 运行时长 / 最优 epoch / 该 epoch 的 val 全套指标；结果只追加进本专题节与 `reports/tuning/`。
+
+### 1. KPI 与目标函数（业务口径）
+- 硬门槛（先过滤，防"单项刷分"）：`val F1 ≥ 0.75` 且 `val recall ≥ 0.70` 且 `|val energy_error| ≤ 0.15`。门槛在阶段 0 用 baseline val 分布校准（若 baseline 达不到，门槛下调为"不差于 baseline"，先求流程跑通）。
+- 综合分（越小越好，仅用 Validation、在最优 epoch 上算）：
+  `S = 0.4·(MAE/2000) + 0.4·(1−F1) + 0.2·|energy_error|`
+  （MAE 归一化除 2000W：kettle 量程约 0–3000W；权重理由：业务先问"开没开对、总量对不对"，再看曲线贴近度。）
+- 排序：门槛过滤 → 按 S 升序取 top；禁止直接按 test 排序。
+- 报告指标全套：MAE / RMSE / R² / SAE / F1 / precision / recall / energy_error（现有 `regression_metrics` 已齐）。
+
+### 2. 阶段 0：数据制备（**仓库缺口，需先补**）
+- 现状：所有真实数据入口只接受 npz `{aggregate, target}`（`load_simple_npz`）；仓库没有 ukdale.h5 → npz 的制备脚本（代码改造清单 #3）。
+- 制备规格（写脚本时照此验收）：
+  1. 来源：UK-DALE House1，6 秒采样（mains 与 kettle 同频段），时间对齐后取**交集区间**；单位统一为 W。
+  2. `aggregate`：House1 总负荷（若多相/多表，按官方 mains 汇总口径合并）。
+  3. `target`：kettle 功率列；缺失 / NaN 段处理策略必须写进脚本注释并留痕（建议：短于 30 分钟的缺口填 0 需谨慎——kettle 关闭即 0，填 0 合理；长段缺失直接截断，不跨缺口拼接）。
+  4. 输出 `ukdale_prepared.npz`（float32，一维等长），另存 `data_spec.json`（来源文件、时间范围、样本数、缺口处理记录、git hash）——**这是以后所有 KPI 的口径依据**。
+  5. 替代路线：NILMbench 已处理数据（`labels_and_index.npz` 是 11 点上下文结构，与现有窗式管道不兼容，需另写适配），不如直接走官方 h5 制备，数据可得时二选一并在 data_spec.json 注明。
+- 验收：npz 可被 `python scripts/train.py --config configs/baseline.yaml --data-path <npz>` 正常消费，绘图抽查 aggregate 中能看到 kettle 的 ~2–3kW 台阶事件。
+
+### 3. 阶段 0b：Baseline ×3 seeds（先摸底，后校准门槛）
+- 命令（每 seed 一遍，out 目录分开）：
+  `python scripts\train.py --config configs\baseline.yaml --data-path D:\datasets\ukdale_prepared.npz --out reports\baseline_s{42,2024,7}`
+- 记录：val/test 全套指标（val 取自 `history.json` 最优 epoch，test 取自 `result.json`），报 mean±std；记 runtime/trial 实测 → **回填预算核算**（见阶段 1）。
+- 决策分支：
+  - val MAE 量级异常大（>300W）→ 先查数据制备 / 归一化 / 对齐，不进入搜索；
+  - Train 好 Val 差 → baseline 已过拟合，阶段 1 搜索空间向 dropout/wd/小模型倾斜（见 TUNING_GUIDE §5 对照表）；
+  - 正常 → 用 baseline val 指标校准阶段 1 门槛，进入搜索。
+
+### 4. 阶段 1：粗搜（随机搜索，Validation 决策）
+- 范围（与 `configs/tuning.yaml` 兼容；`nhead` 与 `d_model` 整除约束代码已自动过滤）：
+  | 旋钮 | 取值 | 备注 |
+  | --- | --- | --- |
+  | window_size | 64 / 128 / 256 | 6s×256≈25min 上下文 |
+  | d_model | 32 / 64 / 128 | |
+  | nhead | 2 / 4 / 8 | 受 d_model 整除约束 |
+  | num_layers | 1 / 2 / 4 | |
+  | dim_feedforward | 128 / 256 / 512 | 建议 ≥2×d_model，偏好 4× |
+  | dropout | 0.0 / 0.1 / 0.2 | 过拟合时加 0.3 |
+  | lr | 1e-4 / 3e-4 / 5e-4 / 1e-3 | AdamW |
+  | weight_decay | 0 / 1e-5 / 1e-4 | |
+  | batch_size | 64 / 128 | |
+  epochs 上限 25、patience 5（早停按 val MAE 保留——见改造清单 #2 说明）。
+- trials 预算：**默认 32 个**。核算：30k 训练窗 × ~0.5–2s/epoch（3060/4060 级）→ 早停均值 ~15 epoch ≈ 10–40s/trial → 32 trials ≈ 10–25 min（含开销）；阶段 0b 实测后按「单 trial >60s 则 trials 减半、<10s 可加到 48」缩放。
+- 运行：改造后 `python scripts\tune.py --config configs\tuning.yaml --data-path <npz> --out reports\tuning_p1`；产物 `tuning_summary.csv` 须含 val 全套 + S 列（改造清单 #1）。
+- 决策分支：
+  - top 配置 S 明显优于 baseline（且过门槛）→ 进入阶段 2 细搜；
+  - 全部 trial 不过门槛但 S 有梯度（S 最优仍优于 baseline）→ 阶段 2 在 top-3 邻域搜，重点排查数据/口径问题；
+  - 全部不过门槛且与 baseline 持平 → 先做诊断（对照 TUNING_GUIDE §5），不盲目加大搜索。
+
+### 5. 阶段 2：细搜（top-3 邻域 ×3 seeds）
+- 取阶段 1 按 S 排序的 top-3 配置，各自邻域小步长再搜（每簇 3–4 个变体）：
+  - lr：×2 / ÷2（如 5e-4 → 1e-3、2.5e-4）；
+  - dropout：±0.05（限制 ≥0）；
+  - window_size：上下邻档；
+  - d_model / num_layers：仅在阶段 1 中表现好的方向动半档。
+- 每个入选配置（含 top-3 原配置）用 **3 个种子**各跑一遍（seed 42 / 2024 / 7），报 S 的 mean±std——过滤"单次运气好"。
+- 预算：~9–12 runs × 3 seeds ≈ 15–35 min（按阶段 0b 实测缩放）。
+- 决策分支：邻域变体无一提振 → 接受 top-3 中 mean±std 最优者；若最优 S 的标准差 > 均值的一半，视为不稳，回阶段 1 加 trials 再搜（宁可多跑，不留抖动结论）。
+
+### 6. 阶段 3：锁定 + Test 恰好一次
+- 锁定配置写入 `reports/best_config.yaml` + `REPORT_TEST.md` 本专题「执行实录」；
+- 用锁定配置重训 3 seeds，**只在此时**读 test 指标，报 mean±std vs baseline（同口径 test）：
+  - test 全面不差于 baseline 且 F1/EE 达标 → 该配置进 REPORT.md（候选推荐版）；
+  - test 明显差于 val（分布漂移特征）→ 按 README §8「Train/Val 好 + Test 差」排查（时间漂移 / 预处理不一致），结果如实记录，不掩盖。
+- 全程 test 触碰次数：2 次（阶段 0b 基线 + 本次），写入执行实录留痕。
+
+### 7. 代码改造清单（执行前按 #1→#4 顺序完成，每个都小步提交）
+| # | 文件 | 改什么 | 为什么 / 验收 |
+| --- | --- | --- | --- |
+| 1 | `scripts/tune.py` | 排名改为按 val 综合分 S；`tuning_summary.csv` 增加 val 全套指标、S、best_epoch、runtime、seed 列；`val_objective` 占位串删除；产物与 README 对齐（输出 `best_config.yaml` 而非仅 `best_trial.json`） | 消除 test 泄漏（最高优先）；README 一致性 | 
+| 2 | `src/trainer.py` + `src/experiment.py` | `fit()` 的早停/checkpoint 判据参数化（`selection_metric: mae \| composite`，composite 用 S）；trial 排名与 checkpoint 判据必须同一口径 | 业务口径下"最优 epoch"应由 S 定义；不改造则保持 mae 并注明口径（可接受，二选一须落盘） |
+| 3 | `scripts/prepare_ukdale.py`（新建） | h5 → npz 制备 + `data_spec.json`（按阶段 0 规格） | 真实数据入口缺口；README 的 h5 描述与代码 npz 入口不一致，一并修 README |
+| 4 | `configs/tuning.yaml` | 对齐本方案搜索空间（含 trials 数量与窗口覆盖）；可加 `objective` 字段供 #1/#2 读取 | 配置即文档；降低误用 |
+
+### 8. 验收标准（本方案交付层面）
+- [ ] 方案含数据制备 → 基线 → 搜索 → 锁定全链路，每阶段有命令、预算、决策分支
+- [ ] KPI 口径明确：Test 冻结 2 次触碰；排序只用 val 综合分 S；硬门槛先行
+- [ ] 代码缺口 4 项已列清单与改法；未改造前禁止拿现有 tune.py 结果下结论
+- [ ] TUNING_GUIDE.md 已建（人话版），本专题结果将在执行后回填「执行实录」
+- **是否进入 REPORT.md（稳定结论）**：否——本专题为方案设计，尚未执行；执行完成且指标稳定后，把「推荐配置 + KPI 口径」更新进 REPORT.md
+- **遗留问题**：
+  1. ukdale.h5 数据源用户侧是否已下载（README 列出官方与 NILMbench 两条路线，未确认）；
+  2. baseline.yaml 的 epochs=30/patience=7 与 tuning 的 25/5 不同，阶段 1 用 25/5、锁定复跑建议用 30/7 校验稳健性；
+  3. ON/OFF 阈值固定 500W 是否适合 kettle 全时段（阈值敏感性分析留到锁定后可选做，300–700W 扫一遍）；
+  4. max_samples 截断（30k/6k/6k）下的结论外推性——若预算允许，锁定后可用全量样本复核一次。
