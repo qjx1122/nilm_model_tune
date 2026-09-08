@@ -196,9 +196,23 @@
   ```powershell
   foreach ($v in v0_anchor,v1_do02,v2_do00,v3_lr2e4,v4_w96,v5_w160,v6_nhead4,v7_ff256) {
     foreach ($s in 1000,2000,3000,4000,5000) {
-      python scripts\train.py --config "configs\fine\$v.yaml" --data-path D:\datasets\ukdale_prepared.npz --out "reports\fine\${v}_s$s" } }
+      python scripts\train.py --config "configs\fine\$v.yaml" --data-path D:\datasets\ukdale_prepared.npz --seed $s --out "reports\fine\${v}_s$s" } }
   ```
-  汇总：逐目录读 history.json 中 val_score 最小的 epoch（best）行，输出每变体 mean±std（S/mae/f1/P/R/EE/best_epoch）。
+  汇总：`python scripts\summarize_fine.py --runs-dir reports\fine`（输出按变体 mean±std 表）。
+  - ⚠️ seed 陷阱：`best_config.yaml` 内 `seed: 55` 是固定值，**同一 yaml 直接跑 5 次结果会一模一样**——必须用 `train.py --seed`（2026-09-08 已加）逐次覆盖。
+  - ⚠️ V1 注意：trial 18 是 nhead2/bs128/do0.2，**不等于** V1（nhead8/bs64/do0.2）。V1 故意保持锚的 nhead8/bs64 只动 dropout，隔离因子；若 V1 表现不如 trial 18，说明增益来自 bs128 或 nhead2，批次 2 再单测。
+  - vX.yaml 生成规则：复制 best_config.yaml 后**只改一行**（表见下），其余字段一律不动：
+    | 文件 | 键 | 新值 |
+    | --- | --- | --- |
+    | v0_anchor | 不改 | — |
+    | v1_do02 | model.dropout | 0.2 |
+    | v2_do00 | model.dropout | 0.0 |
+    | v3_lr2e4 | training.lr | 0.0002 |
+    | v4_w96 | data.window_size | 96 |
+    | v5_w160 | data.window_size | 160 |
+    | v6_nhead4 | model.nhead | 4 |
+    | v7_ff256 | model.dim_feedforward | 256 |
+  自查：`fc /n configs\fine\v0_anchor.yaml configs\fine\v1_do02.yaml` 应只差目标行。
 - **锁定规则不变**：无变体显著优于 V0 → 锁锚；epochs=30/patience=7 ×3 seeds 复核 → `evaluate.py` 碰 Test 恰好一次（Test 触碰计数 2）。
 - 是否进入 REPORT.md：否（待细搜/锁定）
 - 是否进入 REPORT.md：否（方案与改造本身不是实验结论；待真实 KPI 出现后另行判定）
