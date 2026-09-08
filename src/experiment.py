@@ -23,7 +23,12 @@ def select_device(name="auto"):
     return torch.device(name)
 
 
-def train_experiment(aggregate, target, cfg, out_dir):
+def train_experiment(aggregate, target, cfg, out_dir, evaluate_test=None):
+    """训练一个完整实验（train/val/test + 产物落盘）。
+
+    evaluate_test=None 时读 cfg.data.eval_test（缺省 True）。
+    调参搜索中应设 data.eval_test=false，落实「Test 冻结」——选型只用 Validation。
+    """
     seed_everything(cfg.get("seed", 42))
     device = select_device(cfg.get("device", "auto"))
     out_dir = Path(out_dir)
@@ -33,6 +38,8 @@ def train_experiment(aggregate, target, cfg, out_dir):
     mcfg = cfg["model"]
     tcfg = cfg["training"]
     window = int(dcfg["window_size"])
+    if evaluate_test is None:
+        evaluate_test = bool(dcfg.get("eval_test", True))
 
     train_ds, val_ds, test_ds = build_splits(
         aggregate, target, window,
@@ -55,14 +62,18 @@ def train_experiment(aggregate, target, cfg, out_dir):
         train_ds.y_mean, train_ds.y_std,
         out_dir / "best.pt",
         cfg["metrics"]["on_threshold_watts"],
-        tcfg["loss"], tcfg["grad_clip"]
+        tcfg["loss"], tcfg["grad_clip"],
+        select_metric=tcfg.get("select_metric", "mae"),
+        objective=tcfg.get("objective"),
     )
 
-    model.load_state_dict(torch.load(out_dir / "best.pt", map_location=device))
-    _, yt, yp = run_epoch(model, test_loader, device, None, tcfg["loss"], tcfg["grad_clip"])
-    yt = yt * train_ds.y_std + train_ds.y_mean
-    yp = yp * train_ds.y_std + train_ds.y_mean
-    test_metrics = regression_metrics(yt, yp, cfg["metrics"]["on_threshold_watts"])
+    test_metrics = None
+    if evaluate_test:
+        model.load_state_dict(torch.load(out_dir / "best.pt", map_location=device))
+        _, yt, yp = run_epoch(model, test_loader, device, None, tcfg["loss"], tcfg["grad_clip"])
+        yt = yt * train_ds.y_std + train_ds.y_mean
+        yp = yp * train_ds.y_std + train_ds.y_mean
+        test_metrics = regression_metrics(yt, yp, cfg["metrics"]["on_threshold_watts"])
 
     result = {
         "best_epoch": best_epoch,

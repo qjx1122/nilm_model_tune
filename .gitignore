@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# 环境
+.venv/
+venv/
+
+# 数据与训练产物（真实数据不入库）
+data/
+checkpoints/
+logs/
