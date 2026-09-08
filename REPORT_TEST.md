@@ -104,3 +104,25 @@
   2. baseline.yaml 的 epochs=30/patience=7 与 tuning 的 25/5 不同，阶段 1 用 25/5、锁定复跑建议用 30/7 校验稳健性；
   3. ON/OFF 阈值固定 500W 是否适合 kettle 全时段（阈值敏感性分析留到锁定后可选做，300–700W 扫一遍）；
   4. max_samples 截断（30k/6k/6k）下的结论外推性——若预算允许，锁定后可用全量样本复核一次。
+
+### 方案执行更新（2026-09-08）：代码改造 #1–#4 已完成并验证
+- **类型**：工程实现（配套改造，本任务角色=工程实现工程师）
+- **完成内容**（逐项对应第 7 节清单，均已 commit）：
+  1. `src/objective.py`（新）：综合分 S 与业务门槛纯函数（无 torch 依赖，trainer/tune 共用）；`src/trainer.py`：`fit()` 新增 `select_metric: mae|composite` + objective 参数（默认 mae，旧行为不变）；`src/experiment.py`：支持 `data.eval_test`（默认 true，向后兼容）
+  2. `scripts/tune.py`：排名改为 **val 综合分**（先门槛过滤再排序，未过门槛 trial 留档在 summary 末尾并注明原因）；`tuning_summary.csv` 增加 seed / git_commit / runtime_sec / best_epoch / val 全套 / val_composite / val_score 列；产物改为 `best_config.yaml`（README 对齐）；`search.report_test: false` 时各 trial 不评估 test（Test 冻结）；新增 `--trials` 覆盖
+  3. `scripts/prepare_ukdale.py`（新）：NILMTK 风格 h5 → npz + `data_spec.json` 口径留痕；`--list-meters` 探表号；缺口策略（aggregate ffill ≤30min / target 填 0 ≤5min，可配）；长缺口取最长连续段不拼接；负功率 clip 计数留痕；布局不符报错+键树提示。README §2/§4/§6/§7 同步修正
+  4. `configs/tuning.yaml`：trials 32、`objective: composite`（含门槛）、eval_test: false、搜索空间与方案表一致
+- **验证结果（本 sandbox，全部真实运行）**：
+  - `pytest tests/`：**10 passed**（test_objective 6 + test_prepare_ukdale 3 + test_model 1）
+  - `run_smoke.py`（默认路径向后兼容）：PASS，CPU 下 test MAE 59.8 / R² 0.909，与用户 GPU 历史产物（61.1/0.906）同量级
+  - tune 烟雾（composite、eval_test=false、CPU 变体配置）：4 trials 全部跑通；门槛 1/4 通过 → 正确按 val 分排序；test 列留空；`best_config.yaml` 含 select_metric/objective/eval_test 且可 yaml 加载复现
+  - 环境：sandbox 内 /tmp/tvenv 装好 torch 2.14.0+cu130（CPU 宿主）+ 全依赖（nvidia pip 包补齐过程见 STATUS.md 决策记录）；用户机器仍按 README 用 conda 环境
+  - `reports/smoke/*` 为 git 跟踪历史产物，验证前备份、验证后恢复，**未改动**
+- **遗留/待办（用户机器）**：
+  1. 真实数据制备：`python scripts\prepare_ukdale.py --h5-path <ukdale.h5> --list-meters` → 确认表号 → 生成 npz + data_spec.json
+  2. 阶段 0b baseline ×3 seeds（`--out reports\baseline_s{42,2024,7}`），用实测 runtime 校准搜索预算与业务门槛
+  3. 粗搜 `python scripts\tune.py --config configs\tuning.yaml --data-path <npz> --out reports\tuning_p1`（32 trials）
+  4. 细搜 top-3 邻域 ×3 seeds → 锁定 `reports\best_config.yaml` → `train.py` + `evaluate.py` 碰 Test 一次
+  5. 结果按第 7 节 SOP 回填本专题「执行实录」
+- **未决问题**：同上「遗留问题」4 条（数据未下载未确认 / 30-epoch 复核 / 阈值敏感性 / 全量样本外推）
+- 是否进入 REPORT.md：否（方案与改造本身不是实验结论；待真实 KPI 出现后另行判定）
