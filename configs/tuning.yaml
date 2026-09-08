@@ -1,3 +1,5 @@
+# 调参搜索配置（与 REPORT_TEST.md「Transformer-NILM 调参方案设计」阶段 1-2 对齐）
+# 铁律：选型只用 Validation；Test 默认冻结（report_test: false）。
 seed: 42
 device: auto
 
@@ -10,23 +12,35 @@ data:
   max_samples_train: 30000
   max_samples_val: 6000
   max_samples_test: 6000
+  # 搜索中不评估 test（Test 冻结，只留档位）；最终锁定后单独用 train.py 跑一次。
+  eval_test: false
 
 search:
-  trials: 12
-  objective: val_mae
+  trials: 32            # 阶段 1 默认规模；烟雾测试用 --trials 覆盖
+  report_test: false    # true 时才把每 trial 的 test 指标写进 summary（仅留档，仍不参与排名）
+  objective:
+    metric: composite   # 选型判据：composite（业务综合分 S）| mae
+    # S = 0.4*(val_mae/2000) + 0.4*(1-val_f1) + 0.2*|val_energy_error|，越小越好
+    mae_norm_watts: 2000.0
+    weights: {mae: 0.4, f1: 0.4, energy_error: 0.2}
+    gates:              # 业务硬门槛（先过滤再按 S 排序）；阈值建议用 baseline 摸底校准
+      enabled: true
+      f1_min: 0.75
+      recall_min: 0.70
+      abs_energy_error_max: 0.15
 
 model_search:
   window_size: [64, 128, 256]
   d_model: [32, 64, 128]
-  nhead: [2, 4, 8]
+  nhead: [2, 4, 8]          # 与 d_model 整除约束由代码自动过滤
   num_layers: [1, 2, 4]
-  dim_feedforward: [64, 128, 256]
-  dropout: [0.0, 0.1, 0.2, 0.3]
+  dim_feedforward: [128, 256, 512]
+  dropout: [0.0, 0.1, 0.2]
 
 training_search:
   batch_size: [64, 128]
   lr: [0.0001, 0.0003, 0.0005, 0.001]
-  weight_decay: [0.0, 0.00001, 0.0001, 0.001]
+  weight_decay: [0.0, 0.00001, 0.0001]
   epochs: 25
   patience: 5
 
