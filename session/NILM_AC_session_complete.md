@@ -175,3 +175,15 @@
 - 关键决策：批次 2 只补一个最高信息量变体（冠军协议×w96 交叉点）；Test 协议预注册防事后挑选
 - 未决问题：F4 回传 → 锁定 → Test 一跑 → 验收/收官
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；configs/fine_v5/f4_v2do00_w96.yaml / REPORT_TEST.md / STATUS.md
+
+## [2026-09-09] 会话纪要（批次2判读→锁定F4；Test最终一跑交付）
+- 目标：判读 F4（v2_do00×w96）；按预注册判定树锁定；交付 Test 协议
+- 本会话角色：实验/调参教练（判读+锁定裁定）
+- 完成项：
+  - F4 判读：0.0472±0.0042 命中判定树（<0.0522）；score/MAE/RMSE/F1/precision 五项第一；MAE 盆地治愈（8.93±5.35→5.80±0.77）；EE +1.7%±1.8% 为三赢权衡；统计诚实（ΔS 未达严格显著，三重非单证据支撑）
+  - 锁定 F4=w96+d64nhead8L2ff128do0bs64lr3e-4wd1e-4 25/5 composite（两纪元杂交冠军）
+  - Test 预算审计：#1 摸底（实录14）+ #2 本次=耗尽；验收线 S_test≤0.0622/F1≥0.75/R≥0.70/|EE|≤0.15
+  - Test 命令交付（seed 7000 --test reports\final_v5\f4_test）；REPORT_TEST 实录 19、STATUS、纪要同步；commit+push
+- 关键决策：F4 锁定（预注册规则，无事后挑选）；S_test 由本侧按公式计算
+- 未决问题：Test 回传 → 验收裁定 → 收官 or 漂移诊断
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；configs/fine_v5/f4_v2do00_w96.yaml / REPORT_TEST.md / STATUS.md

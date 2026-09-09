@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】数据地基修复：细搜批次 1 已判读（实录 18：F0 旧冠军 0.0522±0.0045 夺冠+EE 死零、FB 垫底=调参价值坐实、搜索 top-1 赢家诅咒回落 +0.017、top-4 差距在噪声内）→ 批次 2 单变体 F4=v2_do00×w96（悬而未决交叉点）+ Test 预注册完成 → 待用户 3 runs 回传
+- 【进行中·用户任务】数据地基修复：【已锁定】F4 = v2_do00×w96（实录 19：0.0472±0.0042 判定树命中，score/MAE/RMSE/F1/P 五项第一，MAE 盆地消失）→ 待用户 Test 最终一跑（seed 7000 --test，预算 #2/2 耗尽）→ 本侧算 S_test 裁定验收 → 收官（REPORT.md/TUNING_GUIDE）
 - 本任务角色：实验/调参教练（数据完整性核查，不猜表号）
 
 ## 已完成
@@ -43,6 +43,7 @@
 - [x] 2026-09-09 双探针判读（实录 16）：A（v2_do00 平移）S 三种子配对全胜（ΔS −0.007/−0.030/−0.008）、val EE −7.1%→+1.0%（归零）、F1≥基线，代价 val MAE 变差（7.60 vs 3.66，composite 选型已知性质）；B（100k）S 打平（0.049±0.013 vs 0.048±0.006）、2.7× 代价→弃；configs/tuning_v5.yaml 入库（搜索空间以 A 邻域为中心+val 30000+train 30k+gates 不变）
 - [x] 2026-09-09 重搜 32 trials 判读（实录 17）：32/32 过门槛（守门员失区分度属预期）；top-1 trial20 S=0.0400（w96 d64 h4 do0 bs128 lr5e-4）；w96 系 top-10 占 7（旧锁 w128 的新数据反例）；F1 分布恢复 0.860-0.903（val30000 生效）；EE 近零复现；单 seed 噪声→细搜多 seed；configs/fine_v5 五配置入库（校验过）；沙箱第二次重置事故恢复（零丢失）
 - [x] 2026-09-09 细搜批次 1 判读（实录 18）：F0 0.0522±0.0045 夺冠（σ 最小+EE +0.0003±0.0062 死零+跨纪元）；FB 0.0604 垫底（调参>不调参坐实）；trial20 单 seed 0.0400→复核 0.0567（赢家诅咒）；F0 MAE 8.93±5.35 披露（单种子盆地，S 近盲不淘汰）；F4=v2_do00×w96 入库（唯一差异 window，校验过）；Test 预注册（seed 7000/--test 恰一次/验收口径）
+- [x] 2026-09-09 细搜批次 2 判读→**锁定 F4**（实录 19）：0.0472±0.0042 预注册判定树命中；MAE 5.80±0.77（F0 盆地治愈）、F1 0.8943 六变体最高、P 0.9102 最高；EE +1.7% 换 F1/MAE/σ 三赢；最终配置=w96+d64nhead8L2ff128do0bs64lr3e-4wd1e-4 25/5（两纪元洞察杂交）；Test 预算 #2/2 审计完成
 - [x] 2026-09-09 prepare 首跑 n=345 确诊秒级相位差并修复（REPORT_TEST.md 执行实录 9）：meter1=:15 vs meter10=:18 精确 join 拼不上；改统一 6s 网格 resample 对齐；schema_version→2；--mains-ids 默认→1；偏移 3s 回归测试；pytest 13 passed
 - [x] 2026-09-09 metadata 全文回传→定表号（REPORT_TEST.md 执行实录 8）：mains=meter1 单表、kettle=meter10；meter2=锅炉回路（纠正 1,2 假设）；meter54=1s mains 备选
 
@@ -51,11 +52,11 @@
 - （本侧）无阻塞；判读 aggOffW/corr 定数据地基是否修复
 
 ## 下一步（TODO）
-1. 用户：git pull 后跑批次 2（3 runs ≈5 min，不带 --test）：
-   foreach ($s in 42,2024,7) {
-     python scripts\train.py --config configs\fine_v5\f4_v2do00_w96.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed $s --out "reports\fine_v5\f4_v2do00_w96_s$s" }
-   python scripts\summarize_fine.py --runs-dir reports\fine_v5
-2. 本侧按预注册判定树锁定（F4<0.0522→锁 F4，否则锁 F0）→ 用户执行 Test 预注册一跑（seed 7000 --test，预算最后一次）→ 验收（S_test≤val+0.015 / F1≥0.75 / R≥0.70 / |EE|≤0.15）→ 通过则收官（REPORT.md/TUNING_GUIDE 收尾）（同 seeds 42/2024/7）→ 定 tune.py 重搜方案：A 胜→搜索以 do0/nhead8/bs64/lr3e-4 邻域为中心；B 胜（100k 显著优）→重搜用大 train 预算；均不胜→以 baseline 为锚全空间粗搜；val 预算一律扩 30000。Test 预算剩 1 次（最终锁定用）
+1. 用户：Test 最终一跑（预注册协议，预算最后一发，约 2 min）：
+   python scripts\train.py --config configs\fine_v5\f4_v2do00_w96.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 7000 --out reports\final_v5\f4_test --test
+   python scripts\evaluate.py --run-dir reports\final_v5\f4_test
+   （回传 evaluate.py 全文；test 段的 mae/f1/energy_error/precision/recall 齐全即可）
+2. 本侧计算 S_test=0.4×mae/2000+0.4×(1−f1)+0.2×|EE| 并按预注册验收（≤0.0622 且 F1≥0.75/R≥0.70/|EE|≤0.15）→ 通过=收官流程（REPORT.md 数据纪元+调参全程章节、TUNING_GUIDE 战史、STATUS 收尾仪式）；不通过=漂移诊断（对照实录 5 时代的 EE 漂移分析）（同 seeds 42/2024/7）→ 定 tune.py 重搜方案：A 胜→搜索以 do0/nhead8/bs64/lr3e-4 邻域为中心；B 胜（100k 显著优）→重搜用大 train 预算；均不胜→以 baseline 为锚全空间粗搜；val 预算一律扩 30000。Test 预算剩 1 次（最终锁定用）
 3. 判读红旗：agg_off_mean≈0 且 corr≈1 → 确认 aggregate 泄漏 → 修数据制备（prepare_ukdale.py --list-meters 核对 mains 表号 → 重新生成 npz → 人工抽查 aggregate 一天曲线）→ 全部 KPI 重启（先 baseline 再走搜索，Test 协议重置一次并记录）；若数据无误（agg_off_mean 数百 W）→ 回到漂移结论：方向 B（记录教训收尾）或 C（改切分）
 4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push（视红旗结论而定）
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
@@ -94,6 +95,7 @@
 - 2026-09-09（决策·细搜含双锚）：F0=v2_do00（旧优胜，实测 30000-val 口径）+ FB=baseline 架构（协议归一 25/5+composite）——没有锚的排名无法区分「搜索发现」与「单 seed 运气」
 - 2026-09-09（判读·批次1三结论）：①旧冠军跨纪元夺冠（EE 死零+σ 最小，领先属判断非铁证：top-4 差距在噪声内）；②FB 垫底=调参价值坐实；③搜索 top-1 赢家诅咒（0.0400→0.0567）——多 seed 复核纪律必要
 - 2026-09-09（预注册·Test 最终一跑）：锁定配置 × seed 7000（新鲜族）× --test 恰好一次；验收 S_test≤val均值+0.015 且 F1≥0.75/R≥0.70/|EE|≤0.15；预算就此耗尽
+- 2026-09-09（锁定·F4）：w96+d64nhead8L2ff128do0bs64lr3e-4wd1e-4（25/5 composite val30000）——预注册判定树命中+五分量同时第一+σ 最小；EE +1.7% 为明确权衡（门槛内 9 倍富余）；两纪元洞察杂交（旧冠军协议×新搜索窗口发现）
 - 2026-09-09（发现·数据杠杆边界）：30k→100k train 在 6000-val 分辨率下无可测收益（配对 1 胜 2 负）；模型当前更受容量/正则而非数据量约束的假设待细搜后复核
 - 2026-09-09（踩坑·沙箱重克隆）：平台可整箱重克隆沙箱（本地 commit 链消失、/tmp 清空）；远端分支是唯一可靠真值——回合初 git log + git ls-remote 对账，恢复=fetch+逐文件哈希比对+reset
 - 2026-09-09（决策·网格对齐）：多表秒级相位差是 UK-DALE 常态，对齐必须先 resample 到统一网格再 join，精确时间戳 join 不可用；data_spec schema_version 升 2 标记口径变化
