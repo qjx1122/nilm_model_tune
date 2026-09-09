@@ -1,14 +1,15 @@
 """UK-DALE HDF5 → aggregate/target NPZ 制备脚本（REPORT_TEST.md 调参方案·阶段 0 规格）。
 
-支持布局（本脚本契约，先跑 --list-meters 核对）：
-    /building{house}/elec/meter{id}/power   数据集形状 (N, 2)
-    第 0 列时间戳（秒或纳秒，自动识别；纳秒 >1e14 自动 /1e9），第 1 列功率（W）。
-UK-DALE 官方/NILMTK 转换文件的常见布局即此形式；布局不符时报错并打印键树，
-不会靠猜硬解。
+支持两类 meter 布局（自动识别）：
+  A. 直接数据集：meter 组内 /building{house}/elec/meter{id}/power 形状 (N,2)
+     [时间戳(秒或纳秒), 功率(W)]
+  B. NILMTK pandas 表：meter 组内含 _i_table/table（pd.read_hdf 读取），
+     列名为 ('power','active') 或 ('power','apparent') —— 自动优先 active，
+     找不到才用 apparent（并 WARNING + 留痕）。时间戳 index 自动按秒/纳秒换算。
 
 数据规格（写进 data_spec.json 留痕，作为以后所有 KPI 的口径依据）：
-1. mains 各表（--mains-ids，默认 1,2）按时间并集对齐；短缺口（<= mains-gap-min
-   分钟）ffill，剩余 NaN 行剔除。
+1. mains 各表（--mains-ids）按时间对齐相加；短缺口（<= mains-gap-min 分钟）
+   ffill，剩余 NaN 行剔除。
 2. kettle（--kettle-meter-id）：短缺口（<= kettle-gap-min 分钟）填 0（关断即 0），
    更长缺口视为不可信区间。
 3. 剔除任一列仍为 NaN / 不可信区间的行后，取最长连续段（不跨大缺口拼接）。
@@ -16,13 +17,14 @@ UK-DALE 官方/NILMTK 转换文件的常见布局即此形式；布局不符时�
 
 输出：
     <out>.npz             {aggregate, target} float32 一维等长
-    <out 同名>.data_spec.json  口径元数据（来源/表号/时间范围/缺口策略/样本数）
+    <out 同名>.data_spec.json  口径元数据（来源/表号/功率类型/时间范围/缺口策略/样本数）
 
-用法（示例）：
+用法（示例，NILMTK 格式 ukdale.h5）：
     python scripts\\prepare_ukdale.py --h5-path D:\\datasets\\ukdale.h5 --list-meters
     python scripts\\prepare_ukdale.py --h5-path D:\\datasets\\ukdale.h5 ^
-        --mains-ids 1,2 --kettle-meter-id <上一步输出的表号> ^
+        --mains-ids 1,2 --kettle-meter-id 10 ^
         --out D:\\datasets\\ukdale_prepared.npz
+    （mains 若为 apparent、kettle 为 active，脚本自动处理并在 data_spec.json 留痕）
 """
 import argparse
 import json
@@ -36,6 +38,7 @@ import numpy as np
 import pandas as pd
 
 SECONDS_PER_SAMPLE = 6  # UK-DALE 低频 6 秒
+POWER_TYPES = ("active", "apparent")
 
 
 def _git_commit():
@@ -79,36 +82,88 @@ def meter_groups(f, building_group):
     return meters
 
 
-def read_power_series(f, meter_group):
-    """读取 (N,2) power 数据集 → pandas Series（UTC DatetimeIndex，单位 W）。"""
+def _normalize_ts_index(idx):
+    """把 int64 时间戳 index 转成 UTC DatetimeIndex（自动识别 秒/纳秒）。"""
+    if not isinstance(idx, pd.Index):
+        idx = pd.Index(idx)
+    if not np.issubdtype(idx.dtype, np.integer):
+        return pd.to_datetime(idx, utc=True)
+    arr = idx.to_numpy()
+    if len(arr) and arr.max() > 1e14:  # 纳秒
+        arr = arr / 1e9
+    return pd.to_datetime(arr, unit="s", utc=True)
+
+
+def _table_power_columns(df):
+    """从 pd.read_hdf 结果里找出可用功率列：返回 (power_type -> Series 或列名)。"""
+    cols = list(df.columns)
+    avail = {}
+    for pt in POWER_TYPES:
+        try:
+            if isinstance(df.columns, pd.MultiIndex) and ("power", pt) in df.columns:
+                avail[pt] = df[("power", pt)]
+            else:
+                # 单层列：找 'power' 或该类型名
+                cand = [c for c in cols if str(c).lower() == pt]
+                if cand:
+                    avail[pt] = df[cand[0]]
+        except Exception:
+            continue
+    return avail
+
+
+def read_power_series(f, meter_group, prefer="active"):
+    """读取 meter 的功率序列 → (Series[UTC], 实际功率类型)。
+
+    布局 B（NILMTK pandas 表）：直接尝试 pd.read_hdf 读取该组，成功即用；
+    布局 A（直接数据集 power/power_series (N,2)）：回退读取。
+    """
+    # 布局 B：pandas HDFStore 表（兼容新旧 pandas 的节点命名）
+    try:
+        df = pd.read_hdf(f.filename, meter_group.name)
+        if df is not None and len(df) > 0:
+            avail = _table_power_columns(df)
+            if avail:
+                pt = prefer if prefer in avail else next(iter(avail))
+                if pt != prefer:
+                    print(f"WARNING: {meter_group.name} 无 {prefer} 列，使用 {pt}"
+                          f"（可用列：{list(avail)}）")
+                s = avail[pt].astype(np.float64)
+                if isinstance(s, pd.DataFrame):
+                    s = s.iloc[:, 0]
+                s.index = _normalize_ts_index(df.index)
+                s = s[~s.index.duplicated(keep="first")].sort_index()
+                s = s[np.isfinite(s.values)]
+                return s, pt
+    except Exception as e:
+        if not isinstance(e, (KeyError, TypeError, ValueError)):
+            # read_hdf 对非 pandas 表路径报 KeyError/TypeError/ValueError 属正常
+            print(f"DEBUG read_hdf({meter_group.name}) 失败: {type(e).__name__}: {e}")
+
+    # 布局 A：直接数据集 (N,2)
     keys = list(meter_group.keys())
     ds_name = next((k for k in ("power", "power_series") if k in meter_group), None)
     if ds_name is None:
-        raise RuntimeError(f"meter 组 {meter_group.name} 下没有 power/power_series，"
-                           f"实际键：{keys}。布局与本脚本契约不符，请 --list-meters 核对。")
+        raise RuntimeError(f"meter 组 {meter_group.name} 既不是可读的 pandas 表，也没有 "
+                           f"power/power_series，实际键：{keys}。请先跑 --list-meters 核对。")
     arr = np.asarray(meter_group[ds_name][()], dtype=np.float64)
     if arr.ndim != 2 or arr.shape[1] < 2:
         raise RuntimeError(f"{meter_group.name}/{ds_name} 形状 {arr.shape} 不是 (N,2)"
                            "（时间戳, 功率），布局与本脚本契约不符。")
     ts, val = arr[:, 0], arr[:, 1]
-    if ts.max() > 1e14:  # 纳秒时间戳 → 秒
-        ts = ts / 1e9
-    s = pd.Series(val, index=pd.to_datetime(ts, unit="s"))
+    idx = _normalize_ts_index(pd.Index(ts.astype(np.int64) if np.all(ts == ts.astype(np.int64)) else ts))
+    s = pd.Series(val, index=idx)
     s = s[~s.index.duplicated(keep="first")].sort_index()
     s = s[np.isfinite(s.values)]
-    return s
+    return s, "active"  # 契约 A 无法判断，默认标注 active（历史行为）
 
 
 def _meter_summary(f, meter_group):
     try:
-        s = read_power_series(f, meter_group)
-        attrs = dict(meter_group.attrs)
-        app = attrs.get("appliance") or attrs.get("metadata") or ""
-        if not isinstance(app, str):
-            app = json.dumps(app, ensure_ascii=False)[:120]
+        s, pt = read_power_series(f, meter_group)
         return {"id": int(meter_group.name.rstrip("/").split("meter")[-1]),
                 "n": len(s), "start": str(s.index.min()), "end": str(s.index.max()),
-                "attrs": str(app)[:120]}
+                "power_type": pt}
     except Exception as e:
         return {"id": int(meter_group.name.rstrip("/").split("meter")[-1]),
                 "error": str(e)}
@@ -120,30 +175,32 @@ def cmd_list_meters(f, house):
     if not meters:
         raise RuntimeError(f"{name} 下没有 meter* 组（elec 内键：{list(bg['elec'].keys()) if 'elec' in bg else list(bg.keys())}）。")
     print(f"house: {name} | meters: {len(meters)}")
-    print(f"{'id':>9} {'n_samples':>10}  {'start':<22} {'end':<22} attrs")
+    print(f"{'id':>9} {'n_samples':>10}  {'start':<22} {'end':<22} {'type':<9}")
     for mid in sorted(meters):
         m = _meter_summary(f, meters[mid])
         if "error" in m:
             print(f"meter {mid:<3}  读取失败: {m['error']}")
         else:
-            print(f"meter {mid:<3} {m['n']:>10}  {m['start']:<22} {m['end']:<22} {m['attrs']}")
-    print("\n提示：House 的 mains 通常为小号表（如 1/2），kettle 表号以各 house 元数据为准。")
+            print(f"meter {mid:<3} {m['n']:>10}  {m['start']:<22} {m['end']:<22} {m['power_type']:<9}")
+    print("\n提示：功率类型 active=有功（NILM 分解应用），apparent=视在（总表常见）。"
+          "kettle 应以 metadata（parse_nilmtk_metadata.py）为准。")
 
 
 def _combine_mains(f, meters, mains_ids):
-    found, series = [], []
+    found, series, types = [], [], []
     for mid in mains_ids:
         if mid in meters:
-            s = read_power_series(f, meters[mid])
+            s, pt = read_power_series(f, meters[mid])
             found.append(mid)
             series.append(s)
+            types.append(pt)
         else:
             print(f"WARNING: mains meter {mid} 不存在，跳过（现有：{sorted(meters)}）")
     if not series:
         raise RuntimeError("没有可用的 mains 表（--mains-ids 与实际表号不符）。")
     # 多相/多表总负荷相加；两表时间戳须同时存在（inner），缺口策略统一在 prepare() 处理。
     df = pd.concat(series, axis=1, join="inner")
-    return df.sum(axis=1), found
+    return df.sum(axis=1), found, types
 
 
 def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
@@ -155,8 +212,8 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
         raise RuntimeError(f"kettle meter {kettle_id} 不存在（实际表号：{sorted(meters)}）。"
                            "先跑 --list-meters 确认。")
 
-    agg, used_mains = _combine_mains(f, meters, mains_ids)
-    kettle = read_power_series(f, meters[kettle_id])
+    agg, used_mains, mains_types = _combine_mains(f, meters, mains_ids)
+    kettle, kettle_type = read_power_series(f, meters[kettle_id])
 
     # 短缺口补齐策略（可配置，均写入 data_spec.json 留痕）。
     mains_fill_limit = int(mains_gap_min * 60 / SECONDS_PER_SAMPLE)
@@ -206,7 +263,9 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
         "building": bname,
         "mains_meter_ids_requested": mains_ids,
         "mains_meter_ids_used": used_mains,
+        "mains_power_types_used": mains_types,
         "kettle_meter_id": kettle_id,
+        "kettle_power_type_used": kettle_type,
         "unit": "W",
         "sample_period_sec": 6,
         "median_sample_gap_sec": round(float(med_dt), 3),

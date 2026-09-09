@@ -100,6 +100,80 @@ def test_missing_kettle_id_fails_helpfully():
         assert "99" in r.stderr and "--list-meters" in r.stderr
 
 
+def _make_nilmtk_h5(path, mains_cols=("apparent", "apparent"), kettle_col="active"):
+    """构造 NILMTK pandas 表风格 h5（meter 组下 pd.HDFStore 表，列 MultiIndex）。"""
+    import pandas as pd
+    n = 3000
+    t0 = 1_500_000_000
+    idx = pd.Index(t0 + np.arange(n) * 6, dtype=np.int64)
+    rng = np.random.default_rng(0)
+    mains1 = 300 + rng.normal(0, 20, n)
+    mains2 = 250 + rng.normal(0, 15, n)
+    kettle = np.zeros(n)
+    for s, d in EVENTS:
+        kettle[s:s + d] = 2000 + rng.normal(0, 30, d)
+    mains1 = mains1 + kettle  # 总负荷包含壶事件
+    cols = pd.MultiIndex.from_tuples([("power", mains_cols[0])])
+    df1 = pd.DataFrame(mains1[:, None], index=idx, columns=cols)
+    cols2 = pd.MultiIndex.from_tuples([("power", mains_cols[1])])
+    df2 = pd.DataFrame(mains2[:, None], index=idx, columns=cols2)
+    colsk = pd.MultiIndex.from_tuples([("power", kettle_col)])
+    dfk = pd.DataFrame(kettle[:, None], index=idx, columns=colsk)
+    with pd.HDFStore(str(path), "w") as store:
+        store.put("/building1/elec/meter1", df1, format="fixed")
+        store.put("/building1/elec/meter2", df2, format="fixed")
+        store.put("/building1/elec/meter10", dfk, format="fixed")
+    return n, mains1, mains2, kettle
+
+
+def test_prepare_nilmtk_pandastable():
+    import pandas as pd
+    with tempfile.TemporaryDirectory() as d:
+        h5 = Path(d) / "ukdale_nilmtk.h5"
+        n, mains1, mains2, kettle = _make_nilmtk_h5(h5)
+        # 确认脚本能识别 pandas 表
+        r0 = subprocess.run([sys.executable, str(SCRIPT), "--h5-path", str(h5),
+                             "--list-meters"], capture_output=True, text=True)
+        assert r0.returncode == 0, r0.stderr
+        assert "meter 1" in r0.stdout and "meter 10" in r0.stdout
+
+        out = Path(d) / "ukdale_prepared.npz"
+        r = subprocess.run(
+            [sys.executable, str(SCRIPT), "--h5-path", str(h5),
+             "--mains-ids", "1,2", "--kettle-meter-id", "10", "--out", str(out)],
+            capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+
+        z = np.load(out)
+        agg, tgt = z["aggregate"], z["target"]
+        assert agg.shape == tgt.shape == (n,)
+        # target = kettle active
+        assert np.abs(tgt[EVENTS[1][0] + 5] - kettle[EVENTS[1][0] + 5]) < 60
+        # aggregate = mains1 + mains2（均 apparent 列被自动读入）
+        assert np.abs(agg[100] - (mains1[100] + mains2[100])) < 100
+
+        spec = json.loads(out.with_suffix(".data_spec.json").read_text(encoding="utf-8"))
+        assert spec["mains_meter_ids_used"] == [1, 2]
+        assert spec["mains_power_types_used"] == ["apparent", "apparent"]
+        assert spec["kettle_power_type_used"] == "active"
+        assert spec["n_output"] == n
+
+
+def test_prepare_nilmtk_missing_active_warns():
+    with tempfile.TemporaryDirectory() as d:
+        h5 = Path(d) / "ukdale_nilmtk_only_apparent.h5"
+        # kettle 表只有 apparent（异常情况），应 WARNING + 降级留痕
+        _make_nilmtk_h5(h5, kettle_col="apparent")
+        out = Path(d) / "ukdale_prepared.npz"
+        r = subprocess.run(
+            [sys.executable, str(SCRIPT), "--h5-path", str(h5),
+             "--mains-ids", "1,2", "--kettle-meter-id", "10", "--out", str(out)],
+            capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        spec = json.loads(out.with_suffix(".data_spec.json").read_text(encoding="utf-8"))
+        assert spec["kettle_power_type_used"] == "apparent"  # 降级并留痕
+
+
 if __name__ == "__main__":
     test_list_meters()
     test_prepare_end_to_end()
