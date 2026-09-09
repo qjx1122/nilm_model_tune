@@ -139,3 +139,15 @@
 - 关键决策：重搜前双探针先行；重搜 val 预算扩 30000
 - 未决问题：双探针回传后定 tune.py 搜索空间中心与 train 预算
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；configs/baseline_100k.yaml / REPORT_TEST.md / STATUS.md
+
+## [2026-09-09] 会话纪要（双探针判读 + 重搜方案定稿）
+- 目标：判读双探针六份输出；定 tune.py 重搜方案
+- 本会话角色：实验/调参教练（判读+搜索设计）
+- 完成项：
+  - 探针 A 判读：S 三种子配对全胜（0.0329±0.0060 vs 0.0477±0.0060）、val EE −7.1%→+1.0%（归零）、F1≥基线；代价 val MAE 变差（7.60±4.4 vs 3.66±0.30，s2024 13.85/R²0.687 待细搜澄清；S 的 MAE 项≈可忽略系已知性质）
+  - 探针 B 判读：S 打平（0.049±0.013 vs 0.048±0.006）、EE 改善不一致、2.7× 代价 → 弃 100k（数据杠杆边界记录）
+  - configs/tuning_v5.yaml 入库：搜索空间以 v2_do00 邻域为中心裁剪（w96/128/192、d64/128、h4/8、L1/2、ff128/256、do0/0.1、bs64/128、lr2/3/5e-4、wd1e-5/1e-4、25/5）+ val 30000 + train 30k + gates/复合分不变
+  - REPORT_TEST 实录 16、STATUS、纪要同步；commit+push
+- 关键决策：重搜三要点（A 邻域中心 / 30k train / val 30000）；细搜必含 v2_do00 锚
+- 未决问题：tune.py 32 trials 回传后判读 → 细搜设计
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；configs/tuning_v5.yaml / REPORT_TEST.md / STATUS.md

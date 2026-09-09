@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】数据地基修复：val KPI 已判读（实录 15：val S 0.0477±0.0060、F1 三种子同值=33 ON 离散化非稳定、S 方差≈全来自 |val EE|、val→test EE 一致）→ 待用户跑双探针（A 平移 v2_do00 ×3 + B baseline_100k ×3）→ 定 tune.py 重搜方案（val 扩 30000）
+- 【进行中·用户任务】数据地基修复：双探针已判读（实录 16：A=v2_do00 平移 S 配对全胜 0.033±0.006、EE 归零 +1.0%±1.0%，旧洞察可迁移；B=100k 打平且 2.7× 代价→弃）→ 重搜方案定稿 tuning_v5.yaml（A 邻域中心+val 30000+train 30k）→ 待用户跑 tune.py 32 trials（30-60min）
 - 本任务角色：实验/调参教练（数据完整性核查，不猜表号）
 
 ## 已完成
@@ -40,26 +40,19 @@
 - [x] 2026-09-09 prepare 五跑 v5 复验**全过→数据锁定**（实录 13）：evt/day 4.73/4.49/5.31、平均事件 ~106s、绝对事件数与 v3 交叉验证一致（2386≈2393 等）；kWh 较 v3 +14% 系煮沸中掉线格回归真值；aggOffW/corr 第四次稳定；n 较 v4 −1=头部缺口诚实剔除；Test 预算重置 2 次触碰，旧调参结论降级为待复核假设
 - [x] 2026-09-09 baseline 摸底 ×3 seeds on v5 判读（实录 14）：Test EE −0.090/−0.094/−0.060（旧纪元最终模型 −0.234 未过验收→新 baseline 全门槛过，数据修复红利）；纪律事故：eval_test 缺省 True 致未带 --test 仍碰 Test→触碰#1 记账+缺省翻 False；val ON 样本仅≈36 个→seed 方差警示；evaluate.py 升级注入 best_epoch_val（history.json 已有完整 val 指标）
 - [x] 2026-09-09 evaluate.py val KPI 回传判读（实录 15）：val F1 0.918/P 1.0/R 0.848 **三种子完全同值**（33 ON 中 28/33 离散化，非稳定性质示）；val S 0.0477±0.0060（F1 项恒定 0.0328、MAE 项可忽略→S 方差≈全来自 |val EE|）；val EE −7.1%±3.0% 与 test EE −8.1%±1.5% 方向一致无爆炸漂移；双探针方案+configs/baseline_100k.yaml 入库（pyyaml 单变量校验过）
+- [x] 2026-09-09 双探针判读（实录 16）：A（v2_do00 平移）S 三种子配对全胜（ΔS −0.007/−0.030/−0.008）、val EE −7.1%→+1.0%（归零）、F1≥基线，代价 val MAE 变差（7.60 vs 3.66，composite 选型已知性质）；B（100k）S 打平（0.049±0.013 vs 0.048±0.006）、2.7× 代价→弃；configs/tuning_v5.yaml 入库（搜索空间以 A 邻域为中心+val 30000+train 30k+gates 不变）
 - [x] 2026-09-09 prepare 首跑 n=345 确诊秒级相位差并修复（REPORT_TEST.md 执行实录 9）：meter1=:15 vs meter10=:18 精确 join 拼不上；改统一 6s 网格 resample 对齐；schema_version→2；--mains-ids 默认→1；偏移 3s 回归测试；pytest 13 passed
 - [x] 2026-09-09 metadata 全文回传→定表号（REPORT_TEST.md 执行实录 8）：mains=meter1 单表、kettle=meter10；meter2=锅炉回路（纠正 1,2 假设）；meter54=1s mains 备选
 
 ## 进行中
-- （用户侧）git pull 后跑双探针：A=平移复核 v2_do00 ×3 + B=baseline_100k ×3（+evaluate ×6），回传 best_epoch_val
+- （用户侧）git pull 后跑 tune.py 重搜（32 trials，30-60min GPU），回传门槛统计+Top-5
 - （本侧）无阻塞；判读 aggOffW/corr 定数据地基是否修复
 
 ## 下一步（TODO）
-1. 用户：git pull 后跑双探针（全部不带 --test；test 字段应为 null）：
-   探针 A（旧优胜平移复核，配置用你机器上旧纪元的 configs\fine\v2_do00.yaml）：
-   python scripts\train.py --config configs\fine\v2_do00.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 42 --out reports\trans_v2do00_s42
-   python scripts\train.py --config configs\fine\v2_do00.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 2024 --out reports\trans_v2do00_s2024
-   python scripts\train.py --config configs\fine\v2_do00.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 7 --out reports\trans_v2do00_s7
-   探针 B（数据量杠杆，新配置已入库）：
-   python scripts\train.py --config configs\baseline_100k.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 42 --out reports\base100k_s42
-   python scripts\train.py --config configs\baseline_100k.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 2024 --out reports\base100k_s2024
-   python scripts\train.py --config configs\baseline_100k.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 7 --out reports\base100k_s7
-   然后 evaluate ×6：
-   foreach ($d in trans_v2do00_s42,trans_v2do00_s2024,trans_v2do00_s7,base100k_s42,base100k_s2024,base100k_s7) { python scripts\evaluate.py --run-dir reports\$d }
-2. 本侧配对判读（同 seeds 42/2024/7）→ 定 tune.py 重搜方案：A 胜→搜索以 do0/nhead8/bs64/lr3e-4 邻域为中心；B 胜（100k 显著优）→重搜用大 train 预算；均不胜→以 baseline 为锚全空间粗搜；val 预算一律扩 30000。Test 预算剩 1 次（最终锁定用）
+1. 用户：git pull 后跑重搜（不带 --test）：
+   python scripts\tune.py --config configs\tuning_v5.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --out reports\tuning_v5_p1
+   （32 trials，预计 30-60 min；跑完贴回末尾的「门槛通过 N/32」+ Top-5 表；方便的话加 tuning_summary.csv 前 10 行）
+2. 本侧判读搜索结果 → 细搜设计（top-3 邻域 ×3 seeds + v2_do00 锚候选）→ 锁定 → Test 最终一跑（预算剩 1 次）（同 seeds 42/2024/7）→ 定 tune.py 重搜方案：A 胜→搜索以 do0/nhead8/bs64/lr3e-4 邻域为中心；B 胜（100k 显著优）→重搜用大 train 预算；均不胜→以 baseline 为锚全空间粗搜；val 预算一律扩 30000。Test 预算剩 1 次（最终锁定用）
 3. 判读红旗：agg_off_mean≈0 且 corr≈1 → 确认 aggregate 泄漏 → 修数据制备（prepare_ukdale.py --list-meters 核对 mains 表号 → 重新生成 npz → 人工抽查 aggregate 一天曲线）→ 全部 KPI 重启（先 baseline 再走搜索，Test 协议重置一次并记录）；若数据无误（agg_off_mean 数百 W）→ 回到漂移结论：方向 B（记录教训收尾）或 C（改切分）
 4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push（视红旗结论而定）
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
@@ -93,6 +86,8 @@
 - 2026-09-09（决策·val 噪声对策）：val 6000 样本仅 ≈36 个 ON（≈2 次事件）→ F1/EE 噪声大；调参选型一律多种子均值 + composite S，单 seed 单 epoch val 指标不作依据
 - 2026-09-09（决策·双探针先行）：重搜前先跑两个廉价对照——A=旧优胜 v2_do00 整体平移（测旧洞察可迁移性）+ B=baseline_100k（测数据量杠杆，单变量 max_train 30000→100k）；配对 seeds 42/2024/7 控制种子方差
 - 2026-09-09（发现·S 判别力集中）：6000 样本 val 下 S 的 F1 项恒定（0.0328）、MAE 项可忽略 → S 方差≈全来自 |val EE|（33 ON 离散化）→ 重搜必须扩 val 至 30000（ON≈180）
+- 2026-09-09（决策·重搜方案）：搜索空间以 v2_do00 邻域为中心（探针 A 旧洞察可迁移）；train 保持 30k（探针 B 无显著收益）；val 扩 30000（判别力）；细搜阶段 v2_do00 必入作锚；S 的 MAE 项≈可忽略（0.4×MAE/2000）→ composite 选型会牺牲点误差换 EE/F1，属已知性质如实记录
+- 2026-09-09（发现·数据杠杆边界）：30k→100k train 在 6000-val 分辨率下无可测收益（配对 1 胜 2 负）；模型当前更受容量/正则而非数据量约束的假设待细搜后复核
 - 2026-09-09（踩坑·沙箱重克隆）：平台可整箱重克隆沙箱（本地 commit 链消失、/tmp 清空）；远端分支是唯一可靠真值——回合初 git log + git ls-remote 对账，恢复=fetch+逐文件哈希比对+reset
 - 2026-09-09（决策·网格对齐）：多表秒级相位差是 UK-DALE 常态，对齐必须先 resample 到统一网格再 join，精确时间戳 join 不可用；data_spec schema_version 升 2 标记口径变化
 - 2026-09-09（决策·单总表）：mains 只用 meter1（2 为锅炉回路，加进去 double count）；新 npz 另存 v2 不覆盖旧文件（旧文件关联历史 KPI/Test 记录）；diagnose 设证伪口
