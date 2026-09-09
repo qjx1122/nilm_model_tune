@@ -482,3 +482,15 @@
 - **val KPI 补读通道**：result.json 只含 test 指标，但 `fit()` 逐 epoch 已把完整 `val_*`（mae/f1/energy_error/precision/recall…）落盘在 history.json → evaluate.py 升级为自动注入 `best_epoch_val` 字段（不重训、不碰 Test）。
 - **待用户**：git pull 后 `python scripts\evaluate.py --run-dir reports\base_v5_s{42,2024,7}` ×3，回传（重点 best_epoch_val 的 mae/f1/energy_error/precision/recall）。
 - 是否进入 REPORT.md：否（待 val KPI 齐后定平移 vs 重搜策略）。
+
+### 执行实录 15（2026-09-09）：baseline val KPI 齐表 → F1 离散化/S 判别力集中/EE 一致性判读；双探针方案（平移复核+数据量杠杆）
+- **事实（用户回传三份 evaluate.py，best_epoch_val）**：seeds 42/2024/7 的 val MAE=3.827/3.901/3.245、R²=0.876/0.855/0.878、EE=−0.0421/−0.1118/−0.0583、**P/R/F1 三种子完全同值：P=1.000、R=0.8485、F1=0.9180**。
+- **判读 1（F1 同值=离散化，非稳定性）**：val 6000 样本中 ON 恰 33 个（0.0060×6000，与 diagnose on_frac 吻合）；R=28/33、P=1.0（零假警报）→ 三个不同种子的模型在各自 best epoch 检出同样 28 个、漏同样 5 个。F1 在此预算下落在粗离散格上、几乎种子盲——**不得解读为"极稳定"，亦无分辨力区分配置**。漏掉的 5 个 ON 疑似系统性难点（接缝上下文/桥接残缺事件/低幅边缘），待后续定位。
+- **判读 2（S 判别力集中在最噪指标上）**：手算 composite S（0.4×MAE/2000+0.4×(1−F1)+0.2×|EE|）=0.0420/0.0559/0.0451 → **0.0477±0.0060**。分解：F1 项恒定 0.0328、MAE 项 ≈0.0007 可忽略 → **S 的全部方差来自 |val EE|**（0.0084~0.0224）。当前 val 预算下"按 S 选型"≈"按 |EE| 选型"，而 EE 恰是 33 ON 样本支撑的最噪指标 → **重搜配置必须扩大 val（拟 max_samples_val 30000，ON≈180）**。
+- **判读 3（val→test 一致性，漂移温和化）**：val EE −4.2/−11.2/−5.8% vs test EE −9.0/−9.4/−6.0%——方向量级吻合，无旧纪元 val −0.6%→test −23.4% 的爆炸性脱节（坏数据时代产物）。test 段壶用量 +50% 的分布漂移仍真实，但模型响应温和。新纪元基线锚（多种子口径）：**val S 0.0477±0.0060、val F1 0.918、val EE −7.1%±3.0%、test EE −8.1%±1.5%**。
+- **策略决策（双探针先行，再定重搜）**：
+  - **探针 A（平移复核）**：旧纪元最终优胜 v2_do00（w128 d64 **nhead8** L2 ff128 **do0** **bs64 lr3e-4 25/5**，与新 baseline 差 5 因子）on v5 ×3 seeds（42/2024/7 与 baseline 配对）→ 测"旧洞察可迁移性"，并直接与基线比较。
+  - **探针 B（数据量杠杆）**：新增 `configs/baseline_100k.yaml`（与 baseline.yaml **唯一差异** max_samples_train 30000→100000，pyyaml 平铺校验通过）×3 seeds → 测"加大训练子采样"边际收益（train 池 7.26M 中心，当前仅用 0.4%），为重搜定 train 预算。
+  - 两探针后定 tune.py 重搜方案（val 扩 30000、搜索空间按探针结果裁剪）。预计 GPU 合计 ~25-45 min。新跑均为 eval_test 缺省 False（不碰 Test，剩余预算 1 次）。
+- **待用户**：6 条 train + 6 条 evaluate（命令见 STATUS 下一步），回传 best_epoch_val（test 字段应为 null）。
+- 是否进入 REPORT.md：否（待双探针回传定重搜方案后，连同数据纪元切换一并规划）。

@@ -127,3 +127,15 @@
 - 关键决策：Test 触碰记账结构（摸底#1+最终#2）；eval_test 默认冻结
 - 未决问题：用户回传 3 份 evaluate.py 输出（val KPI）→ 定平移复核 vs 重搜
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；src/experiment.py / scripts/evaluate.py / scripts/train.py / REPORT_TEST.md / STATUS.md
+
+## [2026-09-09] 会话纪要（val KPI 判读 + 双探针方案）
+- 目标：判读 baseline ×3 的 val KPI；定平移复核 vs 重搜策略
+- 本会话角色：实验/调参教练（判读+实验设计）
+- 完成项：
+  - 判读：F1/P/R 三种子完全同值（28/33 离散化，非稳定性；零假警报）；S=0.0477±0.0060，分解后 F1 项恒定、MAE 项可忽略 → S 方差≈全来自 |val EE| → 6000 val 下 S 判别力集中在最噪指标；val EE −7.1%±3.0% 与 test EE −8.1%±1.5% 一致（旧纪元爆炸漂移消失）
+  - 实验设计：双探针——A=旧优胜 v2_do00（w128 d64 nhead8 do0 bs64 lr3e-4 25/5）平移复核 ×3；B=baseline_100k（唯一差异 max_train 100k）×3；配对 seeds 42/2024/7
+  - configs/baseline_100k.yaml 入库（pyyaml 平铺校验：唯一差异 data.max_samples_train）
+  - REPORT_TEST 实录 15、STATUS、纪要同步；commit+push
+- 关键决策：重搜前双探针先行；重搜 val 预算扩 30000
+- 未决问题：双探针回传后定 tune.py 搜索空间中心与 train 预算
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；configs/baseline_100k.yaml / REPORT_TEST.md / STATUS.md
