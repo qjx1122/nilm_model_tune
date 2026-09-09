@@ -26,14 +26,17 @@ def on_events(x, thr):
     return int((edges == 1).sum()), int(above.sum())
 
 
-def segment_stats(seg, name, thr):
+def segment_stats(seg, agg_seg, name, thr):
     n = len(seg)
     if n == 0:
         return {"segment": name, "n_samples": 0, "note": "empty"}
     events, on_samp = on_events(seg, thr)
     on_pows = seg[seg >= thr]
     day = n * SAMPLE_SEC / 86400.0
-    energy_kwh = float(seg.sum() * SAMPLE_SEC / 3600.0)
+    energy_kwh = float(seg.sum() * SAMPLE_SEC / 3600.0 / 1000.0)  # W→kWh（/1000）
+    off = seg < thr
+    agg_off_mean = float(agg_seg[off].mean()) if off.any() else 0.0
+    corr = float(np.corrcoef(agg_seg, seg)[0, 1]) if np.std(agg_seg) > 0 else 0.0
     return {
         "segment": name,
         "n_samples": n,
@@ -45,9 +48,11 @@ def segment_stats(seg, name, thr):
         "median_on_power_w": round(float(np.median(on_pows)), 1) if len(on_pows) else 0.0,
         "on_p95_w": round(float(np.percentile(on_pows, 95)), 1) if len(on_pows) else 0.0,
         "energy_kwh": round(energy_kwh, 1),
-        "kwh_per_day": round(energy_kwh / day, 2) if day else 0.0,
-        "agg_mean_w": round(float(seg.mean()), 1),
-        "agg_p95_w": round(float(np.percentile(seg, 95)), 1),
+        "kwh_per_day": round(energy_kwh / day, 3) if day else 0.0,
+        "agg_mean_w": round(float(agg_seg.mean()), 1),
+        "agg_p95_w": round(float(np.percentile(agg_seg, 95)), 1),
+        "agg_off_mean_w": round(agg_off_mean, 1),
+        "corr_agg_target": round(corr, 4),
     }
 
 
@@ -66,26 +71,27 @@ def main():
     a = int(len(target) * args.ratios[0])
     b = int(len(target) * (args.ratios[0] + args.ratios[1]))
     names = ["train", "val", "test"]
-    slices = [target[:a], target[a:b], target[b:]]
+    slices = [(target[:a], agg[:a]), (target[a:b], agg[a:b]), (target[b:], agg[b:])]
     print(f"on_threshold={args.on_threshold}W  npz={Path(args.npz).name}  "
           f"n_total={len(target)}（{len(target)*SAMPLE_SEC/86400:.1f} 天）")
     print(f"{'segment':<7}{'n':>9}{'days':>7}{'on_evt':>8}{'evt/day':>9}"
           f"{'on_frac':>9}{'meanW':>8}{'medW':>8}{'p95W':>8}{'kWh':>9}{'kWh/day':>9}"
-          f"{'aggW':>8}{'aggp95':>8}")
-    for seg, nm in zip(slices, names):
-        s = segment_stats(seg, nm, args.on_threshold)
+          f"{'aggW':>8}{'aggp95':>8}{'aggOffW':>9}{'corr':>8}")
+    for (t, ag), nm in zip(slices, names):
+        s = segment_stats(t, ag, nm, args.on_threshold)
         if "note" in s:
             print(f"{nm:<7} empty")
             continue
         print(f"{s['segment']:<7}{s['n_samples']:>9}{s['days']:>7}{s['on_events']:>8}"
               f"{s['events_per_day']:>9}{s['on_fraction']:>9.4f}{s['mean_on_power_w']:>8}"
               f"{s['median_on_power_w']:>8}{s['on_p95_w']:>8}{s['energy_kwh']:>9}"
-              f"{s['kwh_per_day']:>9}{s['agg_mean_w']:>8}{s['agg_p95_w']:>8}")
+              f"{s['kwh_per_day']:>9}{s['agg_mean_w']:>8}{s['agg_p95_w']:>8}"
+              f"{s['agg_off_mean_w']:>9}{s['corr_agg_target']:>8}")
     # 判读提示
-    t, v = segment_stats(target[b:], "test", args.on_threshold), segment_stats(
-        target[a:b], "val", args.on_threshold)
-    print("\n判读提示：若 test 的 evt/day、mean/median ON 功率或 kWh/day 明显偏离 val/train，"
-          "即为时间分布漂移证据（漏报/EE 偏差的根因方向）。")
+    print("\n判读提示：")
+    print("1) test 的 evt/day、kWh/day 明显高于 train/val → 时间分布漂移证据（见执行实录 5）。")
+    print("2) agg_off_mean_w（壶关断时的总负荷均值）若 ≈0 且 corr_agg_target≈1 → aggregate 几乎只含 kettle，"
+          "不是真实总负荷（数据制备红旗），NILM 前提失效，先修数据再谈模型。")
 
 
 if __name__ == "__main__":
