@@ -44,3 +44,14 @@
 - 关键决策：制备参数必须以全文 metadata 映射为准；apparent aggregate 的能量口径偏差在 data_spec 留痕
 - 未决问题：待用户回传 parse 全文 → 定 --mains-ids/--kettle-meter-id → 发 prepare 命令
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；REPORT_TEST.md / STATUS.md
+
+## [2026-09-09] 会话纪要
+- 目标：判读 metadata 全文，定 prepare 制备参数
+- 本会话角色：实验/调参教练
+- 完成项：
+  - metadata 全文（53 条）判读落盘 REPORT_TEST.md 执行实录 8：编号无偏移（meter10=壶双吻合）；mains=meter1 单表；meter2/3/8/25=回路 CT 非 mains；meter0 无 h5 组；meter54=1s mains 备选
+  - 决策：--mains-ids 1 --kettle-meter-id 10，输出 ukdale_prepared_v2.npz（不覆盖旧文件）；diagnose 设证伪口
+  - STATUS.md 更新；本纪要追加；commit+push
+- 关键决策：纠正旧假设 1,2 双总表（2 为锅炉）；不猜表号原则兑现价值
+- 未决问题：待用户回传 prepare 输出 + diagnose 输出 + data_spec 关键字段
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；REPORT_TEST.md / STATUS.md

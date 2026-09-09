@@ -34,8 +34,8 @@
 - [x] 2026-09-08 diagnose_split.py 升级：kWh 单位修正（/1000）+ 新增 agg_off_mean_w / corr_agg_target 列（判别 aggregate 是否泄漏的探针）；合成对照验证（正常版 aggOffW≈350 vs 泄漏版 0/corr 1.0）
 
 ## 进行中
-- （用户侧）跑 parse_nilmtk_metadata.py --house 1 并贴全文输出（定 kettle/mains 表号；十秒级）
-- （本侧）无阻塞；拿到映射后定 --mains-ids/--kettle-meter-id，发 prepare 命令
+- （用户侧）跑 prepare 生成 ukdale_prepared_v2.npz（几分钟）+ diagnose_split 复验 + data_spec 关键字段，一次贴回三份输出
+- （本侧）无阻塞；判读 aggOffW/corr 定数据地基是否修复
 
 ## 下一步（TODO）
 1. 用户：跑 parse_nilmtk_metadata.py --house 1，贴全文输出（定 kettle/mains 表号）
@@ -71,3 +71,4 @@
 - 运行：`run_baseline.ps1` / `run_tuning.ps1` / `run_real.ps1`（Windows + Conda）
 - 产物：`reports/smoke/`（smoke 基线，git 跟踪勿覆盖）、`reports/`（实验输出目录）
 - 测试：`tests/`（test_model / test_objective / test_prepare_ukdale）；依赖：`requirements.txt`
+.txt`

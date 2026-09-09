@@ -419,3 +419,11 @@
 - **重要修正（vs 实录 6 待办③）**：6s 口径下 meter1/2/3 **只有 apparent 列、没有 active** → 「mains active 合并」不可行。aggregate 二选一：(a) 6s apparent 总表直接用（文献常见做法，视在≥有功，能量口径需留痕）；(b) meter54 1s-active 降采样到 6s（备选，需先确认身份+加代码）。默认先走 (a)。
 - **未决（卡点）**：表号→电器 ground truth 缺失。上一版 parse_nilmtk_metadata 输出只有转述（meter10→kettle、meter2→boiler、meter5→washer dryer、meter6→dish washer、无显式 mains），且转述含与 h5 结构矛盾的"meter 0"编号、meter2 身份（mains vs boiler）直接决定 --mains-ids。**不能靠猜定制备参数** → 请用户重跑 parse 脚本并贴**全文**，再定 prepare 命令。
 - 是否进入 REPORT.md：否（数据修复中）。
+
+### 执行实录 8（2026-09-09）：metadata 全文回传 → 定表号：mains=meter1（单表），kettle=meter10
+- **事实（用户回传 parse 全文，共 53 条）**：meter10→kettle/food processor/toasted sandwich maker；meter2→boiler；meter3→solar thermal pumping station；meter8→light×2；meter25→light(16)；meter5→washer dryer；meter6→dish washer；meter0→immersion heater/water pump/security alarm/fan/drill/laptop（**h5 中无 meter0 组**）；**无 mains/无 meter1/无 meter54 条目**。
+- **判定（编号对齐）**：metadata 编号 == h5 表号，无 off-by-one。证据：旧 npz target 就是教科书级壶脉冲（4–5 次/天、ON 2.3kW 级）且旧管线 kettle 表号为 10，与"metadata 10→kettle"双吻合。
+- **判定（mains 身份）**：meter1 = mains（site meter，不在 appliance metadata 中属正常 NILMTK 行为；apparent、全程 10.24M、晚间 head≈600W 吻合）。meter2/3/8/25 系硬接线回路 CT 表（只测 apparent：锅炉/太阳能泵/灯回路），**不是 mains**——纠正了之前"--mains-ids 1,2"的假设（2 是锅炉回路，加进去会 double count）。metadata 0 无 h5 组 = 这些电器无独立子表数据，只存在于 mains 残差中。meter54（1s active，56.7M）同样不在 metadata 中 → 1 秒 mains，列为备选 aggregate（与 kettle 交叠约 660 天，充足）。
+- **决策**：prepare 用 `--mains-ids 1 --kettle-meter-id 10`（**单总表**）；输出新文件 `ukdale_prepared_v2.npz`，**不覆盖**旧 npz（旧文件关联历史 KPI/Test 记录，保留备查）。
+- **验证计划（证伪口）**：diagnose 新 npz，期望 aggOffW 数百 W、corr≪1、agg p95 数百~数千 W；若 aggOffW≈0 则 meter1=mains 假设被证伪，回滚重议，不硬上训练。
+- 是否进入 REPORT.md：否（数据修复中）。
