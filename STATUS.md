@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】数据地基修复：--list-meters 54/54 已通过（REPORT_TEST.md 执行实录 7）→ 待用户回传 parse_nilmtk_metadata **全文** 定表号映射，再发 prepare 制备命令
+- 【进行中·用户任务】数据地基修复：表号已定（mains=meter1 单表、kettle=meter10，REPORT_TEST.md 执行实录 8）→ 待用户跑 prepare 生成 ukdale_prepared_v2.npz + diagnose 复验，回传三份输出
 - 本任务角色：实验/调参教练（数据完整性核查，不猜表号）
 
 ## 已完成
@@ -32,14 +32,17 @@
 - [x] 2026-09-08 新增 `scripts/diagnose_split.py`（纯数据分段诊断：事件数/ON 功率/能耗/日均，冒烟通过）
 - [x] 2026-09-08 **方向 A 诊断完成并落盘**（REPORT_TEST.md 执行实录 5）：test 段真实漂移坐实（evt/day 5.31、on_frac 0.0088、kWh/天 0.515 vs train 0.344/val 0.359 → +43~50%）；**发现 aggregate 红旗**（agg 均值≈target 均值、agg p95=1.0W → aggregate 几乎只含 kettle，非真实总负荷；NILM 前提存疑，val MAE 3–4W 或为泄漏产物）→ 脚本升级（kWh /1000 修正 + 新增 agg_off_mean/corr 列）并冒烟通过，待用户重跑确认
 - [x] 2026-09-08 diagnose_split.py 升级：kWh 单位修正（/1000）+ 新增 agg_off_mean_w / corr_agg_target 列（判别 aggregate 是否泄漏的探针）；合成对照验证（正常版 aggOffW≈350 vs 泄漏版 0/corr 1.0）
+- [x] 2026-09-09 prepare tz 真因定位+修复：用户重跑 f10c795 版 --list-meters 暴露真实报错 Cannot interpret 'datetime64[ns, Europe/London]' → 根因 _normalize_ts_index 对 tz-aware dtype 调 np.issubdtype（沙箱复现同错）；修复= DatetimeIndex 先行分支 + try/except；顺带修 med_dt ns/us 单位陷阱（改 Timedelta 口径）；新增 tz-aware 回归测试，pytest（除 test_model）12 passed
+- [x] 2026-09-09 --list-meters 54/54 通过（用户回传全文，落盘 REPORT_TEST.md 执行实录 7）：meter1/2/3 apparent 全程 10M 级；meter10 active 8.94M；meter54 为 1s 表 56.7M；无 meter0。重要修正：6s mains 无 active 列，aggregate 默认 apparent 路线（留痕）
+- [x] 2026-09-09 metadata 全文回传→定表号（REPORT_TEST.md 执行实录 8）：mains=meter1 单表、kettle=meter10；meter2=锅炉回路（纠正 1,2 假设）；meter54=1s mains 备选
 
 ## 进行中
 - （用户侧）跑 prepare 生成 ukdale_prepared_v2.npz（几分钟）+ diagnose_split 复验 + data_spec 关键字段，一次贴回三份输出
 - （本侧）无阻塞；判读 aggOffW/corr 定数据地基是否修复
 
 ## 下一步（TODO）
-1. 用户：跑 parse_nilmtk_metadata.py --house 1，贴全文输出（定 kettle/mains 表号）
-2. 本侧定 --mains-ids/--kettle-meter-id 后：用户跑 prepare 生成新 npz + diagnose_split.py 复验（期望 aggOffW 数百 W、corr<<1）→ 回传输出 + 新 data_spec.json 关键字段
+1. 用户：跑 prepare（--mains-ids 1 --kettle-meter-id 10 --out ukdale_prepared_v2.npz，不覆盖旧 npz）→ 回传输出
+2. 用户：跑 diagnose_split.py --npz ukdale_prepared_v2.npz + 回传 data_spec.json 关键字段（mains_meter_ids_used/时间范围/n_output）→ 本侧判读 aggOffW/corr（证伪口：aggOffW≈0 则推翻 meter1=mains 假设）
 3. 判读红旗：agg_off_mean≈0 且 corr≈1 → 确认 aggregate 泄漏 → 修数据制备（prepare_ukdale.py --list-meters 核对 mains 表号 → 重新生成 npz → 人工抽查 aggregate 一天曲线）→ 全部 KPI 重启（先 baseline 再走搜索，Test 协议重置一次并记录）；若数据无误（agg_off_mean 数百 W）→ 回到漂移结论：方向 B（记录教训收尾）或 C（改切分）
 4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push（视红旗结论而定）
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
@@ -62,6 +65,9 @@
 - 2026-09-08（踩坑·torch 依赖）：PyPI torch 2.14.0+cu130 Linux wheel 不在 wheel 内带 CUDA 运行库，需按 `nvidia-*` 包补齐；cu13 系 pip 包已改名（`nvidia-cuda-runtime-cu13` 等旧名报「请用不带后缀新名」）；cudnn/nccl/cusparselt/nvshmem 仍用 `-cu13` 后缀且版本由 torch METADATA 钉死；cufft/cusparse/cusolver/curand 用不带后缀新名（soname .12）；`nvidia-nccl`（新名）sdist 损坏 → 装 `nvidia-nccl-cu13==2.30.7`；小坑：nvidia-cuda-profiler-api 不含 libcupti，需 `nvidia-cuda-cupti`。安装时用 `--only-binary :all:` 避免 sdist 回退
 - 2026-09-08（踩坑·工程）：①`reports/smoke/*` 是 git 跟踪的历史产物（commit 7824bb4），本地验证先备份、跑完恢复，勿覆盖；②仓库历史误提交 `__pycache__/*.pyc` → 本次清理出库并加 `.gitignore`；③prepare 脚本 `meter_groups` 曾对 h5py Group 对象二次索引报 TypeError → 已修（单测捕获）；④合成 h5 测试的 mains 需包含 kettle 事件才物理自洽
 - 2026-09-09（踩坑·pandas 时区）：真实 NILMTK ukdale.h5 经 `pd.read_hdf` 读出的 index 是 tz-aware DatetimeIndex（Europe/London），`np.issubdtype(tz_dtype, np.integer)` 直接抛 `TypeError: Cannot interpret …` —— numpy 不认 pandas 扩展 dtype；修法= DatetimeIndex 先行处理 + try/except 包裹。另：pandas 3 默认时间单位是 us 而非 ns，`asi8/astype(int64)` 数值差 1000 倍，采样间隔必须用 Timedelta 口径求，勿写死 /1e9
+- 2026-09-09（决策·不猜表号）：转述 metadata 出现与 h5 矛盾的 meter 0 且 meter2 身份不明 → 坚持要全文，拿到 ground truth 才发 prepare。兑现价值：全文证明 meter2=锅炉，纠正 1,2 双总表假设
+- 2026-09-09（决策·单总表）：mains 只用 meter1（2 为锅炉回路，加进去 double count）；新 npz 另存 v2 不覆盖旧文件（旧文件关联历史 KPI/Test 记录）；diagnose 设证伪口
+- 2026-09-09（踩坑·工具）：同一回合内并行发给同一文件的多个 edit_file 只会活一个（互相覆盖）→ 同文件多处改动必须串行或单次原子写入（bash/python 整段改），且 commit 前必须 grep 验活
 
 ## 关键文件路径
 - 协议：`BOOTSTRAP.md`（v2.1）、`ROLE.md`（角色库，默认角色=资深电力算法专家）
