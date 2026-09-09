@@ -297,4 +297,27 @@
      - 全程 Test 触碰计数 = 2（阶段 0b 基线 + 本次；若阶段 0b 从未执行则为 1）。
 - **遗留问题**：baseline test 缺失（未回传）；锁定后可选做 ON 阈值敏感性（300–700W 诊断）、全量样本外推复核。
 - 是否进入 REPORT.md：收官数据回传且验收通过后判（推荐配置 + KPI 口径拟进入）。
+
+### 执行实录 3 补充（2026-09-08）：30-epoch 复核结果 → 决策：维持 25/5 口径锁定 c2
+- **final_c2（epochs30/pat7，seed 7000–7002，n=3）回传**：S **0.0476±0.0090** | MAE 3.21±0.31 | F1 0.9095±0.023 | P 0.9011 | R 0.9195 | **EE −0.0540±0.0196** | best_ep 12.3
+- **对照（锁定候选 c2，epochs25/pat5，seed 6000–6008，n=9）**：S 0.0381±0.0102 | MAE 3.56 | F1 0.9196 | P 0.9201 | R 0.9195 | EE −0.0025 | best_ep 9.9
+- **判读**：
+  1. 30/7 复核 S 劣化 +0.0095（0.0476 vs 0.0381），**劣化几乎全部来自 EE**（−0.054 vs −0.0025，差 0.0515 ≈ 3× 合并 SEM≈0.017 → 统计上显著转负，系统性低估总电量 ~5%）；F1 差 0.010 在噪声内（合并 SEM≈0.015）。
+  2. best_ep 9.9→12.3：更宽的 patience(7) 让早停多等 7 轮，选到 val 平台期更晚的点——该点 EE 偏负。30/7 口径没有带来稳健性收益，反而引入系统性能量低估。
+  3. **决策：复核未通过 → 不采纳 epochs30/pat7；锁定配置维持 25/5 口径的 c2**（w128 d64 nhead4 L2 ff128 do0 bs64 lr3e-4 wd1e-4，epochs25/pat5）——它与全部选型证据（粗搜→批次1→批次2）同口径，n=9 均值 0.0381、EE 近零。
+- **修正后收官步骤**：
+  1. fresh-seed 复核 25/5 口径 ×3（7000–7002，防"6000 系种子侥幸"，~8 min）：
+     ```powershell
+     foreach ($s in 7000,7001,7002) {
+       python scripts\train.py --config configs\fine\c2_nhead4.yaml --data-path D:\datasets\ukdale_prepared.npz --seed $s --out "reports\final\fc2_25_s$s" }
+     python scripts\summarize_fine.py --runs-dir reports\final
+     ```
+     预期 S ≈0.038–0.042；若 ≈0.047（与 30/7 同），说明 7000 系种子整体 EE 偏负 → 停下回报（改用 6009 seed 做 Test）。
+  2. **Test 恰好一次**（25/5 口径，seed 7000）：
+     ```powershell
+     python scripts\train.py --config configs\fine\c2_nhead4.yaml --data-path D:\datasets\ukdale_prepared.npz --seed 7000 --out reports\final\c2_test --test
+     python scripts\evaluate.py --run-dir reports\final\c2_test
+     ```
+  3. 回传：步骤 1 汇总表 + 步骤 2 test 指标。验收：test S 与 fc2_25 均值同量级（差 <0.01 无分布漂移）；test 业务门槛复验（F1/recall ≥0.75/0.70、|EE| ≤0.15）。全程 Test 触碰计数 = 1（阶段 0b 基线未执行）。
+- 是否进入 REPORT.md：Test 回传验收通过后判。
 - 是否进入 REPORT.md：否（方案与改造本身不是实验结论；待真实 KPI 出现后另行判定）

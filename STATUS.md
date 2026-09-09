@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】调参执行：批次 2 完成 → **锁定候选 c2（nhead4）**，收官 SOP 已交付（REPORT_TEST.md 执行实录 3），等待用户执行 val 复核 ×3 seeds + Test 一次并回传
+- 【进行中·用户任务】调参执行：30/7 复核未通过 → 维持 25/5 口径锁定 c2；修正后收官 SOP 已交付（REPORT_TEST.md 执行实录 3 补充），等待用户执行 fresh-seed 复核 + Test 一次并回传
 - 本任务角色：实验/调参教练（收官判读与 REPORT.md 评估）
 
 ## 已完成
@@ -33,8 +33,8 @@
 - （本侧）无阻塞；收官数据到手后：执行实录 3 收尾、评估 REPORT.md 更新（推荐配置 + KPI 口径）、TUNING_GUIDE.md 战史、收尾仪式（session 纪要）
 
 ## 下一步（TODO）
-1. 用户执行收官 SOP（命令见 REPORT_TEST.md 执行实录 3）→ 回传步骤 2 汇总表 + 步骤 3 test 指标
-2. 判读：val/test 同量级（S 差 <0.01 无漂移）+ test 业务门槛复验（预期 F1/recall ≥0.75/0.70、|EE|≤0.15 远超）→ 通过则更新 REPORT.md（推荐稳定配置 = c2：w128 d64 nhead4 L2 ff128 do0 bs64 lr3e-4 wd1e-4 + KPI 口径）与 TUNING_GUIDE.md v1.1 战史
+1. 用户执行修正后收官 SOP（命令见 REPORT_TEST.md 执行实录 3 补充）：fc2_25 ×3 seeds（7000–7002）fresh 复核 → 25/5 口径 c2 `--seed 7000 --test` 一次 → 回传汇总 + test 指标
+2. 判读：fc2_25 预期 ≈0.038–0.042（若 ≈0.047 则回报改用 6009 seed）；test 与 fc2_25 同量级（差 <0.01 无漂移）+ test 业务门槛复验 → 通过则更新 REPORT.md（推荐稳定配置 = c2 25/5：w128 d64 nhead4 L2 ff128 do0 bs64 lr3e-4 wd1e-4, epochs25/pat5 + KPI 口径）与 TUNING_GUIDE.md v1.1 战史
 3. （可选）ON 阈值敏感性（300–700W 诊断）与全量样本外推复核
 4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
@@ -52,6 +52,7 @@
 - 2026-09-08（细搜批次 1 判读）：V0 锚 5-seed 噪声 0.0645±0.0479 → 粗搜 top-1 单跑 0.0372 是优胜者偏差上端；v2(do0) 各分量全面优（MAE 3.60/F1 0.913/R 0.924/EE −0.029）+ 更稳（σ0.013）→ 新基准；v1(do0.2) 未复现 trial18 → dropout 非增益源；w96/w160 稳定但 recall 0.85 天花板 → 弃窗口方向；lr2e4/nhead4 在 do0.1 基准有方向性改善 → 批次 2 于 do0 基准单测（C1/C2）
 - 2026-09-08（批次 2 判读）：c2(nhead4) S 0.0381±0.0102(n=9) 最优且分布最紧，MAE/F1/P 三项全场最优，P/R 拉平 0.920/0.920（修掉 P<R 假阳老问题），EE −0.0025 近零；vs v2 差 0.0053 < 2×合并SEM 0.0105 未达严格显著 → 但为第二次同构证据（更稳+分量全优），判定性锁定 c2，如实标注非统计显著；c1 与 v2 无差 → lr 保持 3e-4；搜索收敛（w/do/lr/ff 方向探明无增益），不开新批次
 - 2026-09-08（工程）：summarize_fine.py 曾只扫 v*_s* 致 c* 目录静默漏报（已修复为任意 <变体>_s<种子> + 打印扫描计数）；train.py 新增 --test 显式开关（仅在最终 Test 一步用，落实 Test 冻结纪律）
+- 2026-09-08（30/7 复核判读）：final_c2(epochs30/pat7, n=3) S 0.0476±0.009 劣于 c2(25/5, n=9) 0.0381±0.010，劣化几乎全来自 EE（−0.054 vs −0.0025，≈3×合并 SEM 显著转负）；best_ep 9.9→12.3 因 pat7 多等 7 轮选到平台期更晚点；30/7 无稳健性收益反而引入系统性能量低估 → 复核未通过，维持 25/5 口径锁定 c2（与全部选型证据同口径）
 - 2026-09-08（踩坑·torch 依赖）：PyPI torch 2.14.0+cu130 Linux wheel 不在 wheel 内带 CUDA 运行库，需按 `nvidia-*` 包补齐；cu13 系 pip 包已改名（`nvidia-cuda-runtime-cu13` 等旧名报「请用不带后缀新名」）；cudnn/nccl/cusparselt/nvshmem 仍用 `-cu13` 后缀且版本由 torch METADATA 钉死；cufft/cusparse/cusolver/curand 用不带后缀新名（soname .12）；`nvidia-nccl`（新名）sdist 损坏 → 装 `nvidia-nccl-cu13==2.30.7`；小坑：nvidia-cuda-profiler-api 不含 libcupti，需 `nvidia-cuda-cupti`。安装时用 `--only-binary :all:` 避免 sdist 回退
 - 2026-09-08（踩坑·工程）：①`reports/smoke/*` 是 git 跟踪的历史产物（commit 7824bb4），本地验证先备份、跑完恢复，勿覆盖；②仓库历史误提交 `__pycache__/*.pyc` → 本次清理出库并加 `.gitignore`；③prepare 脚本 `meter_groups` 曾对 h5py Group 对象二次索引报 TypeError → 已修（单测捕获）；④合成 h5 测试的 mains 需包含 kettle 事件才物理自洽
 
