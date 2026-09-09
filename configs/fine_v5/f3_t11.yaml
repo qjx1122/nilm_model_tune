@@ -1,0 +1,36 @@
+# 细搜批次1（实录 17）：重搜 top-3 trial11（S=0.0523/EE−0.046）。
+# w96 d64 h8 L2 ff256 do0.1 bs64 lr2e-4——h8+do0.1 反方向代表（vs F0 h8do0 / F1 h4do0）。
+seed: 42
+device: auto
+data:
+  path: ""
+  appliance: kettle
+  window_size: 96
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  max_samples_train: 30000
+  max_samples_val: 30000
+  max_samples_test: 6000
+  eval_test: false
+model:
+  input_dim: 1
+  d_model: 64
+  nhead: 8
+  num_layers: 2
+  dim_feedforward: 256
+  dropout: 0.1
+training:
+  batch_size: 64
+  epochs: 25
+  lr: 0.0002
+  weight_decay: 0.0001
+  patience: 5
+  grad_clip: 1.0
+  loss: mse
+  select_metric: composite
+  objective:
+    weights: {mae: 0.4, f1: 0.4, energy_error: 0.2}
+    mae_norm_watts: 2000.0
+metrics:
+  on_threshold_watts: 500.0

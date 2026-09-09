@@ -151,3 +151,15 @@
 - 关键决策：重搜三要点（A 邻域中心 / 30k train / val 30000）；细搜必含 v2_do00 锚
 - 未决问题：tune.py 32 trials 回传后判读 → 细搜设计
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；configs/tuning_v5.yaml / REPORT_TEST.md / STATUS.md
+
+## [2026-09-09] 会话纪要（重搜判读 + 细搜批次1设计 + 第二次沙箱重置恢复）
+- 目标：判读 tune.py 32 trials；设计细搜
+- 本会话角色：实验/调参教练（判读+设计）
+- 完成项：
+  - 判读：32/32 门槛（守门员失区分度）；top-1 trial20 S=0.0400（w96 d64 h4 do0 bs128 lr5e-4）；w96 top-10 占 7；F1 分布 0.860-0.903（val30000 判别力恢复）；EE 近零复现；单 seed 噪声→细搜多 seed
+  - 细搜批次 1：configs/fine_v5/{f0_v2do00,f1_t20,f2_t29,f3_t11,fb_basearch}.yaml 入库（pyyaml 逐项+协议不变量校验通过）；全部 val30000+25/5+composite；×seeds 42/2024/7
+  - 沙箱第二次重置（HEAD→7824bb4、/tmp 清空）：fetch+逐文件哈希对账（全一致）+reset 528a01c，零丢失
+  - REPORT_TEST 实录 17、STATUS、纪要同步；commit+push
+- 关键决策：细搜双锚（F0 旧优胜 + FB 基线架构）——排名必须有锚才能区分发现与运气
+- 未决问题：细搜 15 runs 回传判读 → 锁定或批次 2
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；configs/fine_v5/ / REPORT_TEST.md / STATUS.md
