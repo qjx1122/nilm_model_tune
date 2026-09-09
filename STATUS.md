@@ -5,8 +5,8 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】调参执行：fv2 配对对照命中分支 1 → **最终锁定 v2（nhead8）**；Test 预注册命令已交付（REPORT_TEST.md 执行实录 3 补充 3），等待用户执行 Test 一次并回传
-- 本任务角色：实验/调参教练（Test 验收与 REPORT.md 评估）
+- 【进行中·用户任务】调参执行：Test 回传判定 **v2 未通过验收（时间分布漂移：EE −23%、ΔS≈0.084）** → 待用户选方向（A 数据诊断先行 / B 接受为实验结论 / C 调整切分重跑）；诊断脚本 `diagnose_split.py` 已就绪
+- 本任务角色：实验/调参教练（漂移归因与验收协议决策）
 
 ## 已完成
 - [x] 2026-09-08 开局仪式：git 现状核对 / 续接文件读取 / 环境检查
@@ -28,18 +28,20 @@
 - [x] 2026-09-08 **批次 2 完成 → 锁定候选 c2 并交付收官 SOP**（REPORT_TEST.md 执行实录 3）：c2(nhead4, n=9) S 0.0381±0.0102 全场最优+分布最紧+P/R 拉平 0.920/0.920+EE −0.0025；差值 0.0053<2×合并SEM 0.0105 未达严格显著，但系第二次同构证据（更稳+分量全优）→ 判定性锁定；c1(lr2e4) 与 v2 无差 → lr 维持 3e-4；收官 = final_c2.yaml(epochs30/pat7) ×3 seeds 7000–7002 val 复核 → train.py 新增 `--test` 开关做 Test 一次
 - [x] 2026-09-08 `train.py` 新增 `--test`（显式 eval_test 覆盖，仅在最终 Test 一步使用；py_compile 通过）
 - [x] 2026-09-08 **fv2 配对对照完成 → 分支 1 命中 → 最终锁定 v2(nhead8)**（REPORT_TEST.md 执行实录 3 补充 3）：同 seeds 7000–7002 三方对照 fv2(0.0407/EE+0.005) vs final_c2(0.0476/−0.054) vs fc2_25(0.0560/−0.075) → 7000 系变差系 nhead4 特异性；v2 池化 n=18 S≈0.043 EE≈−0.006 跨族一致胜出；Test 预注册（seed 7000、25/5、`--test` 一次）已交付
+- [x] 2026-09-08 **Test 回传 → 判定 v2 未通过验收**（REPORT_TEST.md 执行实录 4）：S_test 0.124（MAE 9.84/RMSE 131.7/R² 0.666/F1 0.811/R 0.729/EE −0.234）vs val 0.0407 → Δ≈0.084≫0.015；test 业务门槛 F1/recall 过、|EE| 0.234 FAIL → 「Train/Val 好+Test 差」时间漂移模式（漏报 ON 事件、非过拟合非随机）；校准不可行（val EE≈0 无恒定偏差）；Test 触碰计数=1，不做基于 test 的选型
+- [x] 2026-09-08 新增 `scripts/diagnose_split.py`（纯数据分段诊断：事件数/ON 功率/能耗/日均，冒烟通过）
 
 ## 进行中
-- （用户侧）补跑 fv2_25（v2_do00 × seeds 7000–7002，3 runs）→ summarize 回传
-- （本侧）无阻塞；fv2 到手后按决策树定锁（两分支均指向 v2，依据不同），给 Test 命令
+- （用户侧）待选方向：A 数据诊断先行（跑 diagnose_split.py 量化漂移）/ B 接受为实验结论 / C 调整切分重跑（预注册新协议）
+- （本侧）无阻塞；用户选定方向后执行对应判读与协议更新
 
 ## 下一步（TODO）
-1. 用户跑 fv2_25 对照（命令见 REPORT_TEST.md 执行实录 3 补充 2）→ 回传 summarize 输出
-2. 按决策树定锁 v2（分支 1：nhead4 特异不利；分支 2：种子族全局 + 池化悲观口径 ≈0.045±0.01 作 Test 预期）
-3. Test 恰好一次（预注册 seed 7000）→ 回传 test 指标 → 验收（与池化 val 同量级、业务门槛复验）
-4. 验收通过 → REPORT.md 更新（推荐稳定配置 v2 25/5：w128 d64 nhead8 L2 ff128 do0 bs64 lr3e-4 wd1e-4, epochs25/pat5 + KPI 口径）+ TUNING_GUIDE.md v1.1 战史（含种子批次效应教训）
-5. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
-6. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
+1. 用户选定方向（A/B/C，见 ask_user）：
+   - A：跑 `python scripts\diagnose_split.py --npz D:\datasets\ukdale_prepared.npz` → 回传三段统计 → 判定 test 段异常 vs 真实漂移 → 再定改切分或接受
+   - B：接受为实验结论 → REPORT.md 记录失败模式与教训（v2 列「候选非推荐」）、TUNING_GUIDE.md 战史、收尾仪式
+   - C：重定切分协议（val 覆盖尾部/随机切分）+ 预注册 → 重跑锁定评估（~15 min GPU）→ Test 协议重置一次并记录
+2. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
+3. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
 
 ## 决策记录 / 踩坑
 - 2026-09-08：`ROLE.md.md` 与台账文件名（`ROLE.md`）不一致，且最近 commit 意图即「上传ROLE.md」→ 执行 `git mv ROLE.md.md ROLE.md`，无损、可回退
