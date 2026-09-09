@@ -115,36 +115,40 @@ def _table_power_columns(df):
 def read_power_series(f, meter_group, prefer="active"):
     """读取 meter 的功率序列 → (Series[UTC], 实际功率类型)。
 
-    布局 B（NILMTK pandas 表）：直接尝试 pd.read_hdf 读取该组，成功即用；
-    布局 A（直接数据集 power/power_series (N,2)）：回退读取。
+    布局 B（NILMTK pandas 表）：pd.read_hdf 成功即用；读取后的处理错误直接抛出
+    （不静默吞，便于定位真因）。仅当 read_hdf 本身失败（非 pandas 表路径）时
+    回退布局 A（直接数据集 power/power_series (N,2)）。
     """
-    # 布局 B：pandas HDFStore 表（兼容新旧 pandas 的节点命名）
+    # 布局 B：pandas HDFStore 表
     try:
         df = pd.read_hdf(f.filename, meter_group.name)
-        if df is not None and len(df) > 0:
-            avail = _table_power_columns(df)
-            if avail:
-                pt = prefer if prefer in avail else next(iter(avail))
-                if pt != prefer:
-                    print(f"WARNING: {meter_group.name} 无 {prefer} 列，使用 {pt}"
-                          f"（可用列：{list(avail)}）")
-                s = avail[pt].astype(np.float64)
-                if isinstance(s, pd.DataFrame):
-                    s = s.iloc[:, 0]
-                s.index = _normalize_ts_index(df.index)
-                s = s[~s.index.duplicated(keep="first")].sort_index()
-                s = s[np.isfinite(s.values)]
-                return s, pt
-    except Exception as e:
-        if not isinstance(e, (KeyError, TypeError, ValueError)):
-            # read_hdf 对非 pandas 表路径报 KeyError/TypeError/ValueError 属正常
-            print(f"DEBUG read_hdf({meter_group.name}) 失败: {type(e).__name__}: {e}")
+    except Exception:
+        df = None  # 非 pandas 表路径 → 走布局 A
+    if df is not None and hasattr(df, "columns"):
+        if len(df) == 0:
+            raise RuntimeError(f"{meter_group.name} 是空 pandas 表")
+        avail = _table_power_columns(df)
+        if not avail:
+            raise RuntimeError(f"{meter_group.name} pandas 表无法识别功率列，"
+                               f"列={list(df.columns)[:8]}")
+        pt = prefer if prefer in avail else next(iter(avail))
+        if pt != prefer:
+            print(f"WARNING: {meter_group.name} 无 {prefer} 列，使用 {pt}"
+                  f"（可用列：{list(avail)}）")
+        s = avail[pt]
+        if isinstance(s, pd.DataFrame):
+            s = s.iloc[:, 0]
+        s = s.astype(np.float64).copy()
+        s.index = _normalize_ts_index(df.index)
+        s = s[~s.index.duplicated(keep="first")].sort_index()
+        s = s[np.isfinite(s.values)]
+        return s, pt
 
     # 布局 A：直接数据集 (N,2)
     keys = list(meter_group.keys())
     ds_name = next((k for k in ("power", "power_series") if k in meter_group), None)
     if ds_name is None:
-        raise RuntimeError(f"meter 组 {meter_group.name} 既不是可读的 pandas 表，也没有 "
+        raise RuntimeError(f"meter 组 {meter_group.name} 不是 pandas 表也没有 "
                            f"power/power_series，实际键：{keys}。请先跑 --list-meters 核对。")
     arr = np.asarray(meter_group[ds_name][()], dtype=np.float64)
     if arr.ndim != 2 or arr.shape[1] < 2:
