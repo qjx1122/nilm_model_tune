@@ -66,3 +66,15 @@
 - 关键决策：网格对齐为强制口径（schema v2）；旧 n=345 的 v2 npz 作废覆盖
 - 未决问题：待用户重跑 prepare + diagnose 回传（预期 n≈800-900 万）
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；scripts/prepare_ukdale.py / tests/test_prepare_ukdale.py / README.md
+
+## [2026-09-09] 会话纪要（二跑判读与三因修复）
+- 目标：判读 prepare 二跑输出（n=2058），修复后重发制备指令
+- 本会话角色：工程实现工程师（prepare 修复）+ 实验/调参教练（判读）
+- 完成项：
+  - 三因确诊：①双表缺口密布（meter10 缺 240 万格/21% 跨度、meter1 缺≈48 万格、最长双净段 3.4h）；②选段索引空间混用 bug；③sum skipna 假零（沙箱复现+回归测试拦截）
+  - 修复：min_count=1、段统计统一索引空间、全量拼接留痕（schema v3：n_segments/n_concat_breaks/largest_segment_samples/union_grid_samples/dropped_gap_samples）、resample origin="epoch"、段内间隔抽查（Timedelta 口径）
+  - 新增缺口拼接回归测试（桥接语义+事件剪断+段统计）；pytest 14 passed
+  - REPORT_TEST.md 实录 10、STATUS.md、纪要同步；commit+push
+- 关键决策：全量拼接替代最长段策略（残缺事件为已接受代价）；前两版 v2 npz 作废
+- 未决问题：待用户重跑 prepare + diagnose（预期 n≈850-890 万、拼接数千处）
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；scripts/prepare_ukdale.py / tests/test_prepare_ukdale.py

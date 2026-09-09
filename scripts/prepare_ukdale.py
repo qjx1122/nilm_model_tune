@@ -15,7 +15,9 @@
    ffill，剩余 NaN 行剔除。
 2. kettle（--kettle-meter-id）：短缺口（<= kettle-gap-min 分钟）填 0（关断即 0），
    更长缺口视为不可信区间。
-3. 剔除任一列仍为 NaN / 不可信区间的行后，取最长连续段（不跨大缺口拼接）。
+3. 剩余 NaN（长缺口）行剔除，其余按时间顺序全量拼接（跨缺口接缝计数留痕；
+   npz 本不带时间戳，等效连续流。实录 10：真实 UK-DALE 缺口密布，最长无缺口
+   段仅 ~3.4h，"只取最长连续段"策略已废弃；段统计须在统一索引空间计算）。
 4. 负功率视为测量伪迹 clip 到 0（计数并留痕）；单位统一 W。
 
 输出：
@@ -184,11 +186,12 @@ def read_power_series(f, meter_group, prefer="active"):
 def _to_6s_grid(s):
     """把功率序列归一化到统一 6 秒网格（bin 内均值）。
 
-    bin 划分以 epoch 为原点（pandas resample 默认），左右表落在同一网格上；
-    已在网格上的数据为恒等变换（每 bin 恰 1 个样本，均值即原值）。
+    bin 划分显式以 epoch 为原点（origin="epoch"，不依赖 pandas 默认值随版本
+    变化），左右表落在同一网格上；已在网格上的数据为恒等变换（每 bin 恰 1 个
+    样本，均值即原值）。
     注意：只用于 prepare 对齐，--list-meters 仍显示原始 n_samples。
     """
-    return s.resample(f"{SECONDS_PER_SAMPLE}s").mean()
+    return s.resample(f"{SECONDS_PER_SAMPLE}s", origin="epoch").mean()
 
 
 def _meter_summary(f, meter_group):
@@ -233,8 +236,10 @@ def _combine_mains(f, meters, mains_ids):
         raise RuntimeError("没有可用的 mains 表（--mains-ids 与实际表号不符）。")
     # 多相/多表总负荷相加（已统一 6s 网格，inner 即网格交集）。
     # 缺口策略统一在 prepare() 处理。
+    # min_count=1：整行 NaN（各表全缺）须保持 NaN 交给缺口策略——
+    # 默认 skipna 会把缺口静默写成 0W 假零（实录 10，回归测试桥接断言拦截）。
     df = pd.concat(series, axis=1, join="inner")
-    return df.sum(axis=1), found, types
+    return df.sum(axis=1, min_count=1), found, types
 
 
 def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
@@ -263,17 +268,23 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
     n_kettle_nan_after = int(df["target"].isna().sum())
     n_agg_nan_after = int(df["aggregate"].isna().sum())
 
-    # 剩余 NaN（长缺口）→ 拆段，取最长连续段，不跨缺口拼接。
-    mask = df[["aggregate", "target"]].notna().all(axis=1)
-    df = df[mask]
-    if len(df) == 0:
+    # 剩余 NaN（长缺口）→ 剔除后全量拼接（接缝计数留痕）。
+    # 回归（实录 10）：v2 曾在 df[mask] 过滤后仍用过滤前的位置编号算段长，
+    # 末段被低估"剔除行数-1"，选段不可信；现统一在过滤前索引空间计算。
+    mask = df[["aggregate", "target"]].notna().all(axis=1).to_numpy()
+    if not mask.any():
         raise RuntimeError("对齐后无任何有效行——请检查表号/采样周期是否匹配。")
-    seg_boundaries = np.flatnonzero(~mask.to_numpy())
-    seg_len = np.diff(np.concatenate([[0], seg_boundaries + 1, [len(df)]]))
-    seg_start = np.concatenate([[0], seg_boundaries + 1])
-    seg_end = np.concatenate([seg_boundaries + 1, [len(df)]])
-    keep = int(np.argmax(seg_len))
-    df = df.iloc[seg_start[keep]:seg_end[keep]]
+    d = np.diff(np.concatenate([[0], mask.astype(np.int8)]))
+    seg_start = np.flatnonzero(d == 1)
+    seg_end = np.flatnonzero(d == -1)
+    if len(seg_end) < len(seg_start):
+        seg_end = np.append(seg_end, len(mask))
+    seg_len = seg_end - seg_start
+    n_segments = int(len(seg_start))
+    n_breaks = n_segments - 1
+    largest_seg = int(seg_len.max())
+    n_union = int(len(mask))
+    df = df[mask]  # 保留全部有效行，按时间顺序拼接
 
     agg_v = df["aggregate"].to_numpy()
     tgt_v = df["target"].to_numpy()
@@ -282,9 +293,16 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
     agg_v = np.clip(agg_v, 0.0, None)
     tgt_v = np.clip(tgt_v, 0.0, None)
 
-    # 采样周期抽查（6s 数据允许轻微抖动；用 Timedelta 口径避免 ns/us 单位陷阱）。
-    _probe = df.index[:20001]  # 抽前 2 万个间隔求中位即可
-    med_dt = float(pd.Series(_probe).diff().dropna().dt.total_seconds().median())
+    # 采样周期抽查（只统计段内间隔，跨缺口接缝不计入；Timedelta 口径
+    # 避免 asi8 的 ns/us 单位陷阱——pandas 3 的 asi8 随 index 单位变）。
+    if len(df) > 1:
+        _is_seg_start = np.zeros(len(df), dtype=bool)
+        _is_seg_start[0] = True
+        _is_seg_start[np.cumsum(seg_len)[:-1]] = True  # 各段在过滤后数组中的起点
+        _secs = df.index.to_series().diff().dt.total_seconds().to_numpy()
+        med_dt = float(np.median(_secs[~_is_seg_start]))
+    else:
+        med_dt = 6.0
     if not (4 <= med_dt <= 8):
         print(f"WARNING: 中位采样间隔 {med_dt:.1f}s 偏离 6s，请确认数据为 6 秒采样。")
 
@@ -294,7 +312,7 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
              target=tgt_v.astype(np.float32))
 
     spec = {
-        "schema_version": 2,  # v2 起：对齐前先 resample 到统一 6s 网格（实录 9）
+        "schema_version": 3,  # v3：跨缺口全量拼接留痕（实录 10）；v2：6s 网格 resample（实录 9）
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "git_commit": _git_commit(),
         "source_h5": str(f.filename),
@@ -315,7 +333,12 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
             "aggregate_nan_dropped_after_policy": n_agg_nan_after,
             "kettle_nan_before_policy": n_kettle_nan_before,
         },
-        "segment_policy": "longest_contiguous_no_cross_gap",
+        "segment_policy": "concat_all_segments_logged_breaks",
+        "n_segments": n_segments,
+        "n_concat_breaks": n_breaks,
+        "largest_segment_samples": largest_seg,
+        "union_grid_samples": n_union,
+        "dropped_gap_samples": n_union - len(df),
         "segment_samples_kept": len(df),
         "time_range_iso": [str(df.index.min()), str(df.index.max())],
         "negative_clipped_to_zero": {"aggregate": n_neg_agg, "target": n_neg_tgt},
@@ -326,7 +349,9 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
 
     print(f"OK: {out_path}  n={len(df)}  mains_used={used_mains}  "
           f"kettle={kettle_id}  时间范围 {spec['time_range_iso']}")
-    print(f"缺口处理: kettle NaN {n_kettle_nan_before} → 策略后 {n_kettle_nan_after} → 分段剔除剩余；"
+    print(f"缺口处理: kettle NaN {n_kettle_nan_before} → 策略后 {n_kettle_nan_after}，"
+          f"agg NaN 策略后 {n_agg_nan_after}；剔除缺口样本 {n_union - len(df)}"
+          f"（跨缺口拼接 {n_breaks} 处，最大连续段 {largest_seg} 样本 ≈ {largest_seg / 14400:.1f} 天）；"
           f"负值 clip: agg {n_neg_agg} / target {n_neg_tgt}")
     print(f"数据口径留痕: {spec_path}")
 

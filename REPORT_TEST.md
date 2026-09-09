@@ -434,3 +434,14 @@
 - **修复（commit 本回合）**：prepare 对齐前各表先 `_to_6s_grid()` resample（bin 内均值，epoch 原点；已在网格数据为恒等变换）；`_combine_mains` 与 kettle 同处理；data_spec schema_version 1→2 + `resample_policy` 留痕；`--mains-ids` 默认 1,2→1（House1 地面真相）+ docstring/README 示例同步。新增偏移 3s 回归测试（旧逻辑下 shape 会膨胀错位，新逻辑 n 不丢），pytest（除 test_model）13 passed。
 - **待用户**：git pull 后重跑 prepare（同命令，覆盖 v2 文件）+ diagnose，回传。预期 n≈800–900 万、跨度 2012→2015。
 - 是否进入 REPORT.md：否（数据修复中）。
+
+### 执行实录 10（2026-09-09）：prepare 二跑 n=2058 → 三因确诊（缺口地形+选段索引 bug+sum 假零），改全量拼接留痕（schema v3）
+- **事实（用户回传两份）**：resample 生效——对齐行 mains 11,323,076 / kettle 11,323,078 网格点；但 n=2058（仅头部 3.4h，22:28:12→01:54:00），kettle NaN 策略前 2,403,512 → 策略后 2,403,463；diagnose：3.4h 夜间数据，无壶事件，aggW 基线 134–1298W 正常、corr≈0（无事件时属预期）。
+- **根因①（数据地形，事实）**：两表内部缺口密布——meter10 缺 240 万格（≈167 天当量，占跨度 21%），meter1 缺≈48 万格（10.84M 样本 vs 11.32M 格）。双表同时无缺口的最长段仅 ~3.4h 量级 →「只取最长连续段」策略在该数据上不可行。
+- **根因②（选段索引 bug，本侧责任）**：`df[mask]` 过滤后仍用过滤前的位置编号算段长 → 末段长度被低估「剔除行数−1」（本例 ≈240 万），选段结果不可信；n=2058 实为头部段。修复：段统计统一在过滤前索引空间计算（diff on bool mask）。
+- **根因③（sum 假零，潜伏雷，本侧责任）**：`_combine_mains` 的 `DataFrame.sum(axis=1)` 默认 skipna → 单表全 NaN 缺口格被静默写成 **0W 假零**（非 NaN），ffill 完全失效，≈48 万格假数据将混入 aggregate 毒害训练。由新增缺口回归测试的桥接断言拦截发现（沙箱复现：agg len=3000 nan=0、缺口处全 0.0）。修复：`sum(axis=1, min_count=1)`（全缺保持 NaN，交统一缺口策略）。
+- **修复清单（本 commit）**：min_count=1；段统计索引空间统一；策略改「剔除缺口行后全量按序拼接，接缝留痕」（schema_version 3：新增 n_segments / n_concat_breaks / largest_segment_samples / union_grid_samples / dropped_gap_samples）；resample 显式 `origin="epoch"`（跨 pandas 版本网格恒等，与留痕串一致）；采样间隔抽查改段内口径（Timedelta 单位安全——顺带踩坑记录：pandas 3 的 `asi8` 随 index 单位返回 us，ns 假设翻车）。
+- **拼接代价（已接受）**：跨缺口的烧水事件会被剪成残缺事件（缺口切断概率≈10%/缺口，事件 4–5 次/天）；接缝处 aggregate 电平跳变。npz 本不带时间戳（v1 同为拼接流语义），代价以留痕换诚实。
+- **判读**：meter1=mains 依然成立（aggW 基线正常）。前两版 v2 npz（n=345 / n=2058）作废。
+- **待用户**：git pull 后同命令重跑 prepare + diagnose。预期：n≈850–890 万、拼接数千处、最大连续段小时~天级、diagnose days≈590–620。
+- 是否进入 REPORT.md：否（数据修复中）。

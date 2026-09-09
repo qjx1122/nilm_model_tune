@@ -274,5 +274,64 @@ def test_prepare_offset_timestamps_resampled():
         assert z["target"][s + dur // 2] > 1500
         assert np.abs(z["aggregate"][100] - mains1[100]) < 100
         spec = json.loads(out.with_suffix(".data_spec.json").read_text(encoding="utf-8"))
-        assert spec["schema_version"] == 2
+        assert spec["schema_version"] == 3
         assert spec["resample_policy"] == "mean_to_6s_grid_epoch_origin"
+
+
+def test_prepare_gap_segments_concat():
+    """两表同缺 400 格（40 分钟）大缺口：全量拼接 + 段统计回归。
+
+    回归（实录 10）：v2 段计算混用过滤前/后索引空间，选段错误；
+    v3 应保留全部有效行（n=2600）、n_segments=2、接缝 1 处、
+    事件跨缺口被切断属预期（留痕的诚实代价）。
+    """
+    import pandas as pd  # noqa: F401
+    with tempfile.TemporaryDirectory() as d:
+        n = 3000
+        gap_lo, gap_hi = 1000, 1400  # 原始坐标里 400 格缺口（40 分钟）
+        t0 = 1_500_000_000
+        ts_full = t0 + np.arange(n) * 6.0
+        keep_rows = np.concatenate([np.arange(0, gap_lo), np.arange(gap_hi, n)])
+        ts = ts_full[keep_rows]
+        rng = np.random.default_rng(1)
+        kettle_full = np.zeros(n)
+        for s, dur in EVENTS:
+            kettle_full[s:s + dur] = 2000 + rng.normal(0, 30, dur)
+        mains_full = 300 + rng.normal(0, 20, n) + kettle_full
+        h5 = Path(d) / "ukdale_gap.h5"
+        with h5py.File(h5, "w") as f:
+            g1 = f.create_group("building1/elec/meter1")
+            g1.create_dataset("power", data=np.stack([ts, mains_full[keep_rows]], axis=1))
+            gk = f.create_group("building1/elec/meter10")
+            gk.create_dataset("power", data=np.stack([ts, kettle_full[keep_rows]], axis=1))
+        out = Path(d) / "ukdale_prepared.npz"
+        r = subprocess.run(
+            [sys.executable, str(SCRIPT), "--h5-path", str(h5),
+             "--mains-ids", "1", "--kettle-meter-id", "10", "--out", str(out)],
+            capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        assert "拼接" in r.stdout
+        z = np.load(out)
+        # 400 格缺口中前 50 格被桥接（kettle 补 0 ≤5min + agg ffill ≤30min），
+        # 实删 350 格 → 全量拼接 n = 3000 - 350 = 2650
+        n_bridge = int(5 * 60 / 6)  # kettle_gap_min=5min
+        n_drop = 400 - n_bridge
+        assert z["aggregate"].shape == z["target"].shape == (n - n_drop,), z["aggregate"].shape
+        # 事件1（原始 500）在缺口前，位置不变
+        assert z["target"][EVENTS[0][0] + EVENTS[0][1] // 2] > 1500
+        # 事件3（原始 2500）在缺口后，左移 n_drop
+        assert z["target"][EVENTS[2][0] - n_drop + EVENTS[2][1] // 2] > 1500
+        # 事件2（原始 1200-1279）整段落入实删区 → 事件丢失（留痕的诚实代价）
+        assert z["target"][EVENTS[1][0] - n_drop] == 0.0
+        # 桥接语义：缺口内前 50 格保留，target=0、agg=ffill（沿用缺口前最后值）
+        assert z["target"][gap_lo + 20] == 0.0
+        assert abs(z["aggregate"][gap_lo + 20] - mains_full[gap_lo - 1]) < 1.0
+        spec = json.loads(out.with_suffix(".data_spec.json").read_text(encoding="utf-8"))
+        assert spec["schema_version"] == 3
+        assert spec["n_output"] == n - n_drop
+        assert spec["n_segments"] == 2
+        assert spec["n_concat_breaks"] == 1
+        assert spec["largest_segment_samples"] == n - gap_hi  # 1600
+        assert spec["dropped_gap_samples"] == n_drop
+        # 段内间隔中位数仍为 6s（跨接缝的大间隔不计入）
+        assert spec["median_sample_gap_sec"] == 6.0
