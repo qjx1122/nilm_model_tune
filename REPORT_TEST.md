@@ -397,4 +397,14 @@
 - **影响**：若红旗坐实，先前全部 KPI 仅对"壶通道重建"有效，对 NILM（总负荷→壶）不构成证据；调参方法论/脚本仍有效，但需**先修数据制备**（重跑 prepare_ukdale.py，--list-meters 确认 mains 表号，人工抽查 aggregate 一天曲线）再重新走验收。
 - **待用户执行**：① `git pull` 后重跑 `diagnose_split.py`（新增 aggOffW/corr 列）回传；② 打开 `ukdale_prepared.data_spec.json` 回传 mains_meter_ids_used / 时间范围 / gap 记录；③ 可选抽查 aggregate 一天曲线确认基线负荷。
 - 是否进入 REPORT.md：否（数据红旗查清前全部 KPI 挂起）。
+
+### 执行实录 6（2026-09-08）：h5 布局探查 → NILMTK 格式确认，数据层问题定位
+- **探查结果（新版 inspect_h5，building1）**：
+  - 结构：NILMTK 转换格式（building1–5，每户 elec/meter1–54）；meter 组下是 pandas HDFStore 表（`_i_table/table`，`pd.read_hdf` 可读），不是直接数据集 → prepare_ukdale.py 的契约 A 分支不适配，需加 nilm 分支。
+  - 列语义：meter1/2/3 列 = `('power','apparent')`（**视在功率**，n≈1000 万）；meter4+ 列 = `('power','active')`（**有功功率**，n≈250–930 万）。NILM 分解必须用 active；apparent 含无功分量，**不可**当 aggregate/壶功率。
+  - 时间戳：表 index 为 int64（head 值 599/582/600W 像 6s 采样），单位待从 metadata 确认。
+  - 身份：meter 组 attrs 含 pickle metadata（building1 顶层 attrs 可见 `appliances` 结构），**kettle/mains 表号需解 pickle metadata 确定，不能靠表号猜**。
+- **推断（数据红旗根因）**：旧 npz 的 aggregate 几乎只含 kettle（agg p95≈1W），强烈怀疑是旧抽取流程把「壶通道」或某 apparent 通道误当作 aggregate；apparent vs active 混用也可能是功率语义错乱的来源之一。待 metadata 解析 + 重跑 list-meters 确认后重做 npz。
+- **待办**：① 写 metadata 解析（pickle attrs → 表号→电器映射）；② prepare_ukdale.py 加 NILMTK(pandas table) 读取分支 + apparent/active 选择；③ 重生成 npz（mains active 正确合并 + kettle active）→ diagnose_split 复验 aggOffW 数百 W 且 corr 不≈1；④ 数据确认后 KPI 协议重置一次并记录。
+- 是否进入 REPORT.md：否（数据修复前）。
 - 是否进入 REPORT.md：否（方案与改造本身不是实验结论；待真实 KPI 出现后另行判定）
