@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】数据地基修复：红旗已解除（实录 11 三项判据过）；v4 整段桥接已推送（fillna limit 全轴限额 bug：240 万格只填 49 格→146 万碎段）→ 待用户 git pull 重跑 prepare + diagnose，回传两份输出
+- 【进行中·用户任务】数据地基修复：v5 已推送（实录 12：v4 补0 把煮沸切成 35s 碎片、evt/day 5.56→12.55，ON 样本数不变为铁证；kettle 短缺口改 ffill 前值）→ 待用户重跑 prepare + diagnose；符合预期（evt/day 回 5-6）即数据锁定，回主线 KPI/Test
 - 本任务角色：实验/调参教练（数据完整性核查，不猜表号）
 
 ## 已完成
@@ -36,6 +36,7 @@
 - [x] 2026-09-09 --list-meters 54/54 通过（用户回传全文，落盘 REPORT_TEST.md 执行实录 7）：meter1/2/3 apparent 全程 10M 级；meter10 active 8.94M；meter54 为 1s 表 56.7M；无 meter0。重要修正：6s mains 无 active 列，aggregate 默认 apparent 路线（留痕）
 - [x] 2026-09-09 prepare 二跑 n=2058 三因确诊并修复（REPORT_TEST.md 执行实录 10）：①双表缺口密布（meter10 缺 21% 跨度、meter1 缺≈48 万格、最长双净段仅 3.4h）→ 弃「最长段」改全量拼接留痕（schema v3）；②选段索引空间混用 bug；③sum skipna 假零（→min_count=1，回归测试拦截）；resample 显式 origin=epoch；pytest 14 passed
 - [x] 2026-09-09 prepare 三跑 n=8,849,796 判读：**红旗解除**（aggOffW 354.8/327/400.3、corr 0.42-0.53、evt/day 5-6，实录 11）+ fillna(value,limit=N) 全轴限额 bug 确诊（240 万格只填 49 格→146 万碎段）→ v4 整段桥接（schema v4、双缺口回归测试、pytest 14 passed）；沙箱重克隆事故恢复（fetch+逐文件哈希对账，零丢失）
+- [x] 2026-09-09 prepare 四跑 n=10,377,651 判读（实录 12）：结构健康（456 缝/最大段 49.1 天/保留 91.7% 跨度/+153 万桥接格回归/身份指标三验稳定）但 evt/day 翻倍 12.55/12.42/16.24、平均事件 93s→35s（ON 样本数与绝对 kWh 不变→v4 补0 切碎煮沸确诊）→ v5 kettle 短缺口 ffill（schema v5、事件内微缺口回归测试、pytest 14 passed）
 - [x] 2026-09-09 prepare 首跑 n=345 确诊秒级相位差并修复（REPORT_TEST.md 执行实录 9）：meter1=:15 vs meter10=:18 精确 join 拼不上；改统一 6s 网格 resample 对齐；schema_version→2；--mains-ids 默认→1；偏移 3s 回归测试；pytest 13 passed
 - [x] 2026-09-09 metadata 全文回传→定表号（REPORT_TEST.md 执行实录 8）：mains=meter1 单表、kettle=meter10；meter2=锅炉回路（纠正 1,2 假设）；meter54=1s mains 备选
 
@@ -44,8 +45,8 @@
 - （本侧）无阻塞；判读 aggOffW/corr 定数据地基是否修复
 
 ## 下一步（TODO）
-1. 用户：git pull 后重跑 prepare（同命令，覆盖 ukdale_prepared_v2.npz）→ 回传输出（预期 n≈950-1080 万、桥接格数百万级、接缝骤降）
-2. 用户：跑 diagnose_split.py --npz ukdale_prepared_v2.npz → 本侧判读（身份指标 aggOffW/evt/day 应不变；若接缝仍 >10 万处→--kettle-gap-min 30 复跑）→ 通过则数据锁定，回归主线（KPI/Test 重跑）
+1. 用户：git pull 重跑 prepare（第 4 次，同命令覆盖 ukdale_prepared_v2.npz）+ diagnose → 回传（预期：n=10,377,651 不变、接缝 456/最大段 49.1 天不变、evt/day 回 5-6、平均事件 90s+、kWh/day 微升 +0.04）
+2. 本侧判读：通过即**数据锁定**（v5 npz + data_spec.json 为唯一口径，schema v5）→ 回主线：重跑 KPI/Test（test 段壶用量 +53% 时间漂移为主战役，TUNING_GUIDE 战史待补）
 3. 判读红旗：agg_off_mean≈0 且 corr≈1 → 确认 aggregate 泄漏 → 修数据制备（prepare_ukdale.py --list-meters 核对 mains 表号 → 重新生成 npz → 人工抽查 aggregate 一天曲线）→ 全部 KPI 重启（先 baseline 再走搜索，Test 协议重置一次并记录）；若数据无误（agg_off_mean 数百 W）→ 回到漂移结论：方向 B（记录教训收尾）或 C（改切分）
 4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push（视红旗结论而定）
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
@@ -72,6 +73,7 @@
 - 2026-09-09（决策·全量拼接）：UK-DALE 双表缺口密布，最长双净段仅小时级 → 弃「只取最长连续段」，改剔除缺口行后全量拼接、接缝/段数/最大段留痕（schema v3）；残缺事件为已接受代价
 - 2026-09-09（踩坑·sum 假零）：DataFrame.sum(axis=1) 默认 skipna 会把全 NaN 缺口静默写成 0W——多表合并必须 min_count=1（回归测试桥接断言拦截，未流入真实数据）
 - 2026-09-09（踩坑·pandas fillna）：fillna(value, limit=N) 的 limit 是全轴总限额（method 未指定时按整轴计），不是每段限额；ffill(limit=N) 是每段头部 N 格——缺口桥接必须 run-length 整段语义（v4 _bridge_short_gaps）
+- 2026-09-09（决策·kettle 桥接值=前值）：短缺口 ffill 而非补 0——壶 ~99% 时间关断（前值=0，「关断即 0」语义自动保持），煮沸中掉线保持 ~2300W 不断流；补 0 会把一次煮沸切成 ~3 片 35s 碎片（evt/day 12.55 vs 真实 5.56，ON 样本总数不变为铁证）
 - 2026-09-09（踩坑·沙箱重克隆）：平台可整箱重克隆沙箱（本地 commit 链消失、/tmp 清空）；远端分支是唯一可靠真值——回合初 git log + git ls-remote 对账，恢复=fetch+逐文件哈希比对+reset
 - 2026-09-09（决策·网格对齐）：多表秒级相位差是 UK-DALE 常态，对齐必须先 resample 到统一网格再 join，精确时间戳 join 不可用；data_spec schema_version 升 2 标记口径变化
 - 2026-09-09（决策·单总表）：mains 只用 meter1（2 为锅炉回路，加进去 double count）；新 npz 另存 v2 不覆盖旧文件（旧文件关联历史 KPI/Test 记录）；diagnose 设证伪口

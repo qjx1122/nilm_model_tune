@@ -90,3 +90,15 @@
 - 关键决策：缺口桥接=整段语义（v4）；远端为真值的回合初对账 SOP
 - 未决问题：用户重跑 v4 prepare+diagnose（预期 n≈950-1080 万、接缝骤降、身份指标不变）；test 段壶用量 +53% 漂移待数据锁定后作为调参核心议题
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；scripts/prepare_ukdale.py / tests/test_prepare_ukdale.py / REPORT_TEST.md / STATUS.md
+
+## [2026-09-09] 会话纪要（四跑判读：结构健康+v5 ffill 修复）
+- 目标：判读 prepare 四跑输出（n=10,377,651），裁定数据是否锁定
+- 本会话角色：实验/调参教练（判读+算术确诊）+ 工程实现工程师（v5 修复）
+- 完成项：
+  - 结构判定健康：456 缝/最大段 49.1 天/保留 91.7% 跨度/153 万桥接格回归；aggOffW/corr 第三次稳定（351.9/324.2/398.2；0.39/0.46/0.50）
+  - evt/day 翻倍确诊切碎：ON 样本总数 37,169≈37,048、绝对 kWh 151.9≈151.5 不变，事件 ×2.64、平均 93s→35s → v4 补0 在煮沸中掉线处断流（掉线率 13.5%×15 样本/煮沸→期望 2 断流 吻合）；kWh/day 下降系分母膨胀
+  - v5：kettle 短缺口改 ffill 前值（schema v5、kettle_cells_bridged 留痕、事件内微缺口回归测试 target[500:540].min()>1500）；pytest 14 passed
+  - REPORT_TEST 实录 12、STATUS、纪要同步；commit+push
+- 关键决策：kettle 桥接值=前值（ffill）；v5 与 v4 差异仅填值语义（格数/接缝均不变）
+- 未决问题：用户重跑 v5 prepare+diagnose（预期 evt/day 回 5-6）→ 通过即数据锁定 → 回主线 KPI/Test
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；scripts/prepare_ukdale.py / tests/test_prepare_ukdale.py / REPORT_TEST.md / STATUS.md

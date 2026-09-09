@@ -274,27 +274,29 @@ def test_prepare_offset_timestamps_resampled():
         assert z["target"][s + dur // 2] > 1500
         assert np.abs(z["aggregate"][100] - mains1[100]) < 100
         spec = json.loads(out.with_suffix(".data_spec.json").read_text(encoding="utf-8"))
-        assert spec["schema_version"] == 4
+        assert spec["schema_version"] == 5
         assert spec["resample_policy"] == "mean_to_6s_grid_epoch_origin"
 
 
 def test_prepare_gap_bridge_and_drop():
-    """短缺口整段桥接 + 长缺口整段剔除（schema v4）。
+    """短缺口整段 ffill 桥接 + 长缺口整段剔除（schema v5）。
 
-    回归（实录 11）：fillna(value, limit=N) 的 limit 是全轴总限额（pandas：
-    method 未指定时按整轴计）——真实数据 240 万缺口格只被填 49 格，数据被
-    碎成 146 万段；v4 改 run-length 整段桥接。接替实录 10 的 v3 段拼接测试。
-    布局：30 格（3 分钟）短缺口 → 桥接保留；400 格（40 分钟）长缺口 → 整段剔除。
+    回归（实录 11/12）：v3 fillna(limit=N) 全轴限额 → 240 万格只填 49 格；
+    v4 补 0 → 煮沸中掉线被填 0，事件切成 35s 碎片（evt/day 5.56→12.55）；
+    v5 kettle 改 ffill：关断时前值=0 语义不变，煮沸中保持 ~2300W 不断流。
+    布局：关断区 30 格短缺口（ffill→0）+ 事件1内 4 格微缺口（ffill→2000+）
+          + 400 格长缺口（整段剔除）。
     """
     import pandas as pd  # noqa: F401
     with tempfile.TemporaryDirectory() as d:
         n = 3000
-        gs_lo, gs_hi = 700, 730     # 短缺口（3 分钟）→ 桥接保留
+        gs_lo, gs_hi = 700, 730     # 关断区短缺口（3 分钟）→ ffill 前值 0
+        ge_lo, ge_hi = 510, 514     # 事件1(500-540)内 4 格微缺口 → ffill 不断流
         gl_lo, gl_hi = 1000, 1400   # 长缺口（40 分钟）→ 整段剔除
         t0 = 1_500_000_000
         ts_full = t0 + np.arange(n) * 6.0
-        keep_rows = np.concatenate([np.arange(0, gs_lo), np.arange(gs_hi, gl_lo),
-                                    np.arange(gl_hi, n)])
+        keep_rows = np.concatenate([np.arange(0, ge_lo), np.arange(ge_hi, gs_lo),
+                                    np.arange(gs_hi, gl_lo), np.arange(gl_hi, n)])
         ts = ts_full[keep_rows]
         rng = np.random.default_rng(1)
         kettle_full = np.zeros(n)
@@ -323,17 +325,20 @@ def test_prepare_gap_bridge_and_drop():
         assert z["target"][EVENTS[1][0] - n_drop] == 0.0
         # 事件3（原始 2500）在长缺口后 → 左移 400（短缺口保留、不移位）
         assert z["target"][EVENTS[2][0] - n_drop + EVENTS[2][1] // 2] > 1500
-        # 短缺口桥接语义：缺口内 target=0（关断即 0）、agg=缺口前最后值（ffill）
+        # 关断区短缺口：ffill 前值=0（与补0语义一致）、agg=缺口前最后值
         assert z["target"][gs_lo + 15] == 0.0
         assert abs(z["aggregate"][gs_lo + 15] - mains_full[gs_lo - 1]) < 1.0
+        # 事件1内微缺口：ffill 前值≈2000 → 煮沸不断流（v5 核心回归）
+        assert z["target"][ge_lo + 1] > 1500
+        assert z["target"][500:540].min() > 1500  # 整个事件无一处被切零
         spec = json.loads(out.with_suffix(".data_spec.json").read_text(encoding="utf-8"))
-        assert spec["schema_version"] == 4
+        assert spec["schema_version"] == 5
         gp = spec["gap_policy"]
         assert gp["aggregate_policy"] == "ffill_whole_gaps_le_threshold"
-        assert gp["target_policy"] == "zero_fill_whole_gaps_le_threshold"
+        assert gp["target_policy"] == "ffill_whole_gaps_le_threshold"
         assert gp["long_gap_policy"] == "drop_whole_gap"
-        assert gp["aggregate_cells_bridged"] == gs_hi - gs_lo
-        assert gp["kettle_cells_zero_filled"] == gs_hi - gs_lo
+        assert gp["aggregate_cells_bridged"] == (gs_hi - gs_lo) + (ge_hi - ge_lo)
+        assert gp["kettle_cells_bridged"] == (gs_hi - gs_lo) + (ge_hi - ge_lo)
         assert spec["n_output"] == n - n_drop
         assert spec["n_segments"] == 2          # 只有长缺口造成断裂
         assert spec["n_concat_breaks"] == 1
