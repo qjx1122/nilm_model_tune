@@ -83,10 +83,25 @@ def meter_groups(f, building_group):
 
 
 def _normalize_ts_index(idx):
-    """把 int64 时间戳 index 转成 UTC DatetimeIndex（自动识别 秒/纳秒）。"""
+    """把时间戳 index 转成 UTC DatetimeIndex。
+
+    兼容三类输入：① int64 秒/纳秒戳；② naive datetime；③ tz-aware datetime
+    （真实 NILMTK ukdale.h5 的 index 自带 Europe/London 时区）。
+    注意：np.issubdtype 无法解析 tz-aware dtype，会抛
+    TypeError: Cannot interpret 'datetime64[..., tz]' —— 必须先处理 DatetimeIndex。
+    """
+    if isinstance(idx, pd.DatetimeIndex):
+        if idx.tz is None:
+            return idx.tz_localize("UTC")
+        return idx.tz_convert("UTC")
     if not isinstance(idx, pd.Index):
         idx = pd.Index(idx)
-    if not np.issubdtype(idx.dtype, np.integer):
+    try:
+        is_int = np.issubdtype(idx.dtype, np.integer)
+    except TypeError:
+        # pandas 扩展 dtype（如 tz-aware 经普通 Index 包裹）→ 直接 to_datetime
+        return pd.to_datetime(idx, utc=True)
+    if not is_int:
         return pd.to_datetime(idx, utc=True)
     arr = idx.to_numpy()
     if len(arr) and arr.max() > 1e14:  # 纳秒
@@ -249,8 +264,9 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
     agg_v = np.clip(agg_v, 0.0, None)
     tgt_v = np.clip(tgt_v, 0.0, None)
 
-    # 采样周期抽查（6s 数据允许轻微抖动）。
-    med_dt = np.median(np.diff(df.index.astype(np.int64).to_numpy())) / 1e9
+    # 采样周期抽查（6s 数据允许轻微抖动；用 Timedelta 口径避免 ns/us 单位陷阱）。
+    _probe = df.index[:20001]  # 抽前 2 万个间隔求中位即可
+    med_dt = float(pd.Series(_probe).diff().dropna().dt.total_seconds().median())
     if not (4 <= med_dt <= 8):
         print(f"WARNING: 中位采样间隔 {med_dt:.1f}s 偏离 6s，请确认数据为 6 秒采样。")
 

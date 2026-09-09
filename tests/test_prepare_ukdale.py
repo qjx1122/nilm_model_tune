@@ -159,6 +159,62 @@ def test_prepare_nilmtk_pandastable():
         assert spec["n_output"] == n
 
 
+def _make_nilmtk_h5_tzaware(path):
+    """真实 NILMTK ukdale.h5 风格：index 为 tz-aware DatetimeIndex（Europe/London）。
+
+    回归：_normalize_ts_index 曾对 tz-aware dtype 调 np.issubdtype，
+    直接抛 TypeError: Cannot interpret 'datetime64[ns, Europe/London]'。
+    """
+    import pandas as pd
+    n = 3000
+    idx = pd.date_range("2013-01-01", periods=n, freq="6s", tz="Europe/London")
+    rng = np.random.default_rng(0)
+    mains1 = 300 + rng.normal(0, 20, n)
+    mains2 = 250 + rng.normal(0, 15, n)
+    kettle = np.zeros(n)
+    for s, d in EVENTS:
+        kettle[s:s + d] = 2000 + rng.normal(0, 30, d)
+    mains1 = mains1 + kettle
+    with pd.HDFStore(str(path), "w") as store:
+        store.put("/building1/elec/meter1",
+                  pd.DataFrame(mains1[:, None], index=idx,
+                               columns=pd.MultiIndex.from_tuples([("power", "apparent")])),
+                  format="fixed")
+        store.put("/building1/elec/meter2",
+                  pd.DataFrame(mains2[:, None], index=idx,
+                               columns=pd.MultiIndex.from_tuples([("power", "apparent")])),
+                  format="fixed")
+        store.put("/building1/elec/meter10",
+                  pd.DataFrame(kettle[:, None], index=idx,
+                               columns=pd.MultiIndex.from_tuples([("power", "active")])),
+                  format="fixed")
+    return n, mains1, mains2, kettle
+
+
+def test_prepare_nilmtk_tz_aware_index():
+    import pandas as pd  # noqa: F401
+    with tempfile.TemporaryDirectory() as d:
+        h5 = Path(d) / "ukdale_nilmtk_tz.h5"
+        n, mains1, mains2, kettle = _make_nilmtk_h5_tzaware(h5)
+        r0 = subprocess.run([sys.executable, str(SCRIPT), "--h5-path", str(h5),
+                             "--list-meters"], capture_output=True, text=True)
+        assert r0.returncode == 0, r0.stderr
+        assert "meter 1" in r0.stdout and "meter 10" in r0.stdout
+        assert "读取失败" not in r0.stdout  # tz-aware 表必须全部读出
+        out = Path(d) / "ukdale_prepared.npz"
+        r = subprocess.run(
+            [sys.executable, str(SCRIPT), "--h5-path", str(h5),
+             "--mains-ids", "1,2", "--kettle-meter-id", "10", "--out", str(out)],
+            capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        assert "偏离 6s" not in r.stdout  # us/ns 单位陷阱不得误报
+        z = np.load(out)
+        assert z["aggregate"].shape == z["target"].shape == (n,)
+        spec = json.loads(out.with_suffix(".data_spec.json").read_text(encoding="utf-8"))
+        assert spec["n_output"] == n
+        assert spec["median_sample_gap_sec"] == 6.0
+
+
 def test_prepare_nilmtk_missing_active_warns():
     with tempfile.TemporaryDirectory() as d:
         h5 = Path(d) / "ukdale_nilmtk_only_apparent.h5"

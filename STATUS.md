@@ -5,8 +5,8 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】调参执行：方向 A 诊断完成——**双重发现：①test 段真实漂移坐实（+43~50% kWh/天）；②aggregate 数据红旗（agg p95≈1W ≈ 壶通道，NILM 前提存疑）** → 待用户重跑升级版 diagnose_split.py + 回传 data_spec.json 确认红旗
-- 本任务角色：实验/调参教练（数据完整性核查与协议重启决策）
+- 【进行中·用户任务】数据地基修复：prepare_ukdale.py 已定位 NILMTK 真因（tz-aware index 传给 np.issubdtype 抛 TypeError）并修复 → 待用户 `git pull` 后重跑 `--list-meters` 确认 54 表正常列出
+- 本任务角色：工程实现工程师（prepare 脚本 bug 修复 + 回归测试）
 
 ## 已完成
 - [x] 2026-09-08 开局仪式：git 现状核对 / 续接文件读取 / 环境检查
@@ -34,12 +34,12 @@
 - [x] 2026-09-08 diagnose_split.py 升级：kWh 单位修正（/1000）+ 新增 agg_off_mean_w / corr_agg_target 列（判别 aggregate 是否泄漏的探针）；合成对照验证（正常版 aggOffW≈350 vs 泄漏版 0/corr 1.0）
 
 ## 进行中
-- （用户侧）待选方向：A 数据诊断先行（跑 diagnose_split.py 量化漂移）/ B 接受为实验结论 / C 调整切分重跑（预注册新协议）
-- （本侧）无阻塞；用户选定方向后执行对应判读与协议更新
+- （用户侧）git pull 后重跑 prepare_ukdale.py --list-meters → 回传输出（期望 54 表正常列出，不再有「读取失败」）
+- （本侧）无阻塞；list-meters 通过后指导 prepare 生成新 npz + diagnose_split 复验 aggOffW/corr
 
 ## 下一步（TODO）
-1. 用户：`git pull` 后重跑 `python scripts\diagnose_split.py --npz D:\datasets\ukdale_prepared.npz`（新增 aggOffW/corr 列）→ 回传输出
-2. 用户：回传 `ukdale_prepared.data_spec.json` 关键字段（mains_meter_ids_used / 时间范围 / gap / 生成时间与 git_commit）
+1. 用户：git pull 后重跑 prepare_ukdale.py --list-meters（h5 路径用你机器上的 ukdale.h5）→ 回传输出
+2. list-meters 通过后：跑 prepare 生成新 npz（--mains-ids 1,2 --kettle-meter-id 10）+ diagnose_split.py 复验（期望 aggOffW 数百 W、corr<<1）→ 回传输出 + 新 data_spec.json 关键字段
 3. 判读红旗：agg_off_mean≈0 且 corr≈1 → 确认 aggregate 泄漏 → 修数据制备（prepare_ukdale.py --list-meters 核对 mains 表号 → 重新生成 npz → 人工抽查 aggregate 一天曲线）→ 全部 KPI 重启（先 baseline 再走搜索，Test 协议重置一次并记录）；若数据无误（agg_off_mean 数百 W）→ 回到漂移结论：方向 B（记录教训收尾）或 C（改切分）
 4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push（视红旗结论而定）
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
@@ -61,6 +61,7 @@
 - 2026-09-08（种子批次效应 → 最终锁定 v2）：fc2_25(7000系, 0.0560/EE−0.075) 与 final_c2(0.0476/−0.054) 同种子对照 → 30/7 vs 25/5 无差，撤回前条「30/7 更差」；c2 vs v2 的 0.0381 系 6000 系运气，池化打平；fv2_25(7000系, 0.0407/EE+0.005) 配对 → 7000 系变差系 nhead4 特异性 → 锁 v2(nhead8)（跨种子族一致 + EE 池化近零）；教训：多 seed 批次效应 + 配对比较 + 池化估计；单批（6000 系）会出假阳性选型
 - 2026-09-08（踩坑·torch 依赖）：PyPI torch 2.14.0+cu130 Linux wheel 不在 wheel 内带 CUDA 运行库，需按 `nvidia-*` 包补齐；cu13 系 pip 包已改名（`nvidia-cuda-runtime-cu13` 等旧名报「请用不带后缀新名」）；cudnn/nccl/cusparselt/nvshmem 仍用 `-cu13` 后缀且版本由 torch METADATA 钉死；cufft/cusparse/cusolver/curand 用不带后缀新名（soname .12）；`nvidia-nccl`（新名）sdist 损坏 → 装 `nvidia-nccl-cu13==2.30.7`；小坑：nvidia-cuda-profiler-api 不含 libcupti，需 `nvidia-cuda-cupti`。安装时用 `--only-binary :all:` 避免 sdist 回退
 - 2026-09-08（踩坑·工程）：①`reports/smoke/*` 是 git 跟踪的历史产物（commit 7824bb4），本地验证先备份、跑完恢复，勿覆盖；②仓库历史误提交 `__pycache__/*.pyc` → 本次清理出库并加 `.gitignore`；③prepare 脚本 `meter_groups` 曾对 h5py Group 对象二次索引报 TypeError → 已修（单测捕获）；④合成 h5 测试的 mains 需包含 kettle 事件才物理自洽
+- 2026-09-09（踩坑·pandas 时区）：真实 NILMTK ukdale.h5 经 `pd.read_hdf` 读出的 index 是 tz-aware DatetimeIndex（Europe/London），`np.issubdtype(tz_dtype, np.integer)` 直接抛 `TypeError: Cannot interpret …` —— numpy 不认 pandas 扩展 dtype；修法= DatetimeIndex 先行处理 + try/except 包裹。另：pandas 3 默认时间单位是 us 而非 ns，`asi8/astype(int64)` 数值差 1000 倍，采样间隔必须用 Timedelta 口径求，勿写死 /1e9
 
 ## 关键文件路径
 - 协议：`BOOTSTRAP.md`（v2.1）、`ROLE.md`（角色库，默认角色=资深电力算法专家）
