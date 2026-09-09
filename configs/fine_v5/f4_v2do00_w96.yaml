@@ -1,0 +1,40 @@
+# 细搜批次2（实录 18）：F4 = v2_do00 冠军协议 × w96（批次1悬而未决的交叉点）。
+# 与探针 A 唯一差异：max_samples_val 6000→30000（与重搜同口径，判别力）。
+seed: 42
+device: auto
+data:
+  path: ""
+  appliance: kettle
+  window_size: 96
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  max_samples_train: 30000
+  max_samples_val: 30000
+  max_samples_test: 6000
+  eval_test: false
+model:
+  input_dim: 1
+  d_model: 64
+  nhead: 8
+  num_layers: 2
+  dim_feedforward: 128
+  dropout: 0.0
+training:
+  batch_size: 64
+  epochs: 25
+  lr: 0.0003
+  weight_decay: 0.0001
+  patience: 5
+  grad_clip: 1.0
+  loss: mse
+  select_metric: composite
+  objective:
+    weights: {mae: 0.4, f1: 0.4, energy_error: 0.2}
+    mae_norm_watts: 2000.0
+metrics:
+  on_threshold_watts: 500.0
+# 批次1结论：F0(128) 0.0522±0.0045 夺冠但与 F3/F1/F2 差距在噪声内；重搜 w96 占
+# top-10 七席——冠军协议（do0/h8/bs64/lr3e-4）尚未在 w96 上测试。
+# 判定树：F4 < 0.0522 → 锁 F4；F4 ≥ 0.0522 → 锁 F0（w96 偏好不迁移到冠军协议）。
+# 与 f0_v2do00.yaml 唯一差异 = data.window_size（pyyaml 校验留痕）。

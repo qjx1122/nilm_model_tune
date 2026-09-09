@@ -163,3 +163,15 @@
 - 关键决策：细搜双锚（F0 旧优胜 + FB 基线架构）——排名必须有锚才能区分发现与运气
 - 未决问题：细搜 15 runs 回传判读 → 锁定或批次 2
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；configs/fine_v5/ / REPORT_TEST.md / STATUS.md
+
+## [2026-09-09] 会话纪要（细搜批次1判读 + 批次2 F4 + Test 预注册）
+- 目标：判读细搜批次 1（5 配置 ×3 seeds）；定锁定路径
+- 本会话角色：实验/调参教练（判读+预注册）
+- 完成项：
+  - 批次 1 判读：F0（v2_do00）0.0522±0.0045 夺冠（σ 最小、EE +0.0003 死零、跨纪元）；FB 垫底 0.0604（调参>不调参坐实）；trial20 赢家诅咒（0.0400→0.0567±0.0077）；F0 MAE 8.93±5.35 披露（单种子盆地，S 近盲）；top-4 差距在噪声内（统计诚实记录）
+  - 批次 2：F4=v2_do00×w96 入库（与 F0 唯一差异 window_size，pyyaml 校验过）；判定树预注册（F4<0.0522→锁 F4 否则锁 F0）
+  - Test 预注册：seed 7000 --test 恰一次；验收 S_test≤val+0.015/F1≥0.75/R≥0.70/|EE|≤0.15
+  - REPORT_TEST 实录 18、STATUS、纪要同步；commit+push
+- 关键决策：批次 2 只补一个最高信息量变体（冠军协议×w96 交叉点）；Test 协议预注册防事后挑选
+- 未决问题：F4 回传 → 锁定 → Test 一跑 → 验收/收官
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；configs/fine_v5/f4_v2do00_w96.yaml / REPORT_TEST.md / STATUS.md
