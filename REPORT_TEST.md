@@ -260,4 +260,41 @@
 - **待回传**：c1_lr2e4 / c2_nhead4 的 10 seeds 结果（若尚未运行则补跑，命令见上一条；目录名保持 `c1_lr2e4_s6000` 等即可被新版脚本识别）。
 - 判定规则不变：C 赢 = 均值改善 > 2×合并 SEM 且无「EE 恶化 >0.02 且 F1 改善 <0.01」无效交换；否则锁 v2。
 - 是否进入 REPORT.md：否（待 c1/c2 与锁定）
+
+### 执行实录 3（2026-09-08）：批次 2 完成 → 锁定候选 c2（nhead4），进入收官
+- **批次 2 完整结果**（用户机器回传，c2 n=9 / c1 n=10 / v2 n=15）：
+
+| 配置 | n | S mean±std | MAE | F1 | P | R | EE | best_ep |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **c2_nhead4** | 9 | **0.0381±0.0102** | **3.56±1.06** | **0.9196±0.021** | **0.9201** | 0.9195 | **−0.0025** | 9.9 |
+| c1_lr2e4 | 10 | 0.0420±0.0171 | 3.82±1.73 | 0.9109 | 0.8993 | 0.9241 | +0.0015 | 9.5 |
+| v2_do00 | 15 | 0.0434±0.0156 | 3.74±1.45 | 0.9115 | 0.9008 | 0.9241 | −0.0086 | 9.6 |
+
+- **判读**：
+  1. **c2（nhead4）为批次 2 最优且分布最紧**：S 0.0381±0.0102（σ/SEM 全场最小）；分量全优或持平——MAE 3.56 / F1 0.9196 / P 0.9201 三项全场最优，EE −0.0025 近零；P/R 拉平（0.920/0.920），修正了锚时代"假阳偏多（P<R）"的老问题。
+  2. **显著性（诚实口径）**：c2 vs v2 差值 0.0053 < 2×合并 SEM（≈0.0105），严格未达显著；但这是**第二次出现同构证据**（批次 1 v2 vs 锚：分量一致占优+更稳 → 换基准；批次 2 c2 vs v2 重演）→ 判定性选择 c2 为锁定候选，不宣称"统计显著"。
+  3. **c1（lr2e4）与 v2 无差**（0.0420 vs 0.0434，噪声内）→ lr 维持 3e-4，不换。
+  4. 收敛路线回顾：nhead8→4 是锚→v2→c2 三连跳中唯一"更稳且更准"的头型变化；w/ff/do/lr 方向均已探明无增益。搜索收敛，不再开新批次（边际收益 < 判定噪声）。
+- **锁定候选**：c2 = `w128 d64 nhead4 L2 ff128 dropout0 bs64 lr3e-4 wd1e-4`（= v2_do00 + nhead 8→4）。
+- **收官 SOP（请按序执行并回传）**：
+  1. 生成 `configs\final_c2.yaml`：复制 `configs\fine\c2_nhead4.yaml`，改 `training.epochs` 25→**30**、`training.patience` 5→**7**（其余不动；eval_test 保持 false）。
+  2. val 稳健性复核 ×3 seeds（7000–7002）：
+     ```powershell
+     foreach ($s in 7000,7001,7002) {
+       python scripts\train.py --config configs\final_c2.yaml --data-path D:\datasets\ukdale_prepared.npz --seed $s --out "reports\final\final_c2_s$s" }
+     python scripts\summarize_fine.py --runs-dir reports\final
+     ```
+     预期 val_score ≈0.038±0.01；若 >0.05 或与 25-epoch 复核差 >0.015 → 停下回报（30-epoch do0 有过拟合迹象时改试 do0.05）。
+  3. **Test 恰好一次**（训练确定性保证：同 seed 7000 重训即同模型，只多算 test）：
+     ```powershell
+     python scripts\train.py --config configs\final_c2.yaml --data-path D:\datasets\ukdale_prepared.npz --seed 7000 --out reports\final\final_c2_test --test
+     python scripts\evaluate.py --run-dir reports\final\final_c2_test
+     ```
+     `--test` 为本次新增显式开关（覆盖 eval_test），仅此一步使用。
+  4. 回传：步骤 2 的汇总表 + 步骤 3 的 test 指标。验收口径（注：阶段 0b baseline 记录未回传，无法做 baseline 对比）：
+     - test S 与 val 复核均值同量级（差异 <0.01 视为无分布漂移）；
+     - 业务门槛在 test 上复验：F1/recall ≥0.75/0.70、|EE| ≤0.15（预期远超）；
+     - 全程 Test 触碰计数 = 2（阶段 0b 基线 + 本次；若阶段 0b 从未执行则为 1）。
+- **遗留问题**：baseline test 缺失（未回传）；锁定后可选做 ON 阈值敏感性（300–700W 诊断）、全量样本外推复核。
+- 是否进入 REPORT.md：收官数据回传且验收通过后判（推荐配置 + KPI 口径拟进入）。
 - 是否进入 REPORT.md：否（方案与改造本身不是实验结论；待真实 KPI 出现后另行判定）

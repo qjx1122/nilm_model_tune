@@ -12,11 +12,15 @@ p.add_argument("--out", default="reports/baseline")
 p.add_argument("--synthetic", action="store_true")
 p.add_argument("--seed", type=int, default=None,
                help="覆盖配置里的 seed（细搜多种子复跑用；否则同一 yaml 每次结果相同）")
+p.add_argument("--test", action="store_true",
+               help="显式评估 Test（覆盖 data.eval_test）。仅在最终锁定、准备碰 Test 的那一次使用")
 args = p.parse_args()
 
 cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
 if args.seed is not None:
     cfg["seed"] = args.seed
+if args.test:
+    cfg.setdefault("data", {})["eval_test"] = True
 if args.synthetic or not args.data_path:
     x, y = make_synthetic_signal(20000, cfg.get("seed", 42))
     print("WARNING: synthetic mode. This is not a UK-DALE result.")
