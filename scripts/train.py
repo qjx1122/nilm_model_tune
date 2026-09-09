@@ -13,7 +13,7 @@ p.add_argument("--synthetic", action="store_true")
 p.add_argument("--seed", type=int, default=None,
                help="覆盖配置里的 seed（细搜多种子复跑用；否则同一 yaml 每次结果相同）")
 p.add_argument("--test", action="store_true",
-               help="显式评估 Test（覆盖 data.eval_test）。仅在最终锁定、准备碰 Test 的那一次使用")
+               help="显式评估 Test（覆盖 data.eval_test，缺省 False=冻结）。仅在最终锁定、准备碰 Test 的那一次使用")
 args = p.parse_args()
 
 cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))

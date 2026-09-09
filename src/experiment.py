@@ -26,8 +26,9 @@ def select_device(name="auto"):
 def train_experiment(aggregate, target, cfg, out_dir, evaluate_test=None):
     """训练一个完整实验（train/val/test + 产物落盘）。
 
-    evaluate_test=None 时读 cfg.data.eval_test（缺省 True）。
-    调参搜索中应设 data.eval_test=false，落实「Test 冻结」——选型只用 Validation。
+    evaluate_test=None 时读 cfg.data.eval_test（缺省 False——Test 冻结是默认纪律）。
+    触碰 Test 必须显式：train.py --test 或 yaml data.eval_test: true（实录 14：
+    缺省曾为 True，摸底命令未带 --test 仍碰了 Test 3 次，已记账并翻转）。
     """
     seed_everything(cfg.get("seed", 42))
     device = select_device(cfg.get("device", "auto"))
@@ -39,7 +40,7 @@ def train_experiment(aggregate, target, cfg, out_dir, evaluate_test=None):
     tcfg = cfg["training"]
     window = int(dcfg["window_size"])
     if evaluate_test is None:
-        evaluate_test = bool(dcfg.get("eval_test", True))
+        evaluate_test = bool(dcfg.get("eval_test", False))
 
     train_ds, val_ds, test_ds = build_splits(
         aggregate, target, window,

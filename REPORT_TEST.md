@@ -473,3 +473,12 @@
 - **主线重启纪律**：①旧调参结论（c2/v2、nhead8、dropout 细搜等）降级为「待复核假设」，不继承为新纪元事实；②KPI 重新摸底：baseline.yaml ×3 seeds（42/2024/7）on v5 数据（不含 --test，Test 不触碰）；③**Test 预算重置：新数据纪元 2 次触碰**（旧 Test 结果基于作废数据，不计数；与原纪律同构）。
 - **待用户**：三条 baseline 命令（见 STATUS 下一步），回传三份 train 输出（含 val KPI：MAE/F1/energy_error/S 综合分）。
 - 是否进入 REPORT.md：否（主线重启后，KPI 摸底 + 最终锁定 + Test 通过之时，数据修复全程（实录 5-13）浓缩为「数据制备」章节一并进入）。
+
+### 执行实录 14（2026-09-09）：v5 数据 baseline 摸底 ×3 seeds → EE −23%→−6~−9% 里程碑；Test 触碰记账+缺省翻转；val KPI 补读通道
+- **事实（用户回传三份）**：baseline.yaml（d64/h4/l2/ff128/do0.1）on v5，seeds 42/2024/7：best_epoch 5/22/20；Test MAE 8.80/6.88/7.97、RMSE 112.7/96.3/113.8、R² 0.639/0.736/0.631、**EE −0.0903/−0.0935/−0.0598**、P 0.88/0.87/0.83、R 0.75/0.825/0.75、F1 0.811/0.846/0.789；n=30000/6000/6000（linspace 均匀子采样，确定性无随机；种子只影响初始化/训练顺序）。
+- **纪律事故与记账（本侧责任）**：三份输出均含 test 指标——命令未带 `--test` 仍碰了 Test。根因：`experiment.py` 的 `eval_test` **缺省 True**（`--test` 是"强制开"而非"开关"，我方上轮「不带 --test 即冻结」系语义误记）。记账：**新纪元 Test 触碰 #1 = 本次 baseline 摸底（3 seeds）**，与旧纪元「阶段 0b 基线=触碰 1」同构；剩余预算 1 次（最终锁定模型）。修复：缺省翻转 False（Test 冻结成为代码默认纪律，触碰必须显式 `--test` 或 yaml `eval_test: true`）；train.py help 措辞同步。
+- **判读（里程碑）**：旧纪元**最终精调模型** Test EE −0.234（|EE| 0.234 ≫ 0.15 未过验收，实录 5 时代）；新纪元**未调参 baseline** 即 EE −0.060~−0.093，业务门槛 |EE|≤0.15 / F1≥0.75 / R≥0.70 **全过**。修 aggregate 锅炉双计 + 煮沸切碎带来的能量偏差改善，超过旧纪元全部调参努力之和——「先修数据再谈模型」路线的最终验证。MAE 6.88-8.80 亦优于旧 final 的 9.84。
+- **噪声警示**：seed 方差显著（best_epoch 5/22/20；val best MAE 3.25/3.90/3.25-3.90 区间；val 曲线剧烈抖动 3.8↔6.3）。定量原因：val 6000 样本中 ON 样本仅 ≈6000×0.006≈**36 个**（约 2 次事件当量）→ F1/EE 在 val 上噪声极大。调参纪律：选型用多种子均值 + composite S，单 seed 单 epoch 的 val 指标不可作为依据。
+- **val KPI 补读通道**：result.json 只含 test 指标，但 `fit()` 逐 epoch 已把完整 `val_*`（mae/f1/energy_error/precision/recall…）落盘在 history.json → evaluate.py 升级为自动注入 `best_epoch_val` 字段（不重训、不碰 Test）。
+- **待用户**：git pull 后 `python scripts\evaluate.py --run-dir reports\base_v5_s{42,2024,7}` ×3，回传（重点 best_epoch_val 的 mae/f1/energy_error/precision/recall）。
+- 是否进入 REPORT.md：否（待 val KPI 齐后定平移 vs 重搜策略）。

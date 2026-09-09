@@ -114,3 +114,16 @@
 - 关键决策：旧调参结论降级为待复核假设（不继承）；REPORT.md 拟在最终锁定+Test 通过后把实录 5-13 浓缩为数据制备章节
 - 未决问题：用户回传三份 baseline KPI → 判读后定重搜 vs 平移复核策略
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；configs/baseline.yaml / REPORT_TEST.md / STATUS.md
+
+## [2026-09-09] 会话纪要（baseline 摸底判读：EE 里程碑 + Test 触碰记账）
+- 目标：判读 v5 数据 baseline ×3 seeds；补 val KPI 通道
+- 本会话角色：实验/调参教练（判读+纪律记账）
+- 完成项：
+  - 判读：Test EE −0.090/−0.094/−0.060（旧纪元最终模型 −0.234 未过验收）→ baseline 全门槛过（|EE|/F1/R），数据修复红利超旧纪元全部调参之和；MAE 6.88-8.80 优于旧 final 9.84
+  - 纪律事故处理：eval_test 缺省 True → 未带 --test 仍碰 Test 3 次；记账=新纪元触碰#1（与旧纪元阶段0b同构），剩 1 次；缺省翻 False + train.py help 同步（责任在我方指令语义误记，已在实录 14 致歉记录）
+  - val KPI 通道：history.json 逐 epoch 已含完整 val_*；evaluate.py 升级注入 best_epoch_val
+  - 噪声定量：val ON 样本 ≈36 个 → seed 方差/best_epoch 5-22 波动的根因；选型纪律=多种子+S
+  - REPORT_TEST 实录 14、STATUS、纪要同步；commit+push
+- 关键决策：Test 触碰记账结构（摸底#1+最终#2）；eval_test 默认冻结
+- 未决问题：用户回传 3 份 evaluate.py 输出（val KPI）→ 定平移复核 vs 重搜
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；src/experiment.py / scripts/evaluate.py / scripts/train.py / REPORT_TEST.md / STATUS.md

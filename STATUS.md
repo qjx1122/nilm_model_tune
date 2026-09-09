@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】数据地基修复：【已锁定】数据修复收官（实录 13）：ukdale_prepared_v2.npz（schema v5）为唯一口径，旧 npz 及其 KPI/Test 记录作废 → 主线重启：KPI 重新摸底（baseline ×3 seeds on v5，Test 冻结不触碰）
+- 【进行中·用户任务】数据地基修复：数据锁定后 baseline 摸底已回传并判读（实录 14：Test EE −23%→−6~−9% 里程碑、门槛全过；Test 触碰#1 已记账、eval_test 缺省翻转 False）→ 待用户跑升级版 evaluate.py ×3 拿 val KPI → 定平移复核 vs 重搜
 - 本任务角色：实验/调参教练（数据完整性核查，不猜表号）
 
 ## 已完成
@@ -38,18 +38,21 @@
 - [x] 2026-09-09 prepare 三跑 n=8,849,796 判读：**红旗解除**（aggOffW 354.8/327/400.3、corr 0.42-0.53、evt/day 5-6，实录 11）+ fillna(value,limit=N) 全轴限额 bug 确诊（240 万格只填 49 格→146 万碎段）→ v4 整段桥接（schema v4、双缺口回归测试、pytest 14 passed）；沙箱重克隆事故恢复（fetch+逐文件哈希对账，零丢失）
 - [x] 2026-09-09 prepare 四跑 n=10,377,651 判读（实录 12）：结构健康（456 缝/最大段 49.1 天/保留 91.7% 跨度/+153 万桥接格回归/身份指标三验稳定）但 evt/day 翻倍 12.55/12.42/16.24、平均事件 93s→35s（ON 样本数与绝对 kWh 不变→v4 补0 切碎煮沸确诊）→ v5 kettle 短缺口 ffill（schema v5、事件内微缺口回归测试、pytest 14 passed）
 - [x] 2026-09-09 prepare 五跑 v5 复验**全过→数据锁定**（实录 13）：evt/day 4.73/4.49/5.31、平均事件 ~106s、绝对事件数与 v3 交叉验证一致（2386≈2393 等）；kWh 较 v3 +14% 系煮沸中掉线格回归真值；aggOffW/corr 第四次稳定；n 较 v4 −1=头部缺口诚实剔除；Test 预算重置 2 次触碰，旧调参结论降级为待复核假设
+- [x] 2026-09-09 baseline 摸底 ×3 seeds on v5 判读（实录 14）：Test EE −0.090/−0.094/−0.060（旧纪元最终模型 −0.234 未过验收→新 baseline 全门槛过，数据修复红利）；纪律事故：eval_test 缺省 True 致未带 --test 仍碰 Test→触碰#1 记账+缺省翻 False；val ON 样本仅≈36 个→seed 方差警示；evaluate.py 升级注入 best_epoch_val（history.json 已有完整 val 指标）
 - [x] 2026-09-09 prepare 首跑 n=345 确诊秒级相位差并修复（REPORT_TEST.md 执行实录 9）：meter1=:15 vs meter10=:18 精确 join 拼不上；改统一 6s 网格 resample 对齐；schema_version→2；--mains-ids 默认→1；偏移 3s 回归测试；pytest 13 passed
 - [x] 2026-09-09 metadata 全文回传→定表号（REPORT_TEST.md 执行实录 8）：mains=meter1 单表、kettle=meter10；meter2=锅炉回路（纠正 1,2 假设）；meter54=1s mains 备选
 
 ## 进行中
-- （用户侧）跑 baseline KPI 摸底 ×3 seeds on v5 数据（Test 不触碰），回传三份输出
+- （用户侧）git pull 后跑 evaluate.py ×3 拿 val KPI（不重训不碰 Test），回传
 - （本侧）无阻塞；判读 aggOffW/corr 定数据地基是否修复
 
 ## 下一步（TODO）
-1. 用户：baseline KPI 摸底 ×3（数据=D:\Work\testPython\datasets\ukdale_prepared_v2.npz，输出目录用 reports\base_v5_s{seed} 避免覆盖旧报告）：
-   python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 42 --out reports\base_v5_s42
-   （--seed 依次 42 / 2024 / 7，out 目录对应改名；⚠️ 必须逐次 --seed 覆盖，见实录 seed 陷阱）
-2. 本侧判读三份 KPI（val MAE/F1/EE/S）→ 与旧纪元 baseline 对比（预期 EE 漂移特性仍在：test 段壶用量 +50%）→ 决策：旧调参结论哪些可平移复核、哪些需重搜（tune.py）；Test 保持冻结（预算 2 次，最终锁定后触碰）
+1. 用户：git pull 后逐个跑（val KPI 补读，不重训不碰 Test）：
+   python scripts\evaluate.py --run-dir reports\base_v5_s42
+   python scripts\evaluate.py --run-dir reports\base_v5_s2024
+   python scripts\evaluate.py --run-dir reports\base_v5_s7
+   （回传三份，重点看 best_epoch_val 的 mae / f1 / energy_error / precision / recall）
+2. 本侧汇总 val KPI（多种子均值±σ）→ 决策「平移复核 vs 重搜」：候选=旧优胜配置（v2_do00 等）on v5 ×3 seeds 与 baseline 对比；Test 预算剩 1 次（最终锁定；触碰#1 已被摸底消耗，实录 14）
 3. 判读红旗：agg_off_mean≈0 且 corr≈1 → 确认 aggregate 泄漏 → 修数据制备（prepare_ukdale.py --list-meters 核对 mains 表号 → 重新生成 npz → 人工抽查 aggregate 一天曲线）→ 全部 KPI 重启（先 baseline 再走搜索，Test 协议重置一次并记录）；若数据无误（agg_off_mean 数百 W）→ 回到漂移结论：方向 B（记录教训收尾）或 C（改切分）
 4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push（视红旗结论而定）
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
@@ -79,6 +82,8 @@
 - 2026-09-09（决策·kettle 桥接值=前值）：短缺口 ffill 而非补 0——壶 ~99% 时间关断（前值=0，「关断即 0」语义自动保持），煮沸中掉线保持 ~2300W 不断流；补 0 会把一次煮沸切成 ~3 片 35s 碎片（evt/day 12.55 vs 真实 5.56，ON 样本总数不变为铁证）
 - 2026-09-09（决策·数据锁定 v5）：ukdale_prepared_v2.npz（schema v5）为唯一口径；旧 npz（mains 1+2 锅炉双计时代）全部 KPI/Test/调参记录作废归档；旧调参结论（c2/v2/nhead8 等）降级为待复核假设
 - 2026-09-09（决策·Test 预算重置）：新数据纪元 Test 触碰预算=2 次（旧 Test 基于作废数据不计数；与原纪律同构）；baseline 摸底不碰 Test
+- 2026-09-09（记账·Test 触碰#1）：baseline 摸底 3 seeds 实际碰了 Test（eval_test 缺省 True，指令语义误记所致）——按旧纪元「阶段0b=触碰1」同构记账；剩余 1 次给最终锁定模型；缺省已翻 False（冻结成为代码默认）
+- 2026-09-09（决策·val 噪声对策）：val 6000 样本仅 ≈36 个 ON（≈2 次事件）→ F1/EE 噪声大；调参选型一律多种子均值 + composite S，单 seed 单 epoch val 指标不作依据
 - 2026-09-09（踩坑·沙箱重克隆）：平台可整箱重克隆沙箱（本地 commit 链消失、/tmp 清空）；远端分支是唯一可靠真值——回合初 git log + git ls-remote 对账，恢复=fetch+逐文件哈希比对+reset
 - 2026-09-09（决策·网格对齐）：多表秒级相位差是 UK-DALE 常态，对齐必须先 resample 到统一网格再 join，精确时间戳 join 不可用；data_spec schema_version 升 2 标记口径变化
 - 2026-09-09（决策·单总表）：mains 只用 meter1（2 为锅炉回路，加进去 double count）；新 npz 另存 v2 不覆盖旧文件（旧文件关联历史 KPI/Test 记录）；diagnose 设证伪口
