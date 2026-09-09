@@ -235,3 +235,44 @@ if __name__ == "__main__":
     test_prepare_end_to_end()
     test_missing_kettle_id_fails_helpfully()
     print("test_prepare_ukdale: all assertions passed")
+
+
+def test_prepare_offset_timestamps_resampled():
+    """真实 UK-DALE 各表秒级相位差：mains 在整 6s 网格，kettle 偏移 3s。
+
+    回归：精确时间戳 join 时几乎拼不上（执行实录 9：n=345）；
+    resample 到统一网格后应完整对齐（n 不丢）。
+    """
+    import pandas as pd  # noqa: F401
+    with tempfile.TemporaryDirectory() as d:
+        n = 3000
+        t0 = 1_500_000_000  # 可被 6 整除 → 在网格上
+        ts_mains = t0 + np.arange(n) * 6.0
+        ts_kettle = t0 + 3.0 + np.arange(n) * 6.0  # 偏移 3 秒
+        rng = np.random.default_rng(0)
+        kettle = np.zeros(n)
+        for s, dur in EVENTS:
+            kettle[s:s + dur] = 2000 + rng.normal(0, 30, dur)
+        mains1 = 300 + rng.normal(0, 20, n) + kettle
+        h5 = Path(d) / "ukdale_offset.h5"
+        with h5py.File(h5, "w") as f:
+            g1 = f.create_group("building1/elec/meter1")
+            g1.create_dataset("power", data=np.stack([ts_mains, mains1], axis=1))
+            gk = f.create_group("building1/elec/meter10")
+            gk.create_dataset("power", data=np.stack([ts_kettle, kettle], axis=1))
+        out = Path(d) / "ukdale_prepared.npz"
+        r = subprocess.run(
+            [sys.executable, str(SCRIPT), "--h5-path", str(h5),
+             "--mains-ids", "1", "--kettle-meter-id", "10", "--out", str(out)],
+            capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        z = np.load(out)
+        assert z["aggregate"].shape == z["target"].shape == (n,), \
+            f"偏移 3s 应完整对齐 n={n}，实际 {z['aggregate'].shape}"
+        # 事件样本对上（±1 个网格点的容差，防 bin 边界效应）
+        s, dur = EVENTS[1]
+        assert z["target"][s + dur // 2] > 1500
+        assert np.abs(z["aggregate"][100] - mains1[100]) < 100
+        spec = json.loads(out.with_suffix(".data_spec.json").read_text(encoding="utf-8"))
+        assert spec["schema_version"] == 2
+        assert spec["resample_policy"] == "mean_to_6s_grid_epoch_origin"

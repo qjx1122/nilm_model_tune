@@ -427,3 +427,10 @@
 - **决策**：prepare 用 `--mains-ids 1 --kettle-meter-id 10`（**单总表**）；输出新文件 `ukdale_prepared_v2.npz`，**不覆盖**旧 npz（旧文件关联历史 KPI/Test 记录，保留备查）。
 - **验证计划（证伪口）**：diagnose 新 npz，期望 aggOffW 数百 W、corr≪1、agg p95 数百~数千 W；若 aggOffW≈0 则 meter1=mains 假设被证伪，回滚重议，不硬上训练。
 - 是否进入 REPORT.md：否（数据修复中）。
+
+### 执行实录 9（2026-09-09）：prepare 首跑 n=345 → 秒级相位差确诊，改统一 6s 网格对齐
+- **事实（用户回传三份）**：prepare 输出 n=345（仅开头半小时 22:28:15→22:58:26），kettle NaN 0→策略后 8,862,517；diagnose n=345（0.0 天，无事件）；data_spec：mains_used=[1]/apparent、kettle=10/active、median_gap 6.0。
+- **根因（事实+推断）**：kettle 序列本身无 NaN（before=0），886 万 NaN 全部来自外连接对齐 → 两表时间戳大面积错位。直接证据：list-meters 起始秒 meter1=:15 vs meter10=:18。推断：各表采样相位差秒级，精确 join 只拼上开头时钟偶然对齐的半小时。meter1=mains 假设未被证伪：345 行的 aggW≈350–525W（真实总负荷基线，非 0）。
+- **修复（commit 本回合）**：prepare 对齐前各表先 `_to_6s_grid()` resample（bin 内均值，epoch 原点；已在网格数据为恒等变换）；`_combine_mains` 与 kettle 同处理；data_spec schema_version 1→2 + `resample_policy` 留痕；`--mains-ids` 默认 1,2→1（House1 地面真相）+ docstring/README 示例同步。新增偏移 3s 回归测试（旧逻辑下 shape 会膨胀错位，新逻辑 n 不丢），pytest（除 test_model）13 passed。
+- **待用户**：git pull 后重跑 prepare（同命令，覆盖 v2 文件）+ diagnose，回传。预期 n≈800–900 万、跨度 2012→2015。
+- 是否进入 REPORT.md：否（数据修复中）。

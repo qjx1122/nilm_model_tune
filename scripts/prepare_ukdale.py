@@ -8,6 +8,9 @@
      找不到才用 apparent（并 WARNING + 留痕）。时间戳 index 自动按秒/纳秒换算。
 
 数据规格（写进 data_spec.json 留痕，作为以后所有 KPI 的口径依据）：
+0. 各表先 resample 到统一 6 秒网格（bin 内均值）再对齐——真实 UK-DALE 各表
+   采样时刻有秒级相位差（如 meter1 在 :15 秒、meter10 在 :18 秒），精确时间戳
+   join 几乎拼不上（执行实录 9：n=345）。已在网格上的数据为恒等变换。
 1. mains 各表（--mains-ids）按时间对齐相加；短缺口（<= mains-gap-min 分钟）
    ffill，剩余 NaN 行剔除。
 2. kettle（--kettle-meter-id）：短缺口（<= kettle-gap-min 分钟）填 0（关断即 0），
@@ -22,9 +25,10 @@
 用法（示例，NILMTK 格式 ukdale.h5）：
     python scripts\\prepare_ukdale.py --h5-path D:\\datasets\\ukdale.h5 --list-meters
     python scripts\\prepare_ukdale.py --h5-path D:\\datasets\\ukdale.h5 ^
-        --mains-ids 1,2 --kettle-meter-id 10 ^
+        --mains-ids 1 --kettle-meter-id 10 ^
         --out D:\\datasets\\ukdale_prepared.npz
-    （mains 若为 apparent、kettle 为 active，脚本自动处理并在 data_spec.json 留痕）
+    （mains 若为 apparent、kettle 为 active，脚本自动处理并在 data_spec.json 留痕；
+    House1 地面真相：mains 只有 meter1 单表，meter2 系锅炉回路，见 REPORT_TEST.md 实录 8）
 """
 import argparse
 import json
@@ -177,6 +181,16 @@ def read_power_series(f, meter_group, prefer="active"):
     return s, "active"  # 契约 A 无法判断，默认标注 active（历史行为）
 
 
+def _to_6s_grid(s):
+    """把功率序列归一化到统一 6 秒网格（bin 内均值）。
+
+    bin 划分以 epoch 为原点（pandas resample 默认），左右表落在同一网格上；
+    已在网格上的数据为恒等变换（每 bin 恰 1 个样本，均值即原值）。
+    注意：只用于 prepare 对齐，--list-meters 仍显示原始 n_samples。
+    """
+    return s.resample(f"{SECONDS_PER_SAMPLE}s").mean()
+
+
 def _meter_summary(f, meter_group):
     try:
         s, pt = read_power_series(f, meter_group)
@@ -211,13 +225,14 @@ def _combine_mains(f, meters, mains_ids):
         if mid in meters:
             s, pt = read_power_series(f, meters[mid])
             found.append(mid)
-            series.append(s)
+            series.append(_to_6s_grid(s))
             types.append(pt)
         else:
             print(f"WARNING: mains meter {mid} 不存在，跳过（现有：{sorted(meters)}）")
     if not series:
         raise RuntimeError("没有可用的 mains 表（--mains-ids 与实际表号不符）。")
-    # 多相/多表总负荷相加；两表时间戳须同时存在（inner），缺口策略统一在 prepare() 处理。
+    # 多相/多表总负荷相加（已统一 6s 网格，inner 即网格交集）。
+    # 缺口策略统一在 prepare() 处理。
     df = pd.concat(series, axis=1, join="inner")
     return df.sum(axis=1), found, types
 
@@ -233,6 +248,9 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
 
     agg, used_mains, mains_types = _combine_mains(f, meters, mains_ids)
     kettle, kettle_type = read_power_series(f, meters[kettle_id])
+    kettle = _to_6s_grid(kettle)
+    print(f"对齐: mains 网格点 {len(agg)} / kettle 网格点 {len(kettle)}"
+          f"（6s 网格 resample 后）")
 
     # 短缺口补齐策略（可配置，均写入 data_spec.json 留痕）。
     mains_fill_limit = int(mains_gap_min * 60 / SECONDS_PER_SAMPLE)
@@ -276,7 +294,7 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
              target=tgt_v.astype(np.float32))
 
     spec = {
-        "schema_version": 1,
+        "schema_version": 2,  # v2 起：对齐前先 resample 到统一 6s 网格（实录 9）
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "git_commit": _git_commit(),
         "source_h5": str(f.filename),
@@ -286,6 +304,7 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
         "mains_power_types_used": mains_types,
         "kettle_meter_id": kettle_id,
         "kettle_power_type_used": kettle_type,
+        "resample_policy": "mean_to_6s_grid_epoch_origin",
         "unit": "W",
         "sample_period_sec": 6,
         "median_sample_gap_sec": round(float(med_dt), 3),
@@ -317,7 +336,7 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--h5-path", required=True, help="UK-DALE HDF5 文件路径")
     ap.add_argument("--house", type=int, default=1)
-    ap.add_argument("--mains-ids", default="1,2", help="总负荷表号，逗号分隔（相加）")
+    ap.add_argument("--mains-ids", default="1", help="总负荷表号，逗号分隔（相加）；UK-DALE House1 只有 meter1 单表")
     ap.add_argument("--kettle-meter-id", type=int, default=None, help="kettle 表号")
     ap.add_argument("--out", default="ukdale_prepared.npz", help="输出 npz 路径")
     ap.add_argument("--mains-gap-min", type=float, default=30.0,

@@ -70,7 +70,7 @@ python scripts\inspect_h5.py --path D:\datasets\ukdale.h5
 
 ```powershell
 python scripts\prepare_ukdale.py --h5-path D:\datasets\ukdale.h5 --list-meters
-python scripts\prepare_ukdale.py --h5-path D:\datasets\ukdale.h5 --mains-ids 1,2 --kettle-meter-id <上一步输出的表号> --out D:\datasets\ukdale_prepared.npz
+python scripts\prepare_ukdale.py --h5-path D:\datasets\ukdale.h5 --mains-ids 1 --kettle-meter-id <上一步输出的表号> --out D:\datasets\ukdale_prepared.npz
 ```
 
 产物为 `ukdale_prepared.npz` + `ukdale_prepared.data_spec.json`。后者是**数据口径留痕**（来源文件 / 表号 / 时间范围 / 缺口处理策略 / 样本数），以后所有 KPI 都以它为准，请随实验一起归档。

@@ -55,3 +55,14 @@
 - 关键决策：纠正旧假设 1,2 双总表（2 为锅炉）；不猜表号原则兑现价值
 - 未决问题：待用户回传 prepare 输出 + diagnose 输出 + data_spec 关键字段
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；REPORT_TEST.md / STATUS.md
+
+## [2026-09-09] 会话纪要
+- 目标：判读 prepare 首跑三份输出（n=345 事故），修复后重发制备指令
+- 本会话角色：工程实现工程师（对齐 bug 修复）+ 实验/调参教练（判读）
+- 完成项：
+  - 确诊秒级相位差：kettle 自身无 NaN、对齐后 886 万 NaN + 起始秒 :15 vs :18；meter1=mains 未被证伪（aggW 基线数百 W）
+  - 修复：_to_6s_grid resample 对齐、schema_version→2、--mains-ids 默认→1、docstring/README 同步、偏移 3s 回归测试；pytest 13 passed
+  - REPORT_TEST.md 执行实录 9、STATUS.md、纪要同步；commit+push
+- 关键决策：网格对齐为强制口径（schema v2）；旧 n=345 的 v2 npz 作废覆盖
+- 未决问题：待用户重跑 prepare + diagnose 回传（预期 n≈800-900 万）
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；scripts/prepare_ukdale.py / tests/test_prepare_ukdale.py / README.md

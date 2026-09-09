@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】数据地基修复：表号已定（mains=meter1 单表、kettle=meter10，REPORT_TEST.md 执行实录 8）→ 待用户跑 prepare 生成 ukdale_prepared_v2.npz + diagnose 复验，回传三份输出
+- 【进行中·用户任务】数据地基修复：秒级相位差修复已推送（REPORT_TEST.md 执行实录 9）→ 待用户 git pull 重跑 prepare + diagnose，回传两份输出
 - 本任务角色：实验/调参教练（数据完整性核查，不猜表号）
 
 ## 已完成
@@ -34,15 +34,16 @@
 - [x] 2026-09-08 diagnose_split.py 升级：kWh 单位修正（/1000）+ 新增 agg_off_mean_w / corr_agg_target 列（判别 aggregate 是否泄漏的探针）；合成对照验证（正常版 aggOffW≈350 vs 泄漏版 0/corr 1.0）
 - [x] 2026-09-09 prepare tz 真因定位+修复：用户重跑 f10c795 版 --list-meters 暴露真实报错 Cannot interpret 'datetime64[ns, Europe/London]' → 根因 _normalize_ts_index 对 tz-aware dtype 调 np.issubdtype（沙箱复现同错）；修复= DatetimeIndex 先行分支 + try/except；顺带修 med_dt ns/us 单位陷阱（改 Timedelta 口径）；新增 tz-aware 回归测试，pytest（除 test_model）12 passed
 - [x] 2026-09-09 --list-meters 54/54 通过（用户回传全文，落盘 REPORT_TEST.md 执行实录 7）：meter1/2/3 apparent 全程 10M 级；meter10 active 8.94M；meter54 为 1s 表 56.7M；无 meter0。重要修正：6s mains 无 active 列，aggregate 默认 apparent 路线（留痕）
+- [x] 2026-09-09 prepare 首跑 n=345 确诊秒级相位差并修复（REPORT_TEST.md 执行实录 9）：meter1=:15 vs meter10=:18 精确 join 拼不上；改统一 6s 网格 resample 对齐；schema_version→2；--mains-ids 默认→1；偏移 3s 回归测试；pytest 13 passed
 - [x] 2026-09-09 metadata 全文回传→定表号（REPORT_TEST.md 执行实录 8）：mains=meter1 单表、kettle=meter10；meter2=锅炉回路（纠正 1,2 假设）；meter54=1s mains 备选
 
 ## 进行中
-- （用户侧）跑 prepare 生成 ukdale_prepared_v2.npz（几分钟）+ diagnose_split 复验 + data_spec 关键字段，一次贴回三份输出
+- （用户侧）git pull 后重跑 prepare（同命令，覆盖 v2）+ diagnose，一次贴回两份输出（预期 n≈800-900 万）
 - （本侧）无阻塞；判读 aggOffW/corr 定数据地基是否修复
 
 ## 下一步（TODO）
-1. 用户：跑 prepare（--mains-ids 1 --kettle-meter-id 10 --out ukdale_prepared_v2.npz，不覆盖旧 npz）→ 回传输出
-2. 用户：跑 diagnose_split.py --npz ukdale_prepared_v2.npz + 回传 data_spec.json 关键字段（mains_meter_ids_used/时间范围/n_output）→ 本侧判读 aggOffW/corr（证伪口：aggOffW≈0 则推翻 meter1=mains 假设）
+1. 用户：git pull 后重跑 prepare（同命令，覆盖 ukdale_prepared_v2.npz）→ 回传输出（含新增的「对齐: mains 网格点 / kettle 网格点」行）
+2. 用户：跑 diagnose_split.py --npz ukdale_prepared_v2.npz → 本侧判读（期望 aggOffW 数百 W、corr<<1、agg p95 数百~数千 W；n≈800-900 万）
 3. 判读红旗：agg_off_mean≈0 且 corr≈1 → 确认 aggregate 泄漏 → 修数据制备（prepare_ukdale.py --list-meters 核对 mains 表号 → 重新生成 npz → 人工抽查 aggregate 一天曲线）→ 全部 KPI 重启（先 baseline 再走搜索，Test 协议重置一次并记录）；若数据无误（agg_off_mean 数百 W）→ 回到漂移结论：方向 B（记录教训收尾）或 C（改切分）
 4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push（视红旗结论而定）
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
@@ -66,6 +67,7 @@
 - 2026-09-08（踩坑·工程）：①`reports/smoke/*` 是 git 跟踪的历史产物（commit 7824bb4），本地验证先备份、跑完恢复，勿覆盖；②仓库历史误提交 `__pycache__/*.pyc` → 本次清理出库并加 `.gitignore`；③prepare 脚本 `meter_groups` 曾对 h5py Group 对象二次索引报 TypeError → 已修（单测捕获）；④合成 h5 测试的 mains 需包含 kettle 事件才物理自洽
 - 2026-09-09（踩坑·pandas 时区）：真实 NILMTK ukdale.h5 经 `pd.read_hdf` 读出的 index 是 tz-aware DatetimeIndex（Europe/London），`np.issubdtype(tz_dtype, np.integer)` 直接抛 `TypeError: Cannot interpret …` —— numpy 不认 pandas 扩展 dtype；修法= DatetimeIndex 先行处理 + try/except 包裹。另：pandas 3 默认时间单位是 us 而非 ns，`asi8/astype(int64)` 数值差 1000 倍，采样间隔必须用 Timedelta 口径求，勿写死 /1e9
 - 2026-09-09（决策·不猜表号）：转述 metadata 出现与 h5 矛盾的 meter 0 且 meter2 身份不明 → 坚持要全文，拿到 ground truth 才发 prepare。兑现价值：全文证明 meter2=锅炉，纠正 1,2 双总表假设
+- 2026-09-09（决策·网格对齐）：多表秒级相位差是 UK-DALE 常态，对齐必须先 resample 到统一网格再 join，精确时间戳 join 不可用；data_spec schema_version 升 2 标记口径变化
 - 2026-09-09（决策·单总表）：mains 只用 meter1（2 为锅炉回路，加进去 double count）；新 npz 另存 v2 不覆盖旧文件（旧文件关联历史 KPI/Test 记录）；diagnose 设证伪口
 - 2026-09-09（踩坑·工具）：同一回合内并行发给同一文件的多个 edit_file 只会活一个（互相覆盖）→ 同文件多处改动必须串行或单次原子写入（bash/python 整段改），且 commit 前必须 grep 验活
 
