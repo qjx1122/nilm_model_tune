@@ -75,6 +75,15 @@ python scripts\prepare_ukdale.py --h5-path D:\datasets\ukdale.h5 --mains-ids 1 -
 
 产物为 `ukdale_prepared.npz` + `ukdale_prepared.data_spec.json`。后者是**数据口径留痕**（来源文件 / 表号 / 时间范围 / 缺口处理策略 / 样本数），以后所有 KPI 都以它为准，请随实验一起归档。
 
+### 生产推荐配置（2026-09-09 锁定）
+
+数据口径：`ukdale_prepared_v2.npz`（schema v5；制备与验收口径详见 `REPORT.md` §1–2）。模型/训练配置：锁定版 `configs/fine_v5/f4_v2do00_w96.yaml`（Test 验收：S 0.0541 / F1 0.894 / R 0.927 / EE +5.2%）。复现训练：
+
+```powershell
+python scripts\train.py --config configs\fine_v5\f4_v2do00_w96.yaml --data-path D:\datasets\ukdale_prepared_v2.npz --seed 7000 --out reports\prod
+```
+
+
 ## 3. Windows + Conda
 
 ```powershell

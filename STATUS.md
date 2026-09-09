@@ -5,8 +5,8 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】数据地基修复：【已锁定】F4 = v2_do00×w96（实录 19：0.0472±0.0042 判定树命中，score/MAE/RMSE/F1/P 五项第一，MAE 盆地消失）→ 待用户 Test 最终一跑（seed 7000 --test，预算 #2/2 耗尽）→ 本侧算 S_test 裁定验收 → 收官（REPORT.md/TUNING_GUIDE）
-- 本任务角色：实验/调参教练（数据完整性核查，不猜表号）
+- 【已完成·收官】任务 3「调参执行」：F4（v2_do00×w96）锁定 + Test 验收四线全过（实录 20：S_test 0.0541 / F1 0.8941 / R 0.9268 / EE +5.2%；对照旧纪元 S 2.3 倍改善）。任务起点阻塞（Test EE −23%）正式关闭。
+- 本任务角色：实验/调参教练（已随任务收官回归默认角色「资深电力算法专家」）
 
 ## 已完成
 - [x] 2026-09-08 开局仪式：git 现状核对 / 续接文件读取 / 环境检查
@@ -44,6 +44,7 @@
 - [x] 2026-09-09 重搜 32 trials 判读（实录 17）：32/32 过门槛（守门员失区分度属预期）；top-1 trial20 S=0.0400（w96 d64 h4 do0 bs128 lr5e-4）；w96 系 top-10 占 7（旧锁 w128 的新数据反例）；F1 分布恢复 0.860-0.903（val30000 生效）；EE 近零复现；单 seed 噪声→细搜多 seed；configs/fine_v5 五配置入库（校验过）；沙箱第二次重置事故恢复（零丢失）
 - [x] 2026-09-09 细搜批次 1 判读（实录 18）：F0 0.0522±0.0045 夺冠（σ 最小+EE +0.0003±0.0062 死零+跨纪元）；FB 0.0604 垫底（调参>不调参坐实）；trial20 单 seed 0.0400→复核 0.0567（赢家诅咒）；F0 MAE 8.93±5.35 披露（单种子盆地，S 近盲不淘汰）；F4=v2_do00×w96 入库（唯一差异 window，校验过）；Test 预注册（seed 7000/--test 恰一次/验收口径）
 - [x] 2026-09-09 细搜批次 2 判读→**锁定 F4**（实录 19）：0.0472±0.0042 预注册判定树命中；MAE 5.80±0.77（F0 盆地治愈）、F1 0.8943 六变体最高、P 0.9102 最高；EE +1.7% 换 F1/MAE/σ 三赢；最终配置=w96+d64nhead8L2ff128do0bs64lr3e-4wd1e-4 25/5（两纪元洞察杂交）；Test 预算 #2/2 审计完成
+- [x] 2026-09-09 **Test 终局验收通过，任务 3 收官**（实录 20）：seed 7000 预注册一跑，S_test=0.0541（≤0.0622）、F1 0.8941、R 0.9268、|EE| 5.2%，无分布漂移；REPORT.md v1.0 创建、TUNING_GUIDE v2.0 重写（战史）、README 生产推荐更新、Test 预算 2/2 审计闭合
 - [x] 2026-09-09 prepare 首跑 n=345 确诊秒级相位差并修复（REPORT_TEST.md 执行实录 9）：meter1=:15 vs meter10=:18 精确 join 拼不上；改统一 6s 网格 resample 对齐；schema_version→2；--mains-ids 默认→1；偏移 3s 回归测试；pytest 13 passed
 - [x] 2026-09-09 metadata 全文回传→定表号（REPORT_TEST.md 执行实录 8）：mains=meter1 单表、kettle=meter10；meter2=锅炉回路（纠正 1,2 假设）；meter54=1s mains 备选
 
@@ -52,11 +53,8 @@
 - （本侧）无阻塞；判读 aggOffW/corr 定数据地基是否修复
 
 ## 下一步（TODO）
-1. 用户：Test 最终一跑（预注册协议，预算最后一发，约 2 min）：
-   python scripts\train.py --config configs\fine_v5\f4_v2do00_w96.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 7000 --out reports\final_v5\f4_test --test
-   python scripts\evaluate.py --run-dir reports\final_v5\f4_test
-   （回传 evaluate.py 全文；test 段的 mae/f1/energy_error/precision/recall 齐全即可）
-2. 本侧计算 S_test=0.4×mae/2000+0.4×(1−f1)+0.2×|EE| 并按预注册验收（≤0.0622 且 F1≥0.75/R≥0.70/|EE|≤0.15）→ 通过=收官流程（REPORT.md 数据纪元+调参全程章节、TUNING_GUIDE 战史、STATUS 收尾仪式）；不通过=漂移诊断（对照实录 5 时代的 EE 漂移分析）（同 seeds 42/2024/7）→ 定 tune.py 重搜方案：A 胜→搜索以 do0/nhead8/bs64/lr3e-4 邻域为中心；B 胜（100k 显著优）→重搜用大 train 预算；均不胜→以 baseline 为锚全空间粗搜；val 预算一律扩 30000。Test 预算剩 1 次（最终锁定用）
+1. （可选后续，非必需）REPORT.md / TUNING_GUIDE.md 已固化两纪元全部结论；如需继续：prepare/diagnose 泛化到其他 house 或电器、F4 邻域继续深挖（注意 Test 预算已耗尽，新探索需新立项+新预算规则）、或按 REPORT.md §1 口径投入生产验证
+2. 无未决阻塞；本分支（arena/01a07f1d-nilm-model-tune）保持推送最新，可随时合并/续接（同 seeds 42/2024/7）→ 定 tune.py 重搜方案：A 胜→搜索以 do0/nhead8/bs64/lr3e-4 邻域为中心；B 胜（100k 显著优）→重搜用大 train 预算；均不胜→以 baseline 为锚全空间粗搜；val 预算一律扩 30000。Test 预算剩 1 次（最终锁定用）
 3. 判读红旗：agg_off_mean≈0 且 corr≈1 → 确认 aggregate 泄漏 → 修数据制备（prepare_ukdale.py --list-meters 核对 mains 表号 → 重新生成 npz → 人工抽查 aggregate 一天曲线）→ 全部 KPI 重启（先 baseline 再走搜索，Test 协议重置一次并记录）；若数据无误（agg_off_mean 数百 W）→ 回到漂移结论：方向 B（记录教训收尾）或 C（改切分）
 4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push（视红旗结论而定）
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
@@ -96,6 +94,8 @@
 - 2026-09-09（判读·批次1三结论）：①旧冠军跨纪元夺冠（EE 死零+σ 最小，领先属判断非铁证：top-4 差距在噪声内）；②FB 垫底=调参价值坐实；③搜索 top-1 赢家诅咒（0.0400→0.0567）——多 seed 复核纪律必要
 - 2026-09-09（预注册·Test 最终一跑）：锁定配置 × seed 7000（新鲜族）× --test 恰好一次；验收 S_test≤val均值+0.015 且 F1≥0.75/R≥0.70/|EE|≤0.15；预算就此耗尽
 - 2026-09-09（锁定·F4）：w96+d64nhead8L2ff128do0bs64lr3e-4wd1e-4（25/5 composite val30000）——预注册判定树命中+五分量同时第一+σ 最小；EE +1.7% 为明确权衡（门槛内 9 倍富余）；两纪元洞察杂交（旧冠军协议×新搜索窗口发现）
+- 2026-09-09（验收·Test 通过）：S_test=0.0541 四线全过、无漂移（Δ+0.0069<0.015）；任务 3 原始阻塞（实录 5 时代 EE −23%）关闭；数据纪元 v5 + 配置 F4 成为推荐稳定版本（REPORT.md §1）
+- 2026-09-09（角色切换·收官）：任务 3 角色「实验/调参教练」随验收通过卸任，回归默认「资深电力算法专家」（ROLE.md）；依据 BOOTSTRAP v2.1 收尾仪式落盘
 - 2026-09-09（发现·数据杠杆边界）：30k→100k train 在 6000-val 分辨率下无可测收益（配对 1 胜 2 负）；模型当前更受容量/正则而非数据量约束的假设待细搜后复核
 - 2026-09-09（踩坑·沙箱重克隆）：平台可整箱重克隆沙箱（本地 commit 链消失、/tmp 清空）；远端分支是唯一可靠真值——回合初 git log + git ls-remote 对账，恢复=fetch+逐文件哈希比对+reset
 - 2026-09-09（决策·网格对齐）：多表秒级相位差是 UK-DALE 常态，对齐必须先 resample 到统一网格再 join，精确时间戳 join 不可用；data_spec schema_version 升 2 标记口径变化
