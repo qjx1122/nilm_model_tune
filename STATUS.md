@@ -46,6 +46,7 @@
 - [x] 2026-09-09 细搜批次 2 判读→**锁定 F4**（实录 19）：0.0472±0.0042 预注册判定树命中；MAE 5.80±0.77（F0 盆地治愈）、F1 0.8943 六变体最高、P 0.9102 最高；EE +1.7% 换 F1/MAE/σ 三赢；最终配置=w96+d64nhead8L2ff128do0bs64lr3e-4wd1e-4 25/5（两纪元洞察杂交）；Test 预算 #2/2 审计完成
 - [x] 2026-09-09 **Test 终局验收通过，任务 3 收官**（实录 20）：seed 7000 预注册一跑，S_test=0.0541（≤0.0622）、F1 0.8941、R 0.9268、|EE| 5.2%，无分布漂移；REPORT.md v1.0 创建、TUNING_GUIDE v2.0 重写（战史）、README 生产推荐更新、Test 预算 2/2 审计闭合
 - [x] 2026-09-09 文档维护（用户指令）：REPORT_TEST.md 全部 25 个执行实录节补齐用户执行命令（20 处插入，标注「2026-09-09 补充留痕」；路径按用户机器实录：旧纪元 D:\datasets\ukdale_prepared.npz、h5 与 v5 纪元 D:\Work\testPython\datasets\；CLI 参数逐脚本核对 diagnose --npz / inspect --path / parse --h5-path）；复验 24 含命令块 + 1 指针节可解析
+- [x] 2026-09-09 流程复盘（用户指令）：执行实录遗漏命令的 ROLE.md 条款层归因（实录 21 沉淀）——五层叠加：收尾条款只沉淀结果结论/职责边界无人负责命令归档/验收标准缺档案可复现维度/极简偏好裁剪/台账无字段+STATUS 滚动覆盖；改进建议待用户裁定（ROLE.md 收尾条款+验收标准补丁）
 - [x] 2026-09-09 prepare 首跑 n=345 确诊秒级相位差并修复（REPORT_TEST.md 执行实录 9）：meter1=:15 vs meter10=:18 精确 join 拼不上；改统一 6s 网格 resample 对齐；schema_version→2；--mains-ids 默认→1；偏移 3s 回归测试；pytest 13 passed
 - [x] 2026-09-09 metadata 全文回传→定表号（REPORT_TEST.md 执行实录 8）：mains=meter1 单表、kettle=meter10；meter2=锅炉回路（纠正 1,2 假设）；meter54=1s mains 备选
 

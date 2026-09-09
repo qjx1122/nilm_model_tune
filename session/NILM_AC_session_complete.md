@@ -211,3 +211,11 @@
 - 关键决策：用户指令就地补充 → 覆盖「只追加」惯例一次，插入处标注日期保审计
 - 未决问题：无
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；REPORT_TEST.md / STATUS.md
+
+## [2026-09-09] 会话纪要（流程复盘：实录遗漏命令的 ROLE.md 归因）
+- 目标：按用户指令从 ROLE.md 角色文档详析执行实录遗漏用户命令的原因
+- 本会话角色：资深电力算法专家（默认角色，自我复盘）
+- 完成项：五层归因（收尾条款只沉淀结果结论/职责边界无人负责命令归档/验收标准缺档案可复现/极简偏好裁剪/台账无字段+STATUS 滚动覆盖）；定性=违反可追溯验收精神非明文禁令；改进建议三条（ROLE.md 收尾条款、验收标准、BOOTSTRAP 模板）待用户裁定；REPORT_TEST 实录 21、STATUS、纪要同步；commit+push
+- 关键决策：改进建议待裁定后落盘（ROLE.md 仅角色体系稳定时更新）
+- 未决问题：用户是否批准 ROLE.md/BOOTSTRAP 补丁
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；REPORT_TEST.md（实录 21）/ STATUS.md / ROLE.md（分析对象）
