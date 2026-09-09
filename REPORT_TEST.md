@@ -127,6 +127,12 @@
 - **未决问题**：同上「遗留问题」4 条（数据未下载未确认 / 30-epoch 复核 / 阈值敏感性 / 全量样本外推）
 
 ### 执行实录 1（2026-09-08）：粗搜 32 trials（用户机器）→ Top-5 与细搜设计
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**：
+  ```powershell
+  python scripts\tune.py --config configs\tuning.yaml --data-path D:\datasets\ukdale_prepared.npz --out reports\tuning_p1
+  （32 trials 默认；tuning_summary.csv 与 best_config.yaml 由该命令产出）
+  ```
+
 - **类型**：实验专题执行实录（真实数据，用户机器 Windows + GPU 回传；本任务角色=实验/调参教练）
 - **粗搜结果**（composite 口径；门槛通过 31/32；val MAE 单位 W；EE=energy_error；S=0.4·(MAE/2000)+0.4·(1−F1)+0.2·|EE|）：
 
@@ -217,6 +223,14 @@
 - 是否进入 REPORT.md：否（待细搜/锁定）
 
 ### 执行实录 2（2026-09-08）：细搜批次 1 完成 → 判读与批次 2 设计
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（即实录 1 补充「手动运行参考」块，8 变体 ×5 seeds）：
+  ```powershell
+  foreach ($v in v0_anchor,v1_do02,v2_do00,v3_lr2e4,v4_w96,v5_w160,v6_nhead4,v7_ff256) {
+    foreach ($s in 1000,2000,3000,4000,5000) {
+      python scripts\train.py --config "configs\fine\$v.yaml" --data-path D:\datasets\ukdale_prepared.npz --seed $s --out "reports\fine\${v}_s$s" } }
+  python scripts\summarize_fine.py --runs-dir reports\fine
+  ```
+
 - **批次 1 结果**（用户机器回传，summarize_fine.py 输出，每变体 n=5，seed 1000–5000）：
 
 | 变体 | S mean±std | MAE | RMSE | F1 | P | R | EE | best_ep |
@@ -262,6 +276,14 @@
 - 是否进入 REPORT.md：否（待 c1/c2 与锁定）
 
 ### 执行实录 3（2026-09-08）：批次 2 完成 → 锁定候选 c2（nhead4），进入收官
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（即实录 2 批次 2 设计块：v2 补跑凑 n=15 + c1/c2 ×10）：
+  ```powershell
+  foreach ($cfg in "v2_do00","c1_lr2e4","c2_nhead4") {
+    foreach ($s in 6000..6009) {
+      python scripts\train.py --config "configs\fine\$cfg.yaml" --data-path D:\datasets\ukdale_prepared.npz --seed $s --out "reports\fine\${cfg}_s$s" } }
+  python scripts\summarize_fine.py --runs-dir reports\fine
+  ```
+
 - **批次 2 完整结果**（用户机器回传，c2 n=9 / c1 n=10 / v2 n=15）：
 
 | 配置 | n | S mean±std | MAE | F1 | P | R | EE | best_ep |
@@ -366,6 +388,12 @@
 - 是否进入 REPORT.md：Test 回传验收通过后判（推荐稳定配置拟 = v2，KPI 口径拟固化）。
 
 ### 执行实录 4（2026-09-08）：Test 回传 → 判定：v2 未通过验收（时间分布漂移），决策岔口
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（实录 3 补充 3 预注册命令的执行）：
+  ```powershell
+  python scripts\train.py --config configs\fine\v2_do00.yaml --data-path D:\datasets\ukdale_prepared.npz --seed 7000 --out reports\final\v2_test --test
+  python scripts\evaluate.py --run-dir reports\final\v2_test
+  ```
+
 - **Test（v2_do00 25/5，seed 7000，eval_test 恰好一次，best_epoch 8，n_test=6000，cuda 69.7s）回传**：
   - MAE 9.84 | RMSE 131.7 | R² 0.666 | SAE 0.234 | EE **−0.234** | P 0.915 | R 0.729 | F1 0.811
   - S_test = 0.4·(9.84/2000)+0.4·(1−0.811)+0.2·0.234 = 0.002+0.076+0.047 = **0.124**
@@ -382,6 +410,11 @@
 - 是否进入 REPORT.md：暂缓（漂移问题有结论前，v2 不列为推荐稳定版）。
 
 ### 执行实录 5（2026-09-08）：分段诊断（方向 A）→ 双重发现：test 段真实漂移 + aggregate 数据红旗
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（首版脚本；aggOffW/corr 两列为随后升级新增，升级后同命令重跑）：
+  ```powershell
+  python scripts\diagnose_split.py --npz D:\datasets\ukdale_prepared.npz
+  ```
+
 - **诊断输出**（用户机器，on_threshold 500W，n=10,344,744 = 718.4 天；kWh 单位已修正为真值）：
 
 | segment | 天 | evt/day | on_frac | 壶 ON 均/中位 W | kWh/天 | agg 均值 W | agg p95 W | agg 关断期均值 W | corr(agg,target) |
@@ -399,6 +432,11 @@
 - 是否进入 REPORT.md：否（数据红旗查清前全部 KPI 挂起）。
 
 ### 执行实录 6（2026-09-08）：h5 布局探查 → NILMTK 格式确认，数据层问题定位
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**：
+  ```powershell
+  python scripts\inspect_h5.py --path D:\Work\testPython\datasets\ukdale.h5
+  ```
+
 - **探查结果（新版 inspect_h5，building1）**：
   - 结构：NILMTK 转换格式（building1–5，每户 elec/meter1–54）；meter 组下是 pandas HDFStore 表（`_i_table/table`，`pd.read_hdf` 可读），不是直接数据集 → prepare_ukdale.py 的契约 A 分支不适配，需加 nilm 分支。
   - 列语义：meter1/2/3 列 = `('power','apparent')`（**视在功率**，n≈1000 万）；meter4+ 列 = `('power','active')`（**有功功率**，n≈250–930 万）。NILM 分解必须用 active；apparent 含无功分量，**不可**当 aggregate/壶功率。
@@ -410,6 +448,11 @@
 - 是否进入 REPORT.md：否（方案与改造本身不是实验结论；待真实 KPI 出现后另行判定）
 
 ### 执行实录 7（2026-09-09）：--list-meters 54/54 通过，mains 功率语义确认
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（tz 修复 commit 1e7538c 后重跑）：
+  ```powershell
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --list-meters
+  ```
+
 - **事实（用户回传全文）**：tz 修复（commit 1e7538c）后重跑，54 张表全部读出，无「读取失败」。关键行：
   - meter1/2/3：apparent，n≈10.07–10.24M，起止 2012-11-09→2015-01-05（全程，6s 口径约 90% 覆盖）
   - meter8/25：apparent，n≈10.22M/9.19M（身份待 metadata 定）
@@ -421,6 +464,11 @@
 - 是否进入 REPORT.md：否（数据修复中）。
 
 ### 执行实录 8（2026-09-09）：metadata 全文回传 → 定表号：mains=meter1（单表），kettle=meter10
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**：
+  ```powershell
+  python scripts\parse_nilmtk_metadata.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 1
+  ```
+
 - **事实（用户回传 parse 全文，共 53 条）**：meter10→kettle/food processor/toasted sandwich maker；meter2→boiler；meter3→solar thermal pumping station；meter8→light×2；meter25→light(16)；meter5→washer dryer；meter6→dish washer；meter0→immersion heater/water pump/security alarm/fan/drill/laptop（**h5 中无 meter0 组**）；**无 mains/无 meter1/无 meter54 条目**。
 - **判定（编号对齐）**：metadata 编号 == h5 表号，无 off-by-one。证据：旧 npz target 就是教科书级壶脉冲（4–5 次/天、ON 2.3kW 级）且旧管线 kettle 表号为 10，与"metadata 10→kettle"双吻合。
 - **判定（mains 身份）**：meter1 = mains（site meter，不在 appliance metadata 中属正常 NILMTK 行为；apparent、全程 10.24M、晚间 head≈600W 吻合）。meter2/3/8/25 系硬接线回路 CT 表（只测 apparent：锅炉/太阳能泵/灯回路），**不是 mains**——纠正了之前"--mains-ids 1,2"的假设（2 是锅炉回路，加进去会 double count）。metadata 0 无 h5 组 = 这些电器无独立子表数据，只存在于 mains 残差中。meter54（1s active，56.7M）同样不在 metadata 中 → 1 秒 mains，列为备选 aggregate（与 kettle 交叠约 660 天，充足）。
@@ -429,6 +477,12 @@
 - 是否进入 REPORT.md：否（数据修复中）。
 
 ### 执行实录 9（2026-09-09）：prepare 首跑 n=345 → 秒级相位差确诊，改统一 6s 网格对齐
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（v2 首次制备 + 诊断）：
+  ```powershell
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --mains-ids 1 --kettle-meter-id 10 --out D:\Work\testPython\datasets\ukdale_prepared_v2.npz
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_prepared_v2.npz
+  ```
+
 - **事实（用户回传三份）**：prepare 输出 n=345（仅开头半小时 22:28:15→22:58:26），kettle NaN 0→策略后 8,862,517；diagnose n=345（0.0 天，无事件）；data_spec：mains_used=[1]/apparent、kettle=10/active、median_gap 6.0。
 - **根因（事实+推断）**：kettle 序列本身无 NaN（before=0），886 万 NaN 全部来自外连接对齐 → 两表时间戳大面积错位。直接证据：list-meters 起始秒 meter1=:15 vs meter10=:18。推断：各表采样相位差秒级，精确 join 只拼上开头时钟偶然对齐的半小时。meter1=mains 假设未被证伪：345 行的 aggW≈350–525W（真实总负荷基线，非 0）。
 - **修复（commit 本回合）**：prepare 对齐前各表先 `_to_6s_grid()` resample（bin 内均值，epoch 原点；已在网格数据为恒等变换）；`_combine_mains` 与 kettle 同处理；data_spec schema_version 1→2 + `resample_policy` 留痕；`--mains-ids` 默认 1,2→1（House1 地面真相）+ docstring/README 示例同步。新增偏移 3s 回归测试（旧逻辑下 shape 会膨胀错位，新逻辑 n 不丢），pytest（除 test_model）13 passed。
@@ -436,6 +490,12 @@
 - 是否进入 REPORT.md：否（数据修复中）。
 
 ### 执行实录 10（2026-09-09）：prepare 二跑 n=2058 → 三因确诊（缺口地形+选段索引 bug+sum 假零），改全量拼接留痕（schema v3）
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（git pull 取 v3 修复后同命令重跑）：
+  ```powershell
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --mains-ids 1 --kettle-meter-id 10 --out D:\Work\testPython\datasets\ukdale_prepared_v2.npz
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_prepared_v2.npz
+  ```
+
 - **事实（用户回传两份）**：resample 生效——对齐行 mains 11,323,076 / kettle 11,323,078 网格点；但 n=2058（仅头部 3.4h，22:28:12→01:54:00），kettle NaN 策略前 2,403,512 → 策略后 2,403,463；diagnose：3.4h 夜间数据，无壶事件，aggW 基线 134–1298W 正常、corr≈0（无事件时属预期）。
 - **根因①（数据地形，事实）**：两表内部缺口密布——meter10 缺 240 万格（≈167 天当量，占跨度 21%），meter1 缺≈48 万格（10.84M 样本 vs 11.32M 格）。双表同时无缺口的最长段仅 ~3.4h 量级 →「只取最长连续段」策略在该数据上不可行。
 - **根因②（选段索引 bug，本侧责任）**：`df[mask]` 过滤后仍用过滤前的位置编号算段长 → 末段长度被低估「剔除行数−1」（本例 ≈240 万），选段结果不可信；n=2058 实为头部段。修复：段统计统一在过滤前索引空间计算（diff on bool mask）。
@@ -447,6 +507,12 @@
 - 是否进入 REPORT.md：否（数据修复中）。
 
 ### 执行实录 11（2026-09-09）：prepare 三跑 n=8,849,796 → 红旗解除 + fillna 全轴限额 bug 确诊（v4 整段桥接）
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（git pull 取 v4 修复后同命令重跑）：
+  ```powershell
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --mains-ids 1 --kettle-meter-id 10 --out D:\Work\testPython\datasets\ukdale_prepared_v2.npz
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_prepared_v2.npz
+  ```
+
 - **事实（用户回传两份）**：n=8,849,796（614.6 天，2012-11-09→2015-01-05）；diagnose：train/val/test=430.2/92.19/92.19 天，壶事件 5.56/5.24/6.18 次/天，壶功率 meanW≈2300W，aggOffW=354.8/327.0/400.3，corr=0.42/0.49/0.53。
 - **判定：aggregate 红旗正式解除**（实录 5 起挂起）：①aggOffW 数百 W=真实家庭基线；②corr≈0.5=aggregate 含壶+其他负荷；③evt/day 5-6 + 壶功率 2300W=meter10 身份复验通过。meter1=mains、meter10=kettle、NILM 前提成立，数据身份链闭环。
 - **但留痕暴露新 bug（本侧责任）**：「kettle NaN 2,403,512 → 策略后 2,403,463」——240 万缺口格只被填了 **49 格**；「跨缺口拼接 1,457,219 处、最大连续段 2057」——平均段长 ~6 格（36 秒）。
@@ -458,6 +524,12 @@
 - 是否进入 REPORT.md：否（数据修复收尾中；红旗解除结论待 v4 复验后并入）。
 
 ### 执行实录 12（2026-09-09）：prepare 四跑 n=10,377,651 → 结构健康/红旗三验稳定，但 evt/day 翻倍确诊 v4 补0切碎煮沸（v5 ffill）
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（git pull 取 v5 修复后同命令重跑）：
+  ```powershell
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --mains-ids 1 --kettle-meter-id 10 --out D:\Work\testPython\datasets\ukdale_prepared_v2.npz
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_prepared_v2.npz
+  ```
+
 - **事实（用户回传两份）**：n=10,377,651（720.7 天）；桥接 agg 467,337 格 / kettle 1,532,978 格；长缺口整段剔除 945,428 格；**跨缺口拼接仅 456 处，最大连续段 707,703 样本 ≈ 49.1 天**；负值 clip 0/0。diagnose：train/val/test=504.47/108.1/108.1 天，aggOffW=351.9/324.2/398.2，corr=0.3945/0.4622/0.5013（身份指标第三次稳定）；**但 on_evt/day=12.55/12.42/16.24（v3 为 5.56/5.24/6.18）**。
 - **结构判定：健康**。v3 误删的 153 万桥接格回归（8.85M→10.38M）；接缝 456 处/720.7 天、最大段 49.1 天；保留跨度 720.7/787=91.7%。
 - **切碎确诊（算术铁证）**：train ON 样本总数 v3≈v4（37,169 vs 37,048）、绝对 kWh 151.9≈151.5——煮沸能量与时长不变，但事件数 ×2.64、平均事件 93s→35s → v4 的「kettle 补 0」在煮沸中掉线处断言关断（实为无线表传输丢失，壶仍在烧），一次煮沸被切成 ~3 片。掉线率 1,532,978/11,323,078=13.5%，煮沸 ~15 样本 → 期望断流 2 次/煮沸 → ×2.6 吻合。另：v4 的 kWh/day 下降（0.353→0.30）系分母（天数）膨胀，非能量损失。
@@ -467,6 +539,12 @@
 - 是否进入 REPORT.md：否（数据修复收尾；红旗解除+v5 锁定结论待复验后一并并入）。
 
 ### 执行实录 13（2026-09-09）：prepare 五跑 v5 复验全过 → **数据锁定**，主线重启（KPI 重新摸底）
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（v5 复验，同命令第 5 跑）：
+  ```powershell
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --mains-ids 1 --kettle-meter-id 10 --out D:\Work\testPython\datasets\ukdale_prepared_v2.npz
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_prepared_v2.npz
+  ```
+
 - **事实（用户回传两份）**：n=10,377,650（v4 −1：头部缺口 ffill 无前值→诚实剔除，起始 22:28:18=壶表首个真实读数）；桥接 agg 467,337 / kettle 1,532,978 格、接缝 456 处、最大段 707,703（49.1 天）——与 v4 **完全一致**（差异仅桥接填值，符合设计）；diagnose：evt/day=4.73/4.49/5.31（v4: 12.55/12.42/16.24）、平均事件 ~106s（v4: 35s）、kWh=173.2/38.7/55.7、kWh/day=0.343/0.358/0.516、aggOffW=350.3/322.6/395.9、corr=0.419/0.4868/0.5249。
 - **判定：v5 全过，数据锁定。** ①绝对事件数 2386/485/574 与 v3 的 2393/483/570 几乎一致（drop 微缺口 vs ffill 两种独立处理交叉验证同一物理事实）；②evt/day 低于 v3 系分母天数更全（504.47 vs 430.2 天），非事件变少；③kWh 较 v3 +14%：煮沸中掉线格按 2300W 计（v3 整行丢弃→系统性低估，v5 更接近真值——掉线是传输丢失，不是断电）；④aggOffW/corr 第四次稳定，身份链闭环。
 - **数据锁定声明**：`ukdale_prepared_v2.npz`（schema v5）+ 同名 data_spec.json 为唯一数据口径；旧 `ukdale_prepared.npz`（mains 1+2 锅炉双计时代）及其上全部 KPI/Test/调参记录**作废归档**（保留文件备查，不再作为依据）。
@@ -475,6 +553,13 @@
 - 是否进入 REPORT.md：否（主线重启后，KPI 摸底 + 最终锁定 + Test 通过之时，数据修复全程（实录 5-13）浓缩为「数据制备」章节一并进入）。
 
 ### 执行实录 14（2026-09-09）：v5 数据 baseline 摸底 ×3 seeds → EE −23%→−6~−9% 里程碑；Test 触碰记账+缺省翻转；val KPI 补读通道
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**：
+  ```powershell
+  python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 42 --out reports\base_v5_s42
+  python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 2024 --out reports\base_v5_s2024
+  python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 7 --out reports\base_v5_s7
+  ```
+
 - **事实（用户回传三份）**：baseline.yaml（d64/h4/l2/ff128/do0.1）on v5，seeds 42/2024/7：best_epoch 5/22/20；Test MAE 8.80/6.88/7.97、RMSE 112.7/96.3/113.8、R² 0.639/0.736/0.631、**EE −0.0903/−0.0935/−0.0598**、P 0.88/0.87/0.83、R 0.75/0.825/0.75、F1 0.811/0.846/0.789；n=30000/6000/6000（linspace 均匀子采样，确定性无随机；种子只影响初始化/训练顺序）。
 - **纪律事故与记账（本侧责任）**：三份输出均含 test 指标——命令未带 `--test` 仍碰了 Test。根因：`experiment.py` 的 `eval_test` **缺省 True**（`--test` 是"强制开"而非"开关"，我方上轮「不带 --test 即冻结」系语义误记）。记账：**新纪元 Test 触碰 #1 = 本次 baseline 摸底（3 seeds）**，与旧纪元「阶段 0b 基线=触碰 1」同构；剩余预算 1 次（最终锁定模型）。修复：缺省翻转 False（Test 冻结成为代码默认纪律，触碰必须显式 `--test` 或 yaml `eval_test: true`）；train.py help 措辞同步。
 - **判读（里程碑）**：旧纪元**最终精调模型** Test EE −0.234（|EE| 0.234 ≫ 0.15 未过验收，实录 5 时代）；新纪元**未调参 baseline** 即 EE −0.060~−0.093，业务门槛 |EE|≤0.15 / F1≥0.75 / R≥0.70 **全过**。修 aggregate 锅炉双计 + 煮沸切碎带来的能量偏差改善，超过旧纪元全部调参努力之和——「先修数据再谈模型」路线的最终验证。MAE 6.88-8.80 亦优于旧 final 的 9.84。
@@ -484,6 +569,13 @@
 - 是否进入 REPORT.md：否（待 val KPI 齐后定平移 vs 重搜策略）。
 
 ### 执行实录 15（2026-09-09）：baseline val KPI 齐表 → F1 离散化/S 判别力集中/EE 一致性判读；双探针方案（平移复核+数据量杠杆）
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（升级版 evaluate.py 注入 best_epoch_val；不重训不碰 Test）：
+  ```powershell
+  python scripts\evaluate.py --run-dir reports\base_v5_s42
+  python scripts\evaluate.py --run-dir reports\base_v5_s2024
+  python scripts\evaluate.py --run-dir reports\base_v5_s7
+  ```
+
 - **事实（用户回传三份 evaluate.py，best_epoch_val）**：seeds 42/2024/7 的 val MAE=3.827/3.901/3.245、R²=0.876/0.855/0.878、EE=−0.0421/−0.1118/−0.0583、**P/R/F1 三种子完全同值：P=1.000、R=0.8485、F1=0.9180**。
 - **判读 1（F1 同值=离散化，非稳定性）**：val 6000 样本中 ON 恰 33 个（0.0060×6000，与 diagnose on_frac 吻合）；R=28/33、P=1.0（零假警报）→ 三个不同种子的模型在各自 best epoch 检出同样 28 个、漏同样 5 个。F1 在此预算下落在粗离散格上、几乎种子盲——**不得解读为"极稳定"，亦无分辨力区分配置**。漏掉的 5 个 ON 疑似系统性难点（接缝上下文/桥接残缺事件/低幅边缘），待后续定位。
 - **判读 2（S 判别力集中在最噪指标上）**：手算 composite S（0.4×MAE/2000+0.4×(1−F1)+0.2×|EE|）=0.0420/0.0559/0.0451 → **0.0477±0.0060**。分解：F1 项恒定 0.0328、MAE 项 ≈0.0007 可忽略 → **S 的全部方差来自 |val EE|**（0.0084~0.0224）。当前 val 预算下"按 S 选型"≈"按 |EE| 选型"，而 EE 恰是 33 ON 样本支撑的最噪指标 → **重搜配置必须扩大 val（拟 max_samples_val 30000，ON≈180）**。
@@ -496,6 +588,17 @@
 - 是否进入 REPORT.md：否（待双探针回传定重搜方案后，连同数据纪元切换一并规划）。
 
 ### 执行实录 16（2026-09-09）：双探针回传判读 → A（旧优胜平移）配对全胜、B（100k）打平；重搜方案定稿（tuning_v5.yaml）
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（探针 A 用旧纪元配置 configs\fine\v2_do00.yaml；evaluate 循环为修正引号版——裸词列表会报 ParserError）：
+  ```powershell
+  python scripts\train.py --config configs\fine\v2_do00.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 42 --out reports\trans_v2do00_s42
+  python scripts\train.py --config configs\fine\v2_do00.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 2024 --out reports\trans_v2do00_s2024
+  python scripts\train.py --config configs\fine\v2_do00.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 7 --out reports\trans_v2do00_s7
+  python scripts\train.py --config configs\baseline_100k.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 42 --out reports\base100k_s42
+  python scripts\train.py --config configs\baseline_100k.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 2024 --out reports\base100k_s2024
+  python scripts\train.py --config configs\baseline_100k.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 7 --out reports\base100k_s7
+  foreach ($d in 'trans_v2do00_s42','trans_v2do00_s2024','trans_v2do00_s7','base100k_s42','base100k_s2024','base100k_s7') { python scripts\evaluate.py --run-dir "reports\$d" }
+  ```
+
 - **事实（用户回传六份，均为 test:null ✓）**：
   - 探针 A（v2_do00=w128 d64 h8 L2 ff128 do0 bs64 lr3e-4 25/5，**composite 选型**）：seeds 42/2024/7 的 best_ep 3/4/6；val S=0.0351/0.0261/0.0375、EE=+0.66%/+2.14%/+0.16%、F1=0.918/0.952/0.909、P=1.0/1.0/0.909、R=0.848/0.909/0.909、MAE=5.06/13.85/3.90、R²=0.869/0.687/0.878。
   - 探针 B（baseline_100k，MAE 选型）：best_ep 4/5/5；val S（手算）=0.0514/0.0606/0.0360、EE=−8.9%/−3.2%/−2.4%、F1=0.918/0.867/0.923、MAE=3.83/4.56/2.72；runtime 115-131s（baseline 42-101s，≈2.7×）。
@@ -506,6 +609,11 @@
 - 是否进入 REPORT.md：否（重搜+细搜+锁定+Test 后一并规划）。
 
 ### 执行实录 17（2026-09-09）：重搜 32 trials 判读（32/32 门槛、w96 崛起、val30000 判别力恢复）→ 细搜批次 1 设计（5 配置 ×3 seeds）
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（本节「待用户」处命令的完整实录路径版）：
+  ```powershell
+  python scripts\tune.py --config configs\tuning_v5.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --out reports\tuning_v5_p1
+  ```
+
 - **事实（用户回传）**：32/32 全过业务门槛（F1≥0.75/R≥0.70/|EE|≤0.15）；Top-5（单 seed 各异 43-74）：#1 trial20 S=0.0400/MAE 5.75/F1 0.903/EE+0.001（w96 d64 h4 L2 ff128 do0 bs128 lr5e-4 wd1e-4）、#2 trial29 S=0.0493（w96 d64 h4 **L1** ff256 do0 bs64 lr5e-4 wd1e-5）、#3 trial11 S=0.0523（w96 d64 h8 L2 ff256 do0.1 bs64 lr2e-4）、#4 trial12 S=0.0538（w96 d64 h4 L1 ff128 do0.1）、#5 trial24 S=0.0542（w96 **d128** h4 L2 ff256 do0 bs64 lr3e-4）；CSV top-10 里 w96 占 7、w128 占 2、w192 占 1；git_commit=528a01c 留痕链正常。
 - **判读**：
   1. **门槛失去区分度**（32/32）→ v5 数据+val30000 下门槛只是守门员，选择靠 S——符合设计预期，非异常。
@@ -526,6 +634,14 @@
 - 是否进入 REPORT.md：否（细搜判读+锁定+Test 后一并规划）。
 
 ### 执行实录 18（2026-09-09）：细搜批次 1 判读（F0 旧冠军夺冠、FB 垫底、赢家诅咒再证）→ 批次 2 单变体 F4（冠军×w96）+ Test 预注册
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（5 配置 ×3 seeds，全部不带 --test）：
+  ```powershell
+  foreach ($c in 'f0_v2do00','f1_t20','f2_t29','f3_t11','fb_basearch') {
+    foreach ($s in 42,2024,7) {
+      python scripts\train.py --config "configs\fine_v5\$c.yaml" --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed $s --out "reports\fine_v5\${c}_s$s" } }
+  python scripts\summarize_fine.py --runs-dir reports\fine_v5
+  ```
+
 - **事实（用户回传 5 变体 ×3 seeds，val30000 同口径）**：score 排序 F0_v2do00 **0.0522±0.0045** < f3_t11 0.0546±0.0093 < f1_t20 0.0567±0.0077 < f2_t29 0.0582±0.0090 < fb_basearch 0.0604±0.0098。关键分量：F0 的 EE=+0.0003±0.0062（死零）且 σ_score 最小；f1_t20 recall 最高 0.9045 但 precision 最低 0.8641（换检出的代价）；FB 的 F1 0.8623 全场最低。
 - **判读**：
   1. **F0（v2_do00）夺冠**：均值最低+σ 最小+EE 归零+跨纪元（旧纪元冠军在新数据新口径下仍第一）——旧洞察的迁移性再次确认。
@@ -540,6 +656,13 @@
 - 是否进入 REPORT.md：否（锁定+Test 后一并规划）。
 
 ### 执行实录 19（2026-09-09）：批次 2 判读 → 判定树命中，**锁定 F4 = v2_do00×w96**；Test 最终一跑（预注册）交付
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（F4 ×3 seeds + 全目录重聚合）：
+  ```powershell
+  foreach ($s in 42,2024,7) {
+    python scripts\train.py --config configs\fine_v5\f4_v2do00_w96.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed $s --out "reports\fine_v5\f4_v2do00_w96_s$s" }
+  python scripts\summarize_fine.py --runs-dir reports\fine_v5
+  ```
+
 - **事实（用户回传 F4 ×3 seeds，seeds 42/2024/7）**：score **0.0472±0.0042**（vs F0 0.0522±0.0045）；MAE 5.80±0.77（F0 8.93±5.35）；RMSE 77.4±4.5（F0 90.5±15.0）；F1 **0.8943±0.0169**（六变体最高）；P 0.9102（最高）；R 0.8794；EE +0.0170±0.0176；best_ep 8.0。
 - **判定：预注册判定树命中（F4 < 0.0522 → 锁 F4），无事后挑选空间。** 且 F4 在 score/MAE/RMSE/F1/precision **五项同时第一**：
   1. **MAE 盆地问题消失**（8.93±5.35 → 5.80±0.77）：F0 那个陷差盆地的种子在 w96 下被治好——综合分与点精度这次同向，不再是"拿 MAE 换 EE"的权衡。
@@ -552,6 +675,12 @@
 - 是否进入 REPORT.md：Test 裁定后，数据纪元切换+调参全程（实录 5-19）一并规划进入（含 TUNING_GUIDE 战史）。
 
 ### 执行实录 20（2026-09-09）：Test 终局回传 → **四线全过，验收通过，任务 3 收官**
+- **用户执行命令（2026-09-09 补充留痕，按用户机器实录路径）**（预注册协议：seed 7000 新鲜族，--test 恰好一次）：
+  ```powershell
+  python scripts\train.py --config configs\fine_v5\f4_v2do00_w96.yaml --data-path D:\Work\testPython\datasets\ukdale_prepared_v2.npz --seed 7000 --out reports\final_v5\f4_test --test
+  python scripts\evaluate.py --run-dir reports\final_v5\f4_test
+  ```
+
 - **事实（用户回传 Test 一跑，seed 7000，预注册协议，best_epoch 6）**：test MAE=6.4156、RMSE=90.33、R²=0.7788、**EE=+0.0523**、P=0.8636、**R=0.9268**、**F1=0.8941**；n=30000/30000/6000；eval_test:true（本纪元第 2 次显式触碰，预算就此耗尽）。
 - **验收裁定（预注册口径，S_test 本侧按公式计算）**：
   | 线 | 数值 | 验收线 | 判定 |

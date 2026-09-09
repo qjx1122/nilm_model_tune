@@ -199,3 +199,15 @@
 - 关键决策：验收通过=任务 3 完结；v5+F4 成为推荐稳定版本；Test 预算耗尽（后续探索需新立项+新预算）
 - 未决问题：无阻塞；可选后续=其他 house/电器泛化、F4 邻域深挖（需新预算规则）、生产验证
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；REPORT.md / TUNING_GUIDE.md / REPORT_TEST.md（实录 20）/ README.md / STATUS.md
+
+## [2026-09-09] 会话纪要（文档维护：执行实录补齐用户命令）
+- 目标：按用户指令检查 REPORT_TEST.md 各执行实录是否含具体用户执行命令，缺则补
+- 本会话角色：资深电力算法专家（默认角色，文档维护）
+- 完成项：
+  - 盘点 25 个执行实录节：4 节原本含命令块（1补充/3补充系列）、1 节指针（2补充）、20 节缺失
+  - 20 处插入「用户执行命令（2026-09-09 补充留痕）」块：路径按两纪元实录（旧 D:\datasets\ukdale_prepared.npz；h5/v5 D:\Work\testPython\datasets\）；CLI 逐脚本核对（diagnose_split --npz、inspect_h5 --path、parse_nilmtk_metadata --h5-path --house）；实录 16 的 evaluate 循环用修正引号版并注明裸词踩坑
+  - Python 复验：24 节含命令块 + 1 指针节可解析，全覆盖
+  - STATUS/纪要同步；commit+push
+- 关键决策：用户指令就地补充 → 覆盖「只追加」惯例一次，插入处标注日期保审计
+- 未决问题：无
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；REPORT_TEST.md / STATUS.md
