@@ -5,8 +5,8 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】数据地基修复：prepare_ukdale.py 已定位 NILMTK 真因（tz-aware index 传给 np.issubdtype 抛 TypeError）并修复 → 待用户 `git pull` 后重跑 `--list-meters` 确认 54 表正常列出
-- 本任务角色：工程实现工程师（prepare 脚本 bug 修复 + 回归测试）
+- 【进行中·用户任务】数据地基修复：--list-meters 54/54 已通过（REPORT_TEST.md 执行实录 7）→ 待用户回传 parse_nilmtk_metadata **全文** 定表号映射，再发 prepare 制备命令
+- 本任务角色：实验/调参教练（数据完整性核查，不猜表号）
 
 ## 已完成
 - [x] 2026-09-08 开局仪式：git 现状核对 / 续接文件读取 / 环境检查
@@ -34,12 +34,12 @@
 - [x] 2026-09-08 diagnose_split.py 升级：kWh 单位修正（/1000）+ 新增 agg_off_mean_w / corr_agg_target 列（判别 aggregate 是否泄漏的探针）；合成对照验证（正常版 aggOffW≈350 vs 泄漏版 0/corr 1.0）
 
 ## 进行中
-- （用户侧）git pull 后重跑 prepare_ukdale.py --list-meters → 回传输出（期望 54 表正常列出，不再有「读取失败」）
-- （本侧）无阻塞；list-meters 通过后指导 prepare 生成新 npz + diagnose_split 复验 aggOffW/corr
+- （用户侧）跑 parse_nilmtk_metadata.py --house 1 并贴全文输出（定 kettle/mains 表号；十秒级）
+- （本侧）无阻塞；拿到映射后定 --mains-ids/--kettle-meter-id，发 prepare 命令
 
 ## 下一步（TODO）
-1. 用户：git pull 后重跑 prepare_ukdale.py --list-meters（h5 路径用你机器上的 ukdale.h5）→ 回传输出
-2. list-meters 通过后：跑 prepare 生成新 npz（--mains-ids 1,2 --kettle-meter-id 10）+ diagnose_split.py 复验（期望 aggOffW 数百 W、corr<<1）→ 回传输出 + 新 data_spec.json 关键字段
+1. 用户：跑 parse_nilmtk_metadata.py --house 1，贴全文输出（定 kettle/mains 表号）
+2. 本侧定 --mains-ids/--kettle-meter-id 后：用户跑 prepare 生成新 npz + diagnose_split.py 复验（期望 aggOffW 数百 W、corr<<1）→ 回传输出 + 新 data_spec.json 关键字段
 3. 判读红旗：agg_off_mean≈0 且 corr≈1 → 确认 aggregate 泄漏 → 修数据制备（prepare_ukdale.py --list-meters 核对 mains 表号 → 重新生成 npz → 人工抽查 aggregate 一天曲线）→ 全部 KPI 重启（先 baseline 再走搜索，Test 协议重置一次并记录）；若数据无误（agg_off_mean 数百 W）→ 回到漂移结论：方向 B（记录教训收尾）或 C（改切分）
 4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push（视红旗结论而定）
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）

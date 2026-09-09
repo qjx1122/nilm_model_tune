@@ -408,3 +408,14 @@
 - **待办**：① 写 metadata 解析（pickle attrs → 表号→电器映射）；② prepare_ukdale.py 加 NILMTK(pandas table) 读取分支 + apparent/active 选择；③ 重生成 npz（mains active 正确合并 + kettle active）→ diagnose_split 复验 aggOffW 数百 W 且 corr 不≈1；④ 数据确认后 KPI 协议重置一次并记录。
 - 是否进入 REPORT.md：否（数据修复前）。
 - 是否进入 REPORT.md：否（方案与改造本身不是实验结论；待真实 KPI 出现后另行判定）
+
+### 执行实录 7（2026-09-09）：--list-meters 54/54 通过，mains 功率语义确认
+- **事实（用户回传全文）**：tz 修复（commit 1e7538c）后重跑，54 张表全部读出，无「读取失败」。关键行：
+  - meter1/2/3：apparent，n≈10.07–10.24M，起止 2012-11-09→2015-01-05（全程，6s 口径约 90% 覆盖）
+  - meter8/25：apparent，n≈10.22M/9.19M（身份待 metadata 定）
+  - meter10：active，n=8.94M，2012-11-09→2015-01-05（kettle 候选，待 metadata 确认）
+  - meter54：active，**n=56,687,460**，2013-03-17→2015-01-05（≈1/s 采样，疑似 mains 1 秒数据）
+  - 无 meter0 组（表号 1–54，与 metadata 转述中出现的"meter 0"矛盾，见下）
+- **重要修正（vs 实录 6 待办③）**：6s 口径下 meter1/2/3 **只有 apparent 列、没有 active** → 「mains active 合并」不可行。aggregate 二选一：(a) 6s apparent 总表直接用（文献常见做法，视在≥有功，能量口径需留痕）；(b) meter54 1s-active 降采样到 6s（备选，需先确认身份+加代码）。默认先走 (a)。
+- **未决（卡点）**：表号→电器 ground truth 缺失。上一版 parse_nilmtk_metadata 输出只有转述（meter10→kettle、meter2→boiler、meter5→washer dryer、meter6→dish washer、无显式 mains），且转述含与 h5 结构矛盾的"meter 0"编号、meter2 身份（mains vs boiler）直接决定 --mains-ids。**不能靠猜定制备参数** → 请用户重跑 parse 脚本并贴**全文**，再定 prepare 命令。
+- 是否进入 REPORT.md：否（数据修复中）。

@@ -32,3 +32,15 @@
   - 采样间隔一律用 Timedelta.total_seconds() 口径，不再依赖 asi8/astype(int64)+写死除数
 - 未决问题：待用户 git pull 后重跑 --list-meters 回传输出（期望 54 表正常列出）；之后走 prepare 生成新 npz + diagnose_split 复验
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；scripts/prepare_ukdale.py / tests/test_prepare_ukdale.py / STATUS.md
+
+## [2026-09-09] 会话纪要
+- 目标：判读用户回传的 --list-meters 全文，定 prepare 制备参数
+- 本会话角色：实验/调参教练
+- 完成项：
+  - 确认 tz 修复生效：54/54 表读出；关键表（1/2/3 apparent 全程、10 active、54 为 1s 表 56.7M、无 meter0）落盘 REPORT_TEST.md 执行实录 7
+  - 重要修正：6s mains 无 active 列，「mains active 合并」不可行 → aggregate 默认 apparent 路线（留痕），meter54 列备选
+  - 卡点判定：metadata 映射只有转述且含矛盾（"meter 0"、meter2 身份不明）→ 不猜表号，请用户重跑 parse 贴全文
+  - STATUS.md 更新；本纪要追加；commit+push
+- 关键决策：制备参数必须以全文 metadata 映射为准；apparent aggregate 的能量口径偏差在 data_spec 留痕
+- 未决问题：待用户回传 parse 全文 → 定 --mains-ids/--kettle-meter-id → 发 prepare 命令
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；REPORT_TEST.md / STATUS.md
