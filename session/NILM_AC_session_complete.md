@@ -78,3 +78,15 @@
 - 关键决策：全量拼接替代最长段策略（残缺事件为已接受代价）；前两版 v2 npz 作废
 - 未决问题：待用户重跑 prepare + diagnose（预期 n≈850-890 万、拼接数千处）
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；scripts/prepare_ukdale.py / tests/test_prepare_ukdale.py
+
+## [2026-09-09] 会话纪要（三跑判读红旗解除 + v4 整段桥接 + 沙箱重克隆恢复）
+- 目标：判读 prepare 三跑输出（n=8,849,796）；修复 fillna 语义 bug
+- 本会话角色：实验/调参教练（判读）+ 工程实现工程师（v4 修复）
+- 完成项：
+  - 红旗解除判定：aggOffW 354.8/327.0/400.3、corr 0.42/0.49/0.53、evt/day 5.56/5.24/6.18——meter1=mains / meter10=kettle / NILM 前提闭环（实录 11）
+  - fillna(value,limit=N) 全轴限额 bug 确诊（沙箱 pandas 3.0.5 验证：240 万格只填 49 格、146 万碎段）→ v4 _bridge_short_gaps 整段桥接；schema v4；双缺口回归测试；pytest 14 passed
+  - 沙箱重克隆事故：reflog 只剩 clone+checkout、HEAD 漂到 7824bb4、/tmp/dvenv 消失；远端分支完好（3206715）→ fetch+逐文件哈希对账一致+reset 恢复，零丢失
+  - REPORT_TEST 实录 11、STATUS、纪要同步；commit+push
+- 关键决策：缺口桥接=整段语义（v4）；远端为真值的回合初对账 SOP
+- 未决问题：用户重跑 v4 prepare+diagnose（预期 n≈950-1080 万、接缝骤降、身份指标不变）；test 段壶用量 +53% 漂移待数据锁定后作为调参核心议题
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；scripts/prepare_ukdale.py / tests/test_prepare_ukdale.py / REPORT_TEST.md / STATUS.md

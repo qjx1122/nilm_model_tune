@@ -274,24 +274,27 @@ def test_prepare_offset_timestamps_resampled():
         assert z["target"][s + dur // 2] > 1500
         assert np.abs(z["aggregate"][100] - mains1[100]) < 100
         spec = json.loads(out.with_suffix(".data_spec.json").read_text(encoding="utf-8"))
-        assert spec["schema_version"] == 3
+        assert spec["schema_version"] == 4
         assert spec["resample_policy"] == "mean_to_6s_grid_epoch_origin"
 
 
-def test_prepare_gap_segments_concat():
-    """两表同缺 400 格（40 分钟）大缺口：全量拼接 + 段统计回归。
+def test_prepare_gap_bridge_and_drop():
+    """短缺口整段桥接 + 长缺口整段剔除（schema v4）。
 
-    回归（实录 10）：v2 段计算混用过滤前/后索引空间，选段错误；
-    v3 应保留全部有效行（n=2600）、n_segments=2、接缝 1 处、
-    事件跨缺口被切断属预期（留痕的诚实代价）。
+    回归（实录 11）：fillna(value, limit=N) 的 limit 是全轴总限额（pandas：
+    method 未指定时按整轴计）——真实数据 240 万缺口格只被填 49 格，数据被
+    碎成 146 万段；v4 改 run-length 整段桥接。接替实录 10 的 v3 段拼接测试。
+    布局：30 格（3 分钟）短缺口 → 桥接保留；400 格（40 分钟）长缺口 → 整段剔除。
     """
     import pandas as pd  # noqa: F401
     with tempfile.TemporaryDirectory() as d:
         n = 3000
-        gap_lo, gap_hi = 1000, 1400  # 原始坐标里 400 格缺口（40 分钟）
+        gs_lo, gs_hi = 700, 730     # 短缺口（3 分钟）→ 桥接保留
+        gl_lo, gl_hi = 1000, 1400   # 长缺口（40 分钟）→ 整段剔除
         t0 = 1_500_000_000
         ts_full = t0 + np.arange(n) * 6.0
-        keep_rows = np.concatenate([np.arange(0, gap_lo), np.arange(gap_hi, n)])
+        keep_rows = np.concatenate([np.arange(0, gs_lo), np.arange(gs_hi, gl_lo),
+                                    np.arange(gl_hi, n)])
         ts = ts_full[keep_rows]
         rng = np.random.default_rng(1)
         kettle_full = np.zeros(n)
@@ -312,26 +315,28 @@ def test_prepare_gap_segments_concat():
         assert r.returncode == 0, r.stderr
         assert "拼接" in r.stdout
         z = np.load(out)
-        # 400 格缺口中前 50 格被桥接（kettle 补 0 ≤5min + agg ffill ≤30min），
-        # 实删 350 格 → 全量拼接 n = 3000 - 350 = 2650
-        n_bridge = int(5 * 60 / 6)  # kettle_gap_min=5min
-        n_drop = 400 - n_bridge
+        n_drop = gl_hi - gl_lo  # 长缺口整段剔除；短缺口桥接保留
         assert z["aggregate"].shape == z["target"].shape == (n - n_drop,), z["aggregate"].shape
-        # 事件1（原始 500）在缺口前，位置不变
+        # 事件1（原始 500）在两缺口前 → 位置不变
         assert z["target"][EVENTS[0][0] + EVENTS[0][1] // 2] > 1500
-        # 事件3（原始 2500）在缺口后，左移 n_drop
-        assert z["target"][EVENTS[2][0] - n_drop + EVENTS[2][1] // 2] > 1500
-        # 事件2（原始 1200-1279）整段落入实删区 → 事件丢失（留痕的诚实代价）
+        # 事件2（原始 1200）在长缺口内 → 事件整段丢失（诚实代价）
         assert z["target"][EVENTS[1][0] - n_drop] == 0.0
-        # 桥接语义：缺口内前 50 格保留，target=0、agg=ffill（沿用缺口前最后值）
-        assert z["target"][gap_lo + 20] == 0.0
-        assert abs(z["aggregate"][gap_lo + 20] - mains_full[gap_lo - 1]) < 1.0
+        # 事件3（原始 2500）在长缺口后 → 左移 400（短缺口保留、不移位）
+        assert z["target"][EVENTS[2][0] - n_drop + EVENTS[2][1] // 2] > 1500
+        # 短缺口桥接语义：缺口内 target=0（关断即 0）、agg=缺口前最后值（ffill）
+        assert z["target"][gs_lo + 15] == 0.0
+        assert abs(z["aggregate"][gs_lo + 15] - mains_full[gs_lo - 1]) < 1.0
         spec = json.loads(out.with_suffix(".data_spec.json").read_text(encoding="utf-8"))
-        assert spec["schema_version"] == 3
+        assert spec["schema_version"] == 4
+        gp = spec["gap_policy"]
+        assert gp["aggregate_policy"] == "ffill_whole_gaps_le_threshold"
+        assert gp["target_policy"] == "zero_fill_whole_gaps_le_threshold"
+        assert gp["long_gap_policy"] == "drop_whole_gap"
+        assert gp["aggregate_cells_bridged"] == gs_hi - gs_lo
+        assert gp["kettle_cells_zero_filled"] == gs_hi - gs_lo
         assert spec["n_output"] == n - n_drop
-        assert spec["n_segments"] == 2
+        assert spec["n_segments"] == 2          # 只有长缺口造成断裂
         assert spec["n_concat_breaks"] == 1
-        assert spec["largest_segment_samples"] == n - gap_hi  # 1600
+        assert spec["largest_segment_samples"] == n - gl_hi  # 1600
         assert spec["dropped_gap_samples"] == n_drop
-        # 段内间隔中位数仍为 6s（跨接缝的大间隔不计入）
-        assert spec["median_sample_gap_sec"] == 6.0
+        assert spec["median_sample_gap_sec"] == 6.0  # 跨接缝大间隔不计入

@@ -445,3 +445,14 @@
 - **判读**：meter1=mains 依然成立（aggW 基线正常）。前两版 v2 npz（n=345 / n=2058）作废。
 - **待用户**：git pull 后同命令重跑 prepare + diagnose。预期：n≈850–890 万、拼接数千处、最大连续段小时~天级、diagnose days≈590–620。
 - 是否进入 REPORT.md：否（数据修复中）。
+
+### 执行实录 11（2026-09-09）：prepare 三跑 n=8,849,796 → 红旗解除 + fillna 全轴限额 bug 确诊（v4 整段桥接）
+- **事实（用户回传两份）**：n=8,849,796（614.6 天，2012-11-09→2015-01-05）；diagnose：train/val/test=430.2/92.19/92.19 天，壶事件 5.56/5.24/6.18 次/天，壶功率 meanW≈2300W，aggOffW=354.8/327.0/400.3，corr=0.42/0.49/0.53。
+- **判定：aggregate 红旗正式解除**（实录 5 起挂起）：①aggOffW 数百 W=真实家庭基线；②corr≈0.5=aggregate 含壶+其他负荷；③evt/day 5-6 + 壶功率 2300W=meter10 身份复验通过。meter1=mains、meter10=kettle、NILM 前提成立，数据身份链闭环。
+- **但留痕暴露新 bug（本侧责任）**：「kettle NaN 2,403,512 → 策略后 2,403,463」——240 万缺口格只被填了 **49 格**；「跨缺口拼接 1,457,219 处、最大连续段 2057」——平均段长 ~6 格（36 秒）。
+- **根因（沙箱 pandas 3.0.5 验证）**：`fillna(value, limit=N)` 的 limit 是**全轴总限额**（pandas 文档：method 未指定时按整轴计）而非"每段最多 N 格"——壶表 ~120 万个微掉线（1-2 格/次）全部未桥接，数据碎成 146 万段；另 `ffill(limit=N)` 为每段头部 N 格语义，与"短缺口 ffill"语义亦不符。验证：三处 2 格缺口只填了全序列头 2 格。
+- **修复（v4，schema_version 4）**：新增 `_bridge_short_gaps`（run-length 整段桥接）：≤阈值缺口**整段**补值（agg 用 ffill 前值 / kettle 补 0），更长缺口**整段**剔除；gap_policy 留痕 policy 字符串+桥接格数；测试改双缺口用例（短缺口桥接保留+长缺口整段剔除+接缝统计），pytest 14 passed。
+- **事故记录（本回合开头）**：沙箱被平台重克隆（reflog 仅剩 clone+checkout，本地链一度消失、/tmp 清空）；远端分支完好（3206715）→ fetch+逐文件哈希对账（全部一致）+reset 恢复，零数据丢失。教训：远端分支是唯一可靠真值，回合初必须 `git log`+`git ls-remote` 对账。
+- **判读补充**：test 段壶用量 kWh/day 0.541 vs train 0.353（+53%）、on_frac 0.006→0.0093——时间漂移证据仍在（模型评估议题，非数据问题），数据锁定后回 TUNING_GUIDE 战史处理。
+- **待用户**：git pull 重跑 prepare + diagnose。预期：n≈950-1080 万（v3 误删的 ~160 万桥接格回归）、接缝大幅下降（若仍 >10 万处可 --kettle-gap-min 30 提高壶桥阈值）、最大连续段有望天级；aggOffW/evt/day 身份指标不变。
+- 是否进入 REPORT.md：否（数据修复收尾中；红旗解除结论待 v4 复验后并入）。

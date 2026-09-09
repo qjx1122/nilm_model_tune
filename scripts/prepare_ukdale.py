@@ -12,9 +12,9 @@
    采样时刻有秒级相位差（如 meter1 在 :15 秒、meter10 在 :18 秒），精确时间戳
    join 几乎拼不上（执行实录 9：n=345）。已在网格上的数据为恒等变换。
 1. mains 各表（--mains-ids）按时间对齐相加；短缺口（<= mains-gap-min 分钟）
-   ffill，剩余 NaN 行剔除。
-2. kettle（--kettle-meter-id）：短缺口（<= kettle-gap-min 分钟）填 0（关断即 0），
-   更长缺口视为不可信区间。
+   整段 ffill，更长缺口整段剔除。
+2. kettle（--kettle-meter-id）：短缺口（<= kettle-gap-min 分钟）整段填 0
+   （关断即 0），更长缺口整段剔除。
 3. 剩余 NaN（长缺口）行剔除，其余按时间顺序全量拼接（跨缺口接缝计数留痕；
    npz 本不带时间戳，等效连续流。实录 10：真实 UK-DALE 缺口密布，最长无缺口
    段仅 ~3.4h，"只取最长连续段"策略已废弃；段统计须在统一索引空间计算）。
@@ -194,6 +194,28 @@ def _to_6s_grid(s):
     return s.resample(f"{SECONDS_PER_SAMPLE}s", origin="epoch").mean()
 
 
+def _bridge_short_gaps(s, limit, fill_value=None):
+    """整段桥接：长度 <= limit 的 NaN 缺口段整段补值，更长缺口整段保留 NaN。
+
+    fill_value=None → 沿用缺口前最后值（ffill，aggregate 用）；否则填常值
+    （kettle 关断即 0）。返回 (新 Series, 桥接格数)。
+    注意：不能用 fillna(value, limit=N) 表达本语义——其 limit 是全轴总限额
+    （pandas 文档：method 未指定时按整轴计），真实数据 240 万缺口格只被填了
+    49 格（实录 11）；ffill(limit=N) 则是每段只填头部 N 格。两者皆非整段语义。
+    """
+    is_na = s.isna()
+    if not is_na.any():
+        return s, 0
+    run_id = (is_na != is_na.shift()).cumsum()
+    run_len = is_na.groupby(run_id).transform("sum")  # NaN 段长度（非 NaN 段为 0）
+    short = is_na & (run_len <= limit)
+    if fill_value is None:
+        s = s.mask(short, s.ffill())
+    else:
+        s = s.mask(short, fill_value)
+    return s, int(short.sum())
+
+
 def _meter_summary(f, meter_group):
     try:
         s, pt = read_power_series(f, meter_group)
@@ -263,8 +285,10 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
     n_kettle_nan_before = int(kettle.isna().sum())
 
     df = pd.DataFrame({"aggregate": agg, "target": kettle}).sort_index()
-    df["aggregate"] = df["aggregate"].ffill(limit=mains_fill_limit)
-    df["target"] = df["target"].fillna(0.0, limit=kettle_fill_limit)  # 关断即 0
+    # 整段桥接（v4，实录 11）：短缺口整段补值，长缺口整段保留 NaN 交给剔除。
+    df["aggregate"], n_agg_bridged = _bridge_short_gaps(df["aggregate"], mains_fill_limit)
+    df["target"], n_kettle_zero = _bridge_short_gaps(df["target"], kettle_fill_limit,
+                                                     fill_value=0.0)  # 关断即 0
     n_kettle_nan_after = int(df["target"].isna().sum())
     n_agg_nan_after = int(df["aggregate"].isna().sum())
 
@@ -312,7 +336,7 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
              target=tgt_v.astype(np.float32))
 
     spec = {
-        "schema_version": 3,  # v3：跨缺口全量拼接留痕（实录 10）；v2：6s 网格 resample（实录 9）
+        "schema_version": 4,  # v4：整段桥接语义（实录 11）；v3：全量拼接留痕（实录 10）；v2：6s 网格（实录 9）
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "git_commit": _git_commit(),
         "source_h5": str(f.filename),
@@ -329,6 +353,11 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
         "gap_policy": {
             "aggregate_ffill_min": mains_gap_min,
             "target_fill0_min": kettle_gap_min,
+            "aggregate_policy": "ffill_whole_gaps_le_threshold",
+            "target_policy": "zero_fill_whole_gaps_le_threshold",
+            "long_gap_policy": "drop_whole_gap",
+            "aggregate_cells_bridged": n_agg_bridged,
+            "kettle_cells_zero_filled": n_kettle_zero,
             "kettle_nan_dropped_after_policy": n_kettle_nan_after,
             "aggregate_nan_dropped_after_policy": n_agg_nan_after,
             "kettle_nan_before_policy": n_kettle_nan_before,
@@ -349,9 +378,9 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
 
     print(f"OK: {out_path}  n={len(df)}  mains_used={used_mains}  "
           f"kettle={kettle_id}  时间范围 {spec['time_range_iso']}")
-    print(f"缺口处理: kettle NaN {n_kettle_nan_before} → 策略后 {n_kettle_nan_after}，"
-          f"agg NaN 策略后 {n_agg_nan_after}；剔除缺口样本 {n_union - len(df)}"
-          f"（跨缺口拼接 {n_breaks} 处，最大连续段 {largest_seg} 样本 ≈ {largest_seg / 14400:.1f} 天）；"
+    print(f"缺口处理: 桥接 agg {n_agg_bridged} 格(ffill) / kettle 补0 {n_kettle_zero} 格；"
+          f"长缺口整段剔除 {n_union - len(df)} 格（跨缺口拼接 {n_breaks} 处，"
+          f"最大连续段 {largest_seg} 样本 ≈ {largest_seg / 14400:.1f} 天）；"
           f"负值 clip: agg {n_neg_agg} / target {n_neg_tgt}")
     print(f"数据口径留痕: {spec_path}")
 
