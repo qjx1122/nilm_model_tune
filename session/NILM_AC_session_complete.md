@@ -102,3 +102,15 @@
 - 关键决策：kettle 桥接值=前值（ffill）；v5 与 v4 差异仅填值语义（格数/接缝均不变）
 - 未决问题：用户重跑 v5 prepare+diagnose（预期 evt/day 回 5-6）→ 通过即数据锁定 → 回主线 KPI/Test
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；scripts/prepare_ukdale.py / tests/test_prepare_ukdale.py / REPORT_TEST.md / STATUS.md
+
+## [2026-09-09] 会话纪要（五跑 v5 复验全过→数据锁定，主线重启）
+- 目标：判读 v5 复验输出，裁定数据锁定与主线重启
+- 本会话角色：实验/调参教练（判读+锁定裁定）
+- 完成项：
+  - v5 全过：evt/day 4.73/4.49/5.31（v4 12.55）、平均事件 ~106s、绝对事件数与 v3 交叉验证一致、桥接格数/接缝 456/最大段 49.1 天与 v4 完全一致、kWh +14%=煮沸掉线格回归真值、身份指标第四次稳定
+  - n 较 v4 −1：头部缺口 ffill 无前值→诚实剔除（起始=壶表首个真实读数 22:28:18）
+  - 数据锁定：v5 npz+data_spec 唯一口径；旧 npz 及 KPI/Test/调参记录作废归档；Test 预算重置 2 次
+  - 主线重启方案：baseline.yaml ×3 seeds（42/2024/7）摸底（命令已入 STATUS）；REPORT_TEST 实录 13、STATUS、纪要同步；commit+push
+- 关键决策：旧调参结论降级为待复核假设（不继承）；REPORT.md 拟在最终锁定+Test 通过后把实录 5-13 浓缩为数据制备章节
+- 未决问题：用户回传三份 baseline KPI → 判读后定重搜 vs 平移复核策略
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；configs/baseline.yaml / REPORT_TEST.md / STATUS.md
