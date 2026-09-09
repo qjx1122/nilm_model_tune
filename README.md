@@ -84,6 +84,22 @@ python scripts\train.py --config configs\fine_v5\f4_v2do00_w96.yaml --data-path 
 ```
 
 
+### 泛化到其他 house / 电器（2026-09-09，执行实录 22）
+
+prepare / diagnose 已电器无关化：`--appliance`（标签）+ `--appliance-meter-id` / `--appliance-gap-min`（通用参数名）；`--kettle-*` 为兼容别名（v5 冻结命令不变，别名冲突报错）；默认 kettle 时 data_spec 兼容保留 legacy 键。工作流三步：
+
+```powershell
+# ① 探表号：该 house 各表样本数/功率类型 + 电器映射（mains 通常为 apparent 大样本表）
+python scripts\prepare_ukdale.py --h5-path D:\datasets\ukdale.h5 --house 2 --list-meters
+python scripts\parse_nilmtk_metadata.py --h5-path D:\datasets\ukdale.h5 --house 2
+# ② 制备（例：House1 洗碗机 meter6；--mains-ids 以 ①/② 核对结果为准）
+python scripts\prepare_ukdale.py --h5-path D:\datasets\ukdale.h5 --house 1 --mains-ids 1 --appliance-meter-id 6 --appliance dish_washer --out D:\datasets\ukdale_dw.npz
+# ③ 诊断（阈值按电器默认表：kettle 500 / fridge·freezer 50 / 洗衣·洗碗 20 / microwave 200 / boiler 100W）
+python scripts\diagnose_split.py --npz D:\datasets\ukdale_dw.npz --appliance dish_washer
+```
+
+注意：每个 (house, appliance) 组合是**独立数据纪元**——Test 触碰预算各自 2 次，须重新走「身份验证 → 摸底 → 搜索 → 锁定 → Test」全流程（纪律同 REPORT.md §3）。
+
 ## 3. Windows + Conda
 
 ```powershell

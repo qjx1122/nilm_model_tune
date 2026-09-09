@@ -706,3 +706,28 @@
 - **定性**：未违反任何明文禁令（所有结果数字真实、来源可查），但违反「验收标准·每个数字可追溯」的**精神**——数字可追溯到实录、"怎么跑出来的"（命令）不可追溯，追溯链只到一半。
 - **改进建议（待用户裁定后落盘）**：①ROLE.md 两角色「工作方式·收尾」补"执行实录须含命令+输出+判读三件套（命令含实录路径）"；②角色「验收标准」补"档案可复现"维度；③（可选）BOOTSTRAP 专题模板加"用户执行命令"字段。
 - 是否进入 REPORT.md：否（流程改进，非算法结论）。
+
+### 执行实录 22（2026-09-09）：prepare/diagnose 泛化到其他 house/电器（任务 4）——通用名+别名兼容+阈值表
+- **本任务角色**：工程实现工程师（代码泛化改造）
+- **用户执行命令（沙箱验证，2026-09-09）**：
+  ```powershell
+  /tmp/dvenv/bin/python -m py_compile scripts/prepare_ukdale.py scripts/diagnose_split.py scripts/parse_nilmtk_metadata.py
+  /tmp/dvenv/bin/python -m pytest tests/ -q --ignore=tests/test_model.py
+  ```
+- **输出（沙箱实录）**：COMPILE_OK；**16 passed**（14 个既有用例全过=v5 冻结口径零回归；新增 test_prepare_generic_appliance_flags + tests/test_diagnose_split.py）。
+- **改动清单**：
+  1. `prepare_ukdale.py`：`--appliance`（标签，默认 kettle）/`--appliance-meter-id`/`--appliance-gap-min` 通用名；`--kettle-meter-id`/`--kettle-gap-min` 保留为兼容别名（同时给且值不同→报错，不接受静默覆盖）；data_spec 新增 appliance/appliance_* 通用键，kettle 路径额外保留 legacy 键（v5 冻结口径与既有测试零改动通过）；schema_version 保持 5（policy 未变，仅标签）。
+  2. `diagnose_split.py`：`--appliance` + 默认阈值表（kettle 500 / fridge·freezer 50 / dish_washer·washer_dryer·washing_machine 20 / microwave 200 / boiler 100W；未收录回退 500）；显式 `--on-threshold` 优先；判读提示注入电器名 + 常开型电器提示（fridge on_frac≈1 属正常）。
+  3. `parse_nilmtk_metadata.py`：输出尾追加 prepare 命令模板（--appliance-meter-id 口径）。
+  4. `README.md`：新增「泛化到其他 house / 电器」三步工作流章节。
+- **用户侧验证命令（待用户执行，真实数据）**：
+  ```powershell
+  # House1 洗碗机（meter6，metadata 已知）全链：
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 1 --mains-ids 1 --appliance-meter-id 6 --appliance dish_washer --out D:\Work\testPython\datasets\ukdale_dw.npz
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer
+  # 其他 house 探查（以 House2 为例）：
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --list-meters
+  python scripts\parse_nilmtk_metadata.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2
+  ```
+- **判读要点（预注册预期）**：dw 的 diagnose——aggOffW 数百 W（真实基线）、corr<0.5、on_frac 远低于 kettle 属正常（洗碗机占空比低）；House2 mains 表号须以 list-meters+parse 实测为准（**不猜表号**纪律）。**每个 (house, appliance) 为独立数据纪元：Test 预算各 2 次，须重走身份验证→摸底→搜索→锁定→Test 全流程。**
+- 是否进入 REPORT.md：否（工具泛化非实验结论；真实数据验证后再议 README/REPORT 收录）。

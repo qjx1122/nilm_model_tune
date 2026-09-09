@@ -345,3 +345,67 @@ def test_prepare_gap_bridge_and_drop():
         assert spec["largest_segment_samples"] == n - gl_hi  # 1600
         assert spec["dropped_gap_samples"] == n_drop
         assert spec["median_sample_gap_sec"] == 6.0  # 跨接缝大间隔不计入
+
+
+def test_prepare_generic_appliance_flags():
+    """泛化口径（实录 22）：--appliance/--appliance-meter-id/--appliance-gap-min。
+
+    dish_washer 场景（meter6，700W 事件）；向后兼容（--kettle-meter-id 别名 +
+    legacy 键）；别名冲突报错。默认路径（kettle）行为与 v5 冻结口径一致。
+    """
+    import pandas as pd  # noqa: F401
+    with tempfile.TemporaryDirectory() as d:
+        n = 3000
+        t0 = 1_500_000_000
+        ts = t0 + np.arange(n) * 6.0
+        rng = np.random.default_rng(2)
+        dw = np.zeros(n)
+        for s, dur in EVENTS:
+            dw[s:s + dur] = 700 + rng.normal(0, 20, dur)  # 洗碗机量级
+        mains1 = 300 + rng.normal(0, 20, n) + dw
+        h5 = Path(d) / "ukdale_dw.h5"
+        with h5py.File(h5, "w") as f:
+            g1 = f.create_group("building1/elec/meter1")
+            g1.create_dataset("power", data=np.stack([ts, mains1], axis=1))
+            g6 = f.create_group("building1/elec/meter6")
+            g6.create_dataset("power", data=np.stack([ts, dw], axis=1))
+        # ① 泛化口径：dish_washer
+        out = Path(d) / "dw.npz"
+        r = subprocess.run(
+            [sys.executable, str(SCRIPT), "--h5-path", str(h5),
+             "--mains-ids", "1", "--appliance-meter-id", "6",
+             "--appliance", "dish_washer", "--out", str(out)],
+            capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        assert "dish_washer" in r.stdout and "dish_washer=6" in r.stdout
+        z = np.load(out)
+        assert z["aggregate"].shape == z["target"].shape == (n,)
+        assert z["target"][EVENTS[1][0] + 5] > 500
+        spec = json.loads(out.with_suffix(".data_spec.json").read_text(encoding="utf-8"))
+        assert spec["appliance"] == "dish_washer"
+        assert spec["appliance_meter_id"] == 6
+        assert spec["appliance_power_type_used"] == "active"
+        assert "kettle_meter_id" not in spec  # 非 kettle 不出 legacy 键
+        assert spec["gap_policy"]["appliance_cells_bridged"] == 0
+        assert "kettle_cells_bridged" not in spec["gap_policy"]
+        assert spec["gap_policy"]["appliance_gap_min"] == 5.0
+        assert spec["schema_version"] == 5  # 口径版本不变（policy 未变）
+        # ② 向后兼容：kettle 别名路径 legacy 键仍在
+        out2 = Path(d) / "k.npz"
+        r2 = subprocess.run(
+            [sys.executable, str(SCRIPT), "--h5-path", str(h5),
+             "--mains-ids", "1", "--kettle-meter-id", "6", "--out", str(out2)],
+            capture_output=True, text=True)
+        assert r2.returncode == 0, r2.stderr
+        spec2 = json.loads(out2.with_suffix(".data_spec.json").read_text(encoding="utf-8"))
+        assert spec2["appliance"] == "kettle"
+        assert spec2["kettle_meter_id"] == 6
+        assert spec2["kettle_power_type_used"] == "active"
+        assert spec2["gap_policy"]["kettle_cells_bridged"] == 0
+        # ③ 别名冲突报错（不接受静默覆盖）
+        r3 = subprocess.run(
+            [sys.executable, str(SCRIPT), "--h5-path", str(h5),
+             "--mains-ids", "1", "--appliance-meter-id", "6",
+             "--kettle-meter-id", "10", "--out", str(Path(d) / "x.npz")],
+            capture_output=True, text=True)
+        assert r3.returncode != 0 and "只能给一个" in r3.stderr

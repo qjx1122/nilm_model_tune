@@ -227,3 +227,17 @@
 - 关键决策：仅动归因涉及的两角色，工程实现工程师/技术成果转化顾问未动（留待再议）；命令持久化自此三层齐全（对话/STATUS/实录）
 - 未决问题：无
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；ROLE.md / BOOTSTRAP.md / STATUS.md
+
+## [2026-09-09] 会话纪要（任务 4：prepare/diagnose 泛化到其他 house/电器）
+- 目标：按用户指令把 prepare/diagnose 泛化到其他 house 或电器
+- 本会话角色：工程实现工程师（泛化改造 + 沙箱验证）
+- 完成项：
+  - prepare_ukdale.py：--appliance/--appliance-meter-id/--appliance-gap-min 通用名；--kettle-* 兼容别名（冲突报错）；data_spec 通用键+legacy 键（kettle 路径）并存；schema_version 保持 5
+  - diagnose_split.py：--appliance 标签+默认阈值表（8 电器）+显式 --on-threshold 优先+判读提示通用化（含常开型提示）
+  - parse_nilmtk_metadata.py：追加制备命令模板；README 新增泛化三步工作流
+  - 测试：新增 test_prepare_generic_appliance_flags（dish_washer 场景+向后兼容+别名冲突）+ tests/test_diagnose_split.py；全套 16 passed（v5 冻结口径零回归）
+  - 台账按 ROLE.md v1.2 三件套纪律：实录 22 含命令+输出+判读；STATUS 任务 4 立项；commit+push
+  - 事故：/tmp/dvenv 又被平台重启清空（重建）；diagnose docstring 反斜杠匹配失败一次（cat -A 校准后重打）
+- 关键决策：别名不废弃（v5 冻结命令长期可用）；每 (house,appliance) 独立数据纪元 Test 预算 2 次
+- 未决问题：待用户真实数据验证（House1 dw meter6 + House2 探查）
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；scripts/{prepare_ukdale,diagnose_split,parse_nilmtk_metadata}.py / tests/ / README.md / REPORT_TEST.md（实录 22）

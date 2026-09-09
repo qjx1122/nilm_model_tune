@@ -13,7 +13,8 @@
    join 几乎拼不上（执行实录 9：n=345）。已在网格上的数据为恒等变换。
 1. mains 各表（--mains-ids）按时间对齐相加；短缺口（<= mains-gap-min 分钟）
    整段 ffill，更长缺口整段剔除。
-2. kettle（--kettle-meter-id）：短缺口（<= kettle-gap-min 分钟）整段 ffill
+2. 电器子表（--appliance-meter-id，兼容别名 --kettle-meter-id）：短缺口
+   （<= appliance-gap-min 分钟）整段 ffill
    （前值：壶 ~99% 时间关断 → 前值=0 与「关断即 0」语义一致；煮沸中掉线
    保持 ~2300W 不断流——v4 曾整段补 0，把煮沸事件切成 35s 碎片、evt/day
    翻倍 5.56→12.55，实录 12），更长缺口整段剔除。
@@ -28,10 +29,15 @@
 
 用法（示例，NILMTK 格式 ukdale.h5）：
     python scripts\\prepare_ukdale.py --h5-path D:\\datasets\\ukdale.h5 --list-meters
+    # House1 kettle（项目冻结口径 v5，旧命令不变）：
     python scripts\\prepare_ukdale.py --h5-path D:\\datasets\\ukdale.h5 ^
         --mains-ids 1 --kettle-meter-id 10 ^
         --out D:\\datasets\\ukdale_prepared.npz
-    （mains 若为 apparent、kettle 为 active，脚本自动处理并在 data_spec.json 留痕；
+    # 其他 house / 电器（泛化口径，实录 22）：
+    python scripts\\prepare_ukdale.py --h5-path D:\\datasets\\ukdale.h5 --house 1 ^
+        --mains-ids 1 --appliance-meter-id 6 --appliance dish_washer ^
+        --out D:\\datasets\\ukdale_dw.npz
+    （mains 若为 apparent、电器表为 active，脚本自动处理并在 data_spec.json 留痕；
     House1 地面真相：mains 只有 meter1 单表，meter2 系锅炉回路，见 REPORT_TEST.md 实录 8）
 """
 import argparse
@@ -266,31 +272,33 @@ def _combine_mains(f, meters, mains_ids):
     return df.sum(axis=1, min_count=1), found, types
 
 
-def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
+def prepare(f, house, mains_ids, appliance_id, out, mains_gap_min,
+            appliance_gap_min, appliance="kettle"):
+    """电器无关制备；appliance 仅为标签/留痕（默认 kettle = v5 冻结口径，行为不变）。"""
     bg, bname = find_building(f, house)
     meters = meter_groups(f, bg)
     if not meters:
         raise RuntimeError(f"{bname} 下没有 meter* 组。")
-    if kettle_id not in meters:
-        raise RuntimeError(f"kettle meter {kettle_id} 不存在（实际表号：{sorted(meters)}）。"
+    if appliance_id not in meters:
+        raise RuntimeError(f"appliance meter {appliance_id} 不存在（实际表号：{sorted(meters)}）。"
                            "先跑 --list-meters 确认。")
 
     agg, used_mains, mains_types = _combine_mains(f, meters, mains_ids)
-    kettle, kettle_type = read_power_series(f, meters[kettle_id])
-    kettle = _to_6s_grid(kettle)
-    print(f"对齐: mains 网格点 {len(agg)} / kettle 网格点 {len(kettle)}"
+    appl, appl_type = read_power_series(f, meters[appliance_id])
+    appl = _to_6s_grid(appl)
+    print(f"对齐: mains 网格点 {len(agg)} / {appliance} 网格点 {len(appl)}"
           f"（6s 网格 resample 后）")
 
     # 短缺口补齐策略（可配置，均写入 data_spec.json 留痕）。
     mains_fill_limit = int(mains_gap_min * 60 / SECONDS_PER_SAMPLE)
-    kettle_fill_limit = int(kettle_gap_min * 60 / SECONDS_PER_SAMPLE)
-    n_kettle_nan_before = int(kettle.isna().sum())
+    appl_fill_limit = int(appliance_gap_min * 60 / SECONDS_PER_SAMPLE)
+    n_appl_nan_before = int(appl.isna().sum())
 
-    df = pd.DataFrame({"aggregate": agg, "target": kettle}).sort_index()
+    df = pd.DataFrame({"aggregate": agg, "target": appl}).sort_index()
     # 整段桥接（v4，实录 11）：短缺口整段补值，长缺口整段保留 NaN 交给剔除。
     df["aggregate"], n_agg_bridged = _bridge_short_gaps(df["aggregate"], mains_fill_limit)
-    df["target"], n_kettle_bridged = _bridge_short_gaps(df["target"], kettle_fill_limit)  # ffill：关断时前值=0；煮沸中不断流
-    n_kettle_nan_after = int(df["target"].isna().sum())
+    df["target"], n_appl_bridged = _bridge_short_gaps(df["target"], appl_fill_limit)  # ffill：关断时前值=0；运行中不断流
+    n_appl_nan_after = int(df["target"].isna().sum())
     n_agg_nan_after = int(df["aggregate"].isna().sum())
 
     # 剩余 NaN（长缺口）→ 剔除后全量拼接（接缝计数留痕）。
@@ -345,23 +353,25 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
         "mains_meter_ids_requested": mains_ids,
         "mains_meter_ids_used": used_mains,
         "mains_power_types_used": mains_types,
-        "kettle_meter_id": kettle_id,
-        "kettle_power_type_used": kettle_type,
+        "appliance": appliance,
+        "appliance_meter_id": appliance_id,
+        "appliance_power_type_used": appl_type,
         "resample_policy": "mean_to_6s_grid_epoch_origin",
         "unit": "W",
         "sample_period_sec": 6,
         "median_sample_gap_sec": round(float(med_dt), 3),
         "gap_policy": {
             "aggregate_ffill_min": mains_gap_min,
-            "target_fill0_min": kettle_gap_min,
+            "target_fill0_min": appliance_gap_min,  # legacy 键名（v1-v5 沿用）
+            "appliance_gap_min": appliance_gap_min,
             "aggregate_policy": "ffill_whole_gaps_le_threshold",
             "target_policy": "ffill_whole_gaps_le_threshold",
             "long_gap_policy": "drop_whole_gap",
             "aggregate_cells_bridged": n_agg_bridged,
-            "kettle_cells_bridged": n_kettle_bridged,
-            "kettle_nan_dropped_after_policy": n_kettle_nan_after,
+            "appliance_cells_bridged": n_appl_bridged,
+            "appliance_nan_dropped_after_policy": n_appl_nan_after,
             "aggregate_nan_dropped_after_policy": n_agg_nan_after,
-            "kettle_nan_before_policy": n_kettle_nan_before,
+            "appliance_nan_before_policy": n_appl_nan_before,
         },
         "segment_policy": "concat_all_segments_logged_breaks",
         "n_segments": n_segments,
@@ -374,12 +384,20 @@ def prepare(f, house, mains_ids, kettle_id, out, mains_gap_min, kettle_gap_min):
         "negative_clipped_to_zero": {"aggregate": n_neg_agg, "target": n_neg_tgt},
         "n_output": len(df),
     }
+    if appliance == "kettle":
+        # v5 冻结口径 legacy 键（向后兼容旧读取方与既有测试；非 kettle 不产生）
+        spec["kettle_meter_id"] = appliance_id
+        spec["kettle_power_type_used"] = appl_type
+        spec["gap_policy"]["kettle_nan_dropped_after_policy"] = n_appl_nan_after
+        spec["gap_policy"]["kettle_nan_before_policy"] = n_appl_nan_before
+        spec["gap_policy"]["kettle_cells_bridged"] = n_appl_bridged
+
     spec_path = str(out_path.with_suffix(".data_spec.json"))
     Path(spec_path).write_text(json.dumps(spec, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(f"OK: {out_path}  n={len(df)}  mains_used={used_mains}  "
-          f"kettle={kettle_id}  时间范围 {spec['time_range_iso']}")
-    print(f"缺口处理: 桥接 agg {n_agg_bridged} 格 / kettle {n_kettle_bridged} 格"
+          f"{appliance}={appliance_id}  时间范围 {spec['time_range_iso']}")
+    print(f"缺口处理: 桥接 agg {n_agg_bridged} 格 / {appliance} {n_appl_bridged} 格"
           f"（均 ffill 前值整段桥接）；长缺口整段剔除 {n_union - len(df)} 格"
           f"（跨缺口拼接 {n_breaks} 处，最大连续段 {largest_seg} 样本 ≈ {largest_seg / 14400:.1f} 天）；"
           f"负值 clip: agg {n_neg_agg} / target {n_neg_tgt}")
@@ -391,13 +409,22 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--h5-path", required=True, help="UK-DALE HDF5 文件路径")
     ap.add_argument("--house", type=int, default=1)
-    ap.add_argument("--mains-ids", default="1", help="总负荷表号，逗号分隔（相加）；UK-DALE House1 只有 meter1 单表")
-    ap.add_argument("--kettle-meter-id", type=int, default=None, help="kettle 表号")
+    ap.add_argument("--mains-ids", default="1",
+                    help="总负荷表号，逗号分隔（相加）；House1 只有 meter1 单表，"
+                         "其他 house 先 --list-meters + parse_nilmtk_metadata.py 核对")
+    ap.add_argument("--appliance", default="kettle",
+                    help="电器名（标签，写入 data_spec 与输出；默认 kettle=项目冻结口径）")
+    ap.add_argument("--appliance-meter-id", type=int, default=None,
+                    help="电器子表号（通用名；先 --list-meters / parse_nilmtk_metadata 确认）")
+    ap.add_argument("--kettle-meter-id", type=int, default=None,
+                    help="（兼容别名）等价 --appliance-meter-id，v5 冻结命令继续可用")
     ap.add_argument("--out", default="ukdale_prepared.npz", help="输出 npz 路径")
     ap.add_argument("--mains-gap-min", type=float, default=30.0,
-                    help="aggregate 短缺口最大补全长（分钟，ffill）")
-    ap.add_argument("--kettle-gap-min", type=float, default=5.0,
-                    help="target 短缺口最大补全长（分钟，填 0）")
+                    help="aggregate 短缺口整段 ffill 阈值（分钟）")
+    ap.add_argument("--appliance-gap-min", type=float, default=None,
+                    help="电器短缺口整段 ffill 阈值（分钟，默认 5.0）")
+    ap.add_argument("--kettle-gap-min", type=float, default=None,
+                    help="（兼容别名）等价 --appliance-gap-min")
     ap.add_argument("--list-meters", action="store_true",
                     help="只打印 house 下各表号/样本数/时间范围，不生成 npz")
     args = ap.parse_args()
@@ -406,13 +433,26 @@ def main():
         with h5py.File(args.h5_path, "r") as f:
             cmd_list_meters(f, args.house)
         return
-    if args.kettle_meter_id is None:
-        raise SystemExit("需要 --kettle-meter-id（先跑 --list-meters 查看表号）。")
+
+    # 通用名 + 兼容别名解析（冲突即报错，不接受静默覆盖）
+    if (args.appliance_meter_id is not None and args.kettle_meter_id is not None
+            and args.appliance_meter_id != args.kettle_meter_id):
+        raise SystemExit("--appliance-meter-id 与 --kettle-meter-id 只能给一个（或相同的值）。")
+    appliance_id = (args.appliance_meter_id if args.appliance_meter_id is not None
+                    else args.kettle_meter_id)
+    if appliance_id is None:
+        raise SystemExit("需要 --appliance-meter-id（旧名 --kettle-meter-id 亦可；"
+                         "先跑 --list-meters 查看表号）。")
+    if (args.appliance_gap_min is not None and args.kettle_gap_min is not None
+            and args.appliance_gap_min != args.kettle_gap_min):
+        raise SystemExit("--appliance-gap-min 与 --kettle-gap-min 只能给一个（或相同的值）。")
+    appliance_gap_min = (args.appliance_gap_min if args.appliance_gap_min is not None
+                         else (args.kettle_gap_min if args.kettle_gap_min is not None else 5.0))
 
     mains_ids = [int(s) for s in args.mains_ids.split(",") if s.strip()]
     with h5py.File(args.h5_path, "r") as f:
-        prepare(f, args.house, mains_ids, args.kettle_meter_id, args.out,
-                args.mains_gap_min, args.kettle_gap_min)
+        prepare(f, args.house, mains_ids, appliance_id, args.out,
+                args.mains_gap_min, appliance_gap_min, appliance=args.appliance)
 
 
 if __name__ == "__main__":

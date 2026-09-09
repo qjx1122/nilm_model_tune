@@ -107,6 +107,9 @@ def main():
 
         print("\n提示：若上面映射为空，试试把某个 meter 组 attrs 的 metadata 内容贴出来人工看；"
               "mains 通常是 apparent 列（如 meter1/2/3 量级最大的前几个）。")
+        print("制备命令模板：python scripts\\prepare_ukdale.py --h5-path <ukdale.h5> --house N "
+              "--mains-ids <mains表号> --appliance-meter-id <电器表号> "
+              "--appliance <电器名> --out <npz>")
 
 
 if __name__ == "__main__":

@@ -5,6 +5,8 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
+- 【进行中·用户任务】任务 4「prepare/diagnose 泛化」：代码已泛化并沙箱验证（实录 22：--appliance 通用名+别名兼容+阈值表，16 passed，v5 零回归）→ 待用户真实数据验证（House1 洗碗机 meter6 全链 + House2 探查）
+- 本任务角色：工程实现工程师（泛化改造）；沙箱验证完毕，待用户回传后转实验/调参教练判读
 - 【已完成·收官】任务 3「调参执行」：F4（v2_do00×w96）锁定 + Test 验收四线全过（实录 20：S_test 0.0541 / F1 0.8941 / R 0.9268 / EE +5.2%；对照旧纪元 S 2.3 倍改善）。任务起点阻塞（Test EE −23%）正式关闭。
 - 本任务角色：实验/调参教练（已随任务收官回归默认角色「资深电力算法专家」）
 
@@ -47,6 +49,7 @@
 - [x] 2026-09-09 **Test 终局验收通过，任务 3 收官**（实录 20）：seed 7000 预注册一跑，S_test=0.0541（≤0.0622）、F1 0.8941、R 0.9268、|EE| 5.2%，无分布漂移；REPORT.md v1.0 创建、TUNING_GUIDE v2.0 重写（战史）、README 生产推荐更新、Test 预算 2/2 审计闭合
 - [x] 2026-09-09 文档维护（用户指令）：REPORT_TEST.md 全部 25 个执行实录节补齐用户执行命令（20 处插入，标注「2026-09-09 补充留痕」；路径按用户机器实录：旧纪元 D:\datasets\ukdale_prepared.npz、h5 与 v5 纪元 D:\Work\testPython\datasets\；CLI 参数逐脚本核对 diagnose --npz / inspect --path / parse --h5-path）；复验 24 含命令块 + 1 指针节可解析
 - [x] 2026-09-09 流程复盘（用户指令）：执行实录遗漏命令的 ROLE.md 条款层归因（实录 21 沉淀）——五层叠加：收尾条款只沉淀结果结论/职责边界无人负责命令归档/验收标准缺档案可复现维度/极简偏好裁剪/台账无字段+STATUS 滚动覆盖；改进建议待用户裁定（ROLE.md 收尾条款+验收标准补丁）
+- [x] 2026-09-09 任务 4 立项+泛化改造（实录 22）：prepare_ukdale 通用名 --appliance/--appliance-meter-id/--appliance-gap-min + --kettle-* 别名兼容（冲突报错）+ data_spec 通用键/legacy 键并存（v5 冻结口径零回归）；diagnose 电器标签+默认阈值表+常开型提示；parse 命令模板；README 工作流章节；新增 2 测试 16 passed
 - [x] 2026-09-09 改进落盘（用户批准三条）：ROLE.md v1.2（资深电力算法专家/实验调参教练：收尾条款增命令三件套落盘、验收标准增档案可复现维度）；BOOTSTRAP.md v2.2（专题模板新增「用户执行命令」字段，版本号同步）；技术成果转化顾问/工程实现工程师未动（归因不涉及，留待再议）
 - [x] 2026-09-09 prepare 首跑 n=345 确诊秒级相位差并修复（REPORT_TEST.md 执行实录 9）：meter1=:15 vs meter10=:18 精确 join 拼不上；改统一 6s 网格 resample 对齐；schema_version→2；--mains-ids 默认→1；偏移 3s 回归测试；pytest 13 passed
 - [x] 2026-09-09 metadata 全文回传→定表号（REPORT_TEST.md 执行实录 8）：mains=meter1 单表、kettle=meter10；meter2=锅炉回路（纠正 1,2 假设）；meter54=1s mains 备选
@@ -56,8 +59,12 @@
 - （本侧）无阻塞；判读 aggOffW/corr 定数据地基是否修复
 
 ## 下一步（TODO）
-1. （可选后续，非必需）REPORT.md / TUNING_GUIDE.md 已固化两纪元全部结论；如需继续：prepare/diagnose 泛化到其他 house 或电器、F4 邻域继续深挖（注意 Test 预算已耗尽，新探索需新立项+新预算规则）、或按 REPORT.md §1 口径投入生产验证
-2. 无未决阻塞；本分支（arena/01a07f1d-nilm-model-tune）保持推送最新，可随时合并/续接（同 seeds 42/2024/7）→ 定 tune.py 重搜方案：A 胜→搜索以 do0/nhead8/bs64/lr3e-4 邻域为中心；B 胜（100k 显著优）→重搜用大 train 预算；均不胜→以 baseline 为锚全空间粗搜；val 预算一律扩 30000。Test 预算剩 1 次（最终锁定用）
+1. 用户：git pull 后跑真实数据验证（实录 22 三件命令）：
+   python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 1 --mains-ids 1 --appliance-meter-id 6 --appliance dish_washer --out D:\Work\testPython\datasets\ukdale_dw.npz
+   python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer
+   python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --list-meters
+   python scripts\parse_nilmtk_metadata.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2
+2. 本侧判读回传（dw 身份指标 + House2 表号映射）→ 定下一个电器目标纪元；各 (house,appliance) 独立数据纪元、Test 预算各 2 次（同 seeds 42/2024/7）→ 定 tune.py 重搜方案：A 胜→搜索以 do0/nhead8/bs64/lr3e-4 邻域为中心；B 胜（100k 显著优）→重搜用大 train 预算；均不胜→以 baseline 为锚全空间粗搜；val 预算一律扩 30000。Test 预算剩 1 次（最终锁定用）
 3. 判读红旗：agg_off_mean≈0 且 corr≈1 → 确认 aggregate 泄漏 → 修数据制备（prepare_ukdale.py --list-meters 核对 mains 表号 → 重新生成 npz → 人工抽查 aggregate 一天曲线）→ 全部 KPI 重启（先 baseline 再走搜索，Test 协议重置一次并记录）；若数据无误（agg_off_mean 数百 W）→ 回到漂移结论：方向 B（记录教训收尾）或 C（改切分）
 4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push（视红旗结论而定）
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
@@ -103,6 +110,7 @@
 - 2026-09-09（发现·角色体系盲区）：ROLE.md 两角色收尾条款均只写「结果与结论沉淀」，命令被定位为对话层操作指导；教练职责边界（不替用户跑实验）使用户侧操作无归档责任人；验收标准只有即时可复现无档案可复现——命令遗漏是条款层系统性盲区而非单次疏忽（实录 21 五层归因）
 - 2026-09-09（决策·档案可复现条款）：用户批准实录 21 三条改进——ROLE.md 两角色收尾+验收条款、BOOTSTRAP 专题模板字段；自此命令持久化=对话下发（即时）+STATUS 下一步（滚动）+执行实录三件套（持久档案）三层齐全，追溯链闭合（命令+输出+判读→数字）
 - 2026-09-09（踩坑·脚本写入验活重演）：STATUS 多条目脚本中 lines.insert 后未重新 join 回 t 即 write_text → 第二条目静默丢失（059dcf7 只 +1 行），下轮锚点缺失连锁 StopIteration——教训与 session 首日相同：**任何脚本写入后必须 grep 验活再提交**
+- 2026-09-09（决策·泛化兼容策略）：通用名与别名并存（--kettle-* 不废弃，v5 冻结命令长期可用）；别名冲突显式报错；data_spec 通用键+legacy 键（kettle 路径）并存，schema_version 保持 5（policy 未变）；每 (house,appliance) 独立数据纪元、Test 预算各 2 次
 - 2026-09-09（发现·数据杠杆边界）：30k→100k train 在 6000-val 分辨率下无可测收益（配对 1 胜 2 负）；模型当前更受容量/正则而非数据量约束的假设待细搜后复核
 - 2026-09-09（踩坑·沙箱重克隆）：平台可整箱重克隆沙箱（本地 commit 链消失、/tmp 清空）；远端分支是唯一可靠真值——回合初 git log + git ls-remote 对账，恢复=fetch+逐文件哈希比对+reset
 - 2026-09-09（决策·网格对齐）：多表秒级相位差是 UK-DALE 常态，对齐必须先 resample 到统一网格再 join，精确时间戳 join 不可用；data_spec schema_version 升 2 标记口径变化
