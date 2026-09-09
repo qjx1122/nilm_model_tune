@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】调参执行：30/7 复核未通过 → 维持 25/5 口径锁定 c2；修正后收官 SOP 已交付（REPORT_TEST.md 执行实录 3 补充），等待用户执行 fresh-seed 复核 + Test 一次并回传
+- 【进行中·用户任务】调参执行：fresh-seed 复核揭示种子批次效应（30/7 撤回、c2≈v2 打平）→ 等待用户补跑 fv2_25（v2×7000–7002）配对对照后定锁 → Test 一次
 - 本任务角色：实验/调参教练（收官判读与 REPORT.md 评估）
 
 ## 已完成
@@ -29,15 +29,16 @@
 - [x] 2026-09-08 `train.py` 新增 `--test`（显式 eval_test 覆盖，仅在最终 Test 一步使用；py_compile 通过）
 
 ## 进行中
-- （用户侧）收官执行：final_c2.yaml ×3 seeds（7000–7002）val 复核 → `--test` 一次 → 回传汇总 + test 指标
-- （本侧）无阻塞；收官数据到手后：执行实录 3 收尾、评估 REPORT.md 更新（推荐配置 + KPI 口径）、TUNING_GUIDE.md 战史、收尾仪式（session 纪要）
+- （用户侧）补跑 fv2_25（v2_do00 × seeds 7000–7002，3 runs）→ summarize 回传
+- （本侧）无阻塞；fv2 到手后按决策树定锁（两分支均指向 v2，依据不同），给 Test 命令
 
 ## 下一步（TODO）
-1. 用户执行修正后收官 SOP（命令见 REPORT_TEST.md 执行实录 3 补充）：fc2_25 ×3 seeds（7000–7002）fresh 复核 → 25/5 口径 c2 `--seed 7000 --test` 一次 → 回传汇总 + test 指标
-2. 判读：fc2_25 预期 ≈0.038–0.042（若 ≈0.047 则回报改用 6009 seed）；test 与 fc2_25 同量级（差 <0.01 无漂移）+ test 业务门槛复验 → 通过则更新 REPORT.md（推荐稳定配置 = c2 25/5：w128 d64 nhead4 L2 ff128 do0 bs64 lr3e-4 wd1e-4, epochs25/pat5 + KPI 口径）与 TUNING_GUIDE.md v1.1 战史
-3. （可选）ON 阈值敏感性（300–700W 诊断）与全量样本外推复核
-4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
-5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
+1. 用户跑 fv2_25 对照（命令见 REPORT_TEST.md 执行实录 3 补充 2）→ 回传 summarize 输出
+2. 按决策树定锁 v2（分支 1：nhead4 特异不利；分支 2：种子族全局 + 池化悲观口径 ≈0.045±0.01 作 Test 预期）
+3. Test 恰好一次（预注册 seed 7000）→ 回传 test 指标 → 验收（与池化 val 同量级、业务门槛复验）
+4. 验收通过 → REPORT.md 更新（推荐稳定配置 v2 25/5：w128 d64 nhead8 L2 ff128 do0 bs64 lr3e-4 wd1e-4, epochs25/pat5 + KPI 口径）+ TUNING_GUIDE.md v1.1 战史（含种子批次效应教训）
+5. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
+6. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
 
 ## 决策记录 / 踩坑
 - 2026-09-08：`ROLE.md.md` 与台账文件名（`ROLE.md`）不一致，且最近 commit 意图即「上传ROLE.md」→ 执行 `git mv ROLE.md.md ROLE.md`，无损、可回退
