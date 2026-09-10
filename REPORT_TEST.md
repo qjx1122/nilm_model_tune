@@ -925,3 +925,45 @@
 - **验证边界（如实）**：沙箱无 pwsh，本修正未在沙箱实测；依据=台账既有坑的既验修复模式（H1 实录 18/19 引号版循环 20+ runs 实战通过）。若修正版仍报错（如粘贴标记噪音导致 command-not-found），回传报错全文再定谳。
 - **待用户**：跑修正版（21 runs + summarize，~40-70min GPU，Test 冻结）→ 回传 summarize_fine 全文。
 - 是否进入 REPORT.md：否（工具修复）。
+
+### 执行实录 31（2026-09-10）：House2 kettle 细搜批次 1 判读——赢家诅咒兑现（粗搜 top-1 垫底）/t11 协议出局/L1 兑现领跑/top-3 统计并列；批次 2 交付（加种子+2 变体+补缺 run）
+- **本任务角色**：实验/调参教练（细搜判读 + 批次 2 设计）
+- **用户执行命令（2026-09-10，实录 30 修正引号版）**：
+  ```powershell
+  foreach ($c in 'f0_t11','f1_t11w192','f2_t18','f3_t18w96','f4_t18d64','f5_t9','fb_basearch') {
+    foreach ($s in 8000,8001,8002) {
+      python scripts\train.py --config configs\fine_h2\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed $s --out reports\fine_h2\${c}_s$s
+    }
+  }
+  python scripts\summarize_fine.py --runs-dir reports\fine_h2
+  ```
+- **输出关键数字（summarize_fine，mean±std，n=3 除 fb n=2）**：f5_t9 **0.0175±0.0017**（F1 0.9656±0.0007 最高最稳/MAE 7.32±1.50/EE +1.14%±0.79%/ep 8.0）；f3_t18w96 **0.0178±0.0012**（σ 全场最小/EE −0.30%±0.23% 最准/F1 0.9607）；f2_t18 **0.0179±0.0017**（MAE 6.49±2.20 最低/EE −0.27%±0.82%）；f4_t18d64 0.0215±0.0056；f1_t11w192 0.0218±0.0050；fb_basearch 0.0227±0.0046（**n=2**）；f0_t11 **0.0302±0.0040 垫底**（EE +6.42%±1.79%/**best_ep 2.3**）。扫描 20/21 个 run。
+- **判读 1（赢家诅咒兑现，预注册纪律②触发）**：f0（粗搜 top-1，单 seed 53 时 0.0149）细搜 3 fresh seeds **0.0302±0.0040，劣化 +0.0153 ≫ 阈值 +0.003**——粗搜 top-1 判死刑（H1 同构：0.0400→0.0567）；且 EE +6.42% 兑现 w96 大 EE 风险、best_ep 20→2.3（seed53 系异类：同配置 fresh 族 2-3 epoch 即最优后恶化）→ **粗搜排名整体降权，细搜结果为唯一选型依据**。
+- **判读 2（2×2 因子定谳）**：t11 协议：w96 (f0) 0.0302 ≪ w192 (f1) 0.0218；t18 协议：w96 (f3) 0.0178 ≈ w192 (f2) 0.0179（差 0.0001）→ 窗口敏感性取决于协议；**t11 协议本身（d64+lr2e-4 组合）双双劣于 t18 协议 → t11 协议出局**。EE 稳定性亦随协议：t18 两窗口 EE 均 ≈−0.3%（稳），t11 两窗口 +1.5%/+6.4%（不稳）。
+- **判读 3（容量方向性）**：f2 (d128) 0.0179 vs f4 (d64) 0.0215：Δ0.0036 < 2×合并 SEM 0.0067 未达显著，但方向与 MAE（6.49 vs 7.57）、EE σ（0.0082 vs 0.0338）一致 → d128 方向性优势（容量↑更稳）。
+- **判读 4（L1 苗头兑现）**：f5（L1，粗搜 rank-3）**0.0175 领跑** + F1 0.9656±0.0007 全场最高且最紧 + best_ep 8.0（最健康收敛节奏）+ 42-96s 最便宜——粗搜排名（top-1 垫底、rank-3 领跑）与细搜排名基本不相关，再次坐实单 seed 排名不可选型。
+- **判读 5（top-3 统计并列）**：f5/f3/f2 极差 0.0004 ≪ 2×合并 SEM（≈0.0026）→ 并列；分量权衡：f5 赢 F1（最高最稳），f3 赢 EE（−0.30%±0.23% 最准）+σ（0.0012 最小），f2 赢 MAE（6.49 最低但 σ 2.2 大，单种子盆地嫌疑）。**test EE 偏正预期**（drift 反向签名）下 f3/f2 的 val EE 近零余量更大——此权衡留批次 2 判读定夺。
+- **判读 6（协议锚）**：fb 0.0227（n=2）——top-3 全部优于锚（调参价值二次坐实），但 f0 劣于锚（赢家诅咒的极端形态：粗搜 top-1 竟不如不调参）。
+- **缺口（fb_basearch n=2）**：20/21 run——fb_basearch 缺 1 个种子，须查目录补跑（不影响 top-3 判读，影响锚的 σ 精度）。
+- **批次 2 设计（13 runs ≈25-45min）**：①top-3 加种子 8003/8004（n=3→5，SEM 缩小）；②f6_f5d128（L1 领头羊 × d128 容量方向——两条独立方向信号的杂交检验）；③f7_f5w96（t9×w96——完成 {t9,t18}×{w96,w192} 窗口全因子）；④fb_basearch 补缺 run。配置已生成并校验（f6 仅 d 64→128、f7 仅 w 192→96，协议字段不变）。
+- **预注册批次 2 判定树**：①若 f6 显著优于 min(f5,f3,f2)（>2×合并 SEM）→ 锁定候选=f6（必要时微批次确认）；②否则 top-3（n=5）均值排序，分量权衡锁定（倾向规则：EE 近零+σ 小优先于 F1 最高——test EE 偏正预期的防御性选择；MAE σ>2 的盆地不采信）；③锁定后 Test 预注册：fresh seed 9000 × --test 恰一次，验收 S_test≤val 均值+0.015、F1≥0.75、R≥0.70、|EE|≤0.15，EE 方向（预期偏正，>+5% 如实披露）；H2 Test 预算 #1/2。
+- **待用户（先查缺哪个 run，再批次 2）**：
+  ```powershell
+  Get-ChildItem reports\fine_h2 | Select-Object Name
+  # 若缺 fb_basearch_s800X（按实际补）：
+  python scripts\train.py --config configs\fine_h2\fb_basearch.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 8000 --out reports\fine_h2\fb_basearch_s8000
+  # 批次 2（引号版）：
+  foreach ($c in 'f5_t9','f3_t18w96','f2_t18') {
+    foreach ($s in 8003,8004) {
+      python scripts\train.py --config configs\fine_h2\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed $s --out reports\fine_h2\${c}_s$s
+    }
+  }
+  foreach ($c in 'f6_f5d128','f7_f5w96') {
+    foreach ($s in 8000,8001,8002) {
+      python scripts\train.py --config configs\fine_h2\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed $s --out reports\fine_h2\${c}_s$s
+    }
+  }
+  python scripts\summarize_fine.py --runs-dir reports\fine_h2
+  ```
+- **回传要求**：目录清单（确定缺哪个 run）+ 批次 2 后的 summarize_fine 全文（f5/f3/f2 将以 n=5 聚合）。
+- 是否进入 REPORT.md：否（细搜进行中）。
