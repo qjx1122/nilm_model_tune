@@ -771,3 +771,36 @@
   python scripts\probe_meter.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --meter 8 --cutoff "2013-04-16 21:18:09"
   ```
 - 是否进入 REPORT.md：否（pilot 判读+工具，纪元未锁）。
+
+### 执行实录 25（2026-09-10）：House2 kettle 网格异常 probe 定谳——8 行 Feb17 杂散坐实/算术全闭环/「互斥」系转写误差；**H2 纪元锁定** + 摸底交付；probe crash 修复
+- **本任务角色**：资深电力算法专家（对账判读）+ 工程实现工程师（probe v2 修复）
+- **用户执行命令（2026-09-10，真实数据，实录 24 交付版）**：
+  ```powershell
+  python scripts\probe_meter.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --meter 8 --cutoff "2013-04-16 21:18:09"
+  ```
+- **输出关键数字**：rows=2,094,523（**与上轮 list-meters 完全一致**）；index min=**2013-02-17 16:00:22+00:00** / max=2013-10-10 06:15:56+01:00；NaT=0 / 重复=0 / 单调=True；NaN=0 / inf=0 / finite=全 / 值域 0.0–3998.0；cutoff=2013-04-16 21:18:09+01:00 **之前 8 行**（前 5 行 16:00:22/25/31/37/43 全 0.0）、之后 2,094,515 行；随后 line 53 crash（ndarray 无 to_numpy）——**crash 发生在决定性证据打印之后，判读不受影响**。
+- **判读 1（杂散坐实，定谳）**：meter8 表头夹带 **8 行 2013-02-17 16:00:22 起的 0W 行**（安装测试残留，与 m1 起点 16:17:34 同日——2/17 为 H2 记录系统安装日），主体数据 2,094,515 行自 Apr 16 21:18:09 起。修正实录 24 的「~172 行杂散」猜测：杂散实际 8 行；173 格并集超出=mains 自身起点晚 172 格（kettle resample 满跨度在 m1 首格之前的区间，几乎全为 NaN 格）+1 格终点后，**并非杂散行数**。
+- **判读 2（算术全闭环，零自由参数）**：
+  1. kettle 满跨度格数 = 6s bins(Feb 17 16:00:22 → Oct 10 06:15:56) = **3,377,557，与 prepare 打印一字不差**——「超跨度上限」系误把主体起点 Apr 16 当表起点；真实跨度 234.55 天 = 主体 176.37 天 + Feb17→Apr16 静默 58.17 天。
+  2. 并集 3,377,557 = mains 3,377,384 + **173 = 头 172 + 尾 1**：m1 首格 16:17:30（raw min 16:17:34）、末格 06:15:48（由 mains 网格数反推，raw max ∈ [06:15:48, 06:15:54)）；kettle 首格 16:00:18 / 末格 06:15:54 → mains 格集 ⊆ kettle 格集，`DataFrame({agg, target})` 外连接并集=kettle 网格，结构性成立。
+  3. 剔除 1,231,859 = 头部 172 + 静默区 837,606（58.17 天，mains 有/kettle 无）+ 交叠内双缺 394,081（27.37 天）——**一字不差**。
+  4. 保留 2,145,698 = 149.0 天 = 交叠 176.37 天的 84.5% ✓（与 diagnose 全部对上）。
+- **判读 3（「互斥」消解——记录侧转写误差，非文件状态变化）**：list-meters 的 start=read_power_series 原始 min（仅 dedup/sort/isfinite 过滤，**0W 行保留**）→ 在本文件上 meter8 必显 2013-02-17 16:00:22。两处 n=2,094,523 完全一致坐实**同一文件状态**；实录 24 所记「meter8 起点 Apr 16」与「05:15:58=meter8 表列终点」均有转写误差（后者与实测 06:15:56+01:00=05:15:56 UTC 差 2 秒，佐证记录侧来源）。**撤回实录 24「两份输出对应不同文件状态」假说**——文件单一稳定。
+- **判读 4（npz 有效性终审）**：8 行杂散全落在 mains 覆盖之前的头部 172 格区域（m1 自 16:17:34 起）→ 制备时随长缺口整段剔除，npz 首样本 Apr 16 21:18:09、target 严格为主体壶数据——与实录 24 孪生复现（有无杂散 npz 输出一字不差）互证闭环。
+- **判读 5（孪生 v2 端到端复现，真实时间戳）**：以 probe 实测时间戳精确构造迷你 H2（m8：8 行 Feb17 杂散+Apr 16 21:18:09 起主体；m1：16:17:34 起）跑 prepare → 打印「**mains 网格点 3377384 / kettle 网格点 3377557**」与用户 pilot **一字不差**；头部+静默剔除 837,778=172+837,606 ✓（交叠内剔除 394,081 为真实缺口所有，孪生稠密化故为 0）；时间范围首格 21:18:06（6s 对齐）。m1 侧边界取实录 24 记录与 mains 网格数反推区间，其 ground truth 是 pilot 打印本身；m1 精确边界待可选 probe 存档。机制链全链复现：杂散行→meter8 跨度起点 Feb17→resample 满跨度 3,377,557→并集=kettle 网格。
+- **事故与修复（probe v2）**：line 53 `pre.to_numpy()`——`DatetimeIndex < Timestamp` 返回 **ndarray**（无 to_numpy）→ 改 `np.asarray`；上轮沙箱测试未覆盖「截断前行存在」分支（教训：交付脚本必须以用户同款 CLI 入口端到端跑全部分支，后加代码必须重新回归）。增强：截断前行 ≤20 行全量打印（补齐杂散行 6–8 明细）、新增截断后前 5 行、新增「6s 网格满跨度格数」行（floor 公式与 `resample('6s', origin='epoch')` 满跨度沙箱对拍一致）。孪生 v2 三项测试全过（m8+cutoff 无 crash/8 行全量/格数 3,377,557；m1 无 cutoff 格数 3,377,384；prepare 端到端）；pytest 16 passed 零回归。
+- **判读 6（纪元锁定宣布）**：**House2 kettle 数据纪元锁定**——身份链过（实录 24：aggOffW 266-309/evt 3.7-7.8 次/天/3kW 壶/corr 0.56-0.67）+ 网格异常对账闭环（本实录）+ npz 双证有效（孪生×probe 机制）。npz=`D:\Work\testPython\datasets\ukdale_h2_kettle.npz`（mains=m1/kettle=m8）为该纪元唯一口径；**Test 预算 2 次 untouched**（摸底不带 --test，eval_test 缺省已 False）；drift 反向签名（val 7.78 evt/day 重 / test 3.71 轻，与 H1 相反）记录在案，EE 预期偏正方向。
+- **待用户（摸底 baseline ×3 seeds，主命令；H2 纪元 Test 冻结）**：
+  ```powershell
+  python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 42 --out reports\base_h2_s42
+  python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 2024 --out reports\base_h2_s2024
+  python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 7 --out reports\base_h2_s7
+  ```
+  可选存档复核（10 秒级，不阻塞摸底；预期 m8 起点必显 2013-02-17 16:00:22、m1 满跨度格数 3,377,384，不符再开对账）：
+  ```powershell
+  python scripts\probe_meter.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --meter 8 --cutoff "2013-04-16 21:18:09"
+  python scripts\probe_meter.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --meter 1
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --list-meters
+  ```
+- **回传要求**：摸底三份完整 stdout（含逐 epoch val 行与 best epoch 摘要）；摸底不碰 Test；可选复核输出一并存档。
+- 是否进入 REPORT.md：否（对账+工具+纪元锁定；实验结论待摸底产生）。

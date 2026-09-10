@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】House2 kettle pilot：身份链过/npz 可用（实录 24：aggOffW 266-309、evt 3.7-7.8/天、3kW 壶、最大段 75.8 天），但 kettle 网格点 3,377,557 超 meter8 跨度上限（对账结论：代码沙箱复核无罪，疑表内 ~172 行 mains 覆盖前杂散，与上轮 list-meters 互斥）→ 待用户跑 probe_meter 定谳后宣布纪元锁定
+- 【进行中·用户任务】House2 kettle 数据纪元**已锁定**（实录 24 身份链过 + 实录 25 probe 定谳：8 行 Feb17 0W 杂散坐实、kettle 网格 3,377,557=meter8 真实跨度满格数、算术全闭环、「互斥」系实录 24 转写误差；npz=ukdale_h2_kettle.npz，mains=m1/kettle=m8；**Test 预算 2 次 untouched**）→ 当前=摸底 baseline ×3 seeds → 判读后定 H2 搜索方案（drift 反向签名：val 7.78 evt/day 重/test 3.71 轻，EE 预期偏正）
 - 本任务角色：工程实现工程师（泛化改造）；沙箱验证完毕，待用户回传后转实验/调参教练判读
 - 【已完成·收官】任务 3「调参执行」：F4（v2_do00×w96）锁定 + Test 验收四线全过（实录 20：S_test 0.0541 / F1 0.8941 / R 0.9268 / EE +5.2%；对照旧纪元 S 2.3 倍改善）。任务起点阻塞（Test EE −23%）正式关闭。
 - 本任务角色：实验/调参教练（已随任务收官回归默认角色「资深电力算法专家」）
@@ -55,17 +55,23 @@
 - [x] 2026-09-09 改进落盘（用户批准三条）：ROLE.md v1.2（资深电力算法专家/实验调参教练：收尾条款增命令三件套落盘、验收标准增档案可复现维度）；BOOTSTRAP.md v2.2（专题模板新增「用户执行命令」字段，版本号同步）；技术成果转化顾问/工程实现工程师未动（归因不涉及，留待再议）
 - [x] 2026-09-09 prepare 首跑 n=345 确诊秒级相位差并修复（REPORT_TEST.md 执行实录 9）：meter1=:15 vs meter10=:18 精确 join 拼不上；改统一 6s 网格 resample 对齐；schema_version→2；--mains-ids 默认→1；偏移 3s 回归测试；pytest 13 passed
 - [x] 2026-09-09 metadata 全文回传→定表号（REPORT_TEST.md 执行实录 8）：mains=meter1 单表、kettle=meter10；meter2=锅炉回路（纠正 1,2 假设）；meter54=1s mains 备选
+- [x] 2026-09-10 H2 网格异常 probe 定谳 + **House2 kettle 纪元锁定**（实录 25）：杂散 8 行坐实（Feb 17 16:00:22 起 0W，安装测试残留）；算术全闭环（kettle 网格 3,377,557=真实跨度满格数、剔除 1,231,859=172+837,606+394,081、保留 149.0 天=84.5%）；「与 list-meters 互斥」系转写误差（n=2,094,523 两处一致+start 语义=原始 min 不滤 0W）→ 撤回文件状态假说；孪生 v2 真实时间戳端到端复现（mains 3377384/kettle 3377557 一字不差）；probe v2 crash 修复+增强（CLI 端到端测试过，pytest 16 passed）；摸底 baseline ×3 seeds 命令交付
 
 ## 进行中
-- （用户侧）git pull 后跑 tune.py 重搜（32 trials，30-60min GPU），回传门槛统计+Top-5
-- （本侧）无阻塞；判读 aggOffW/corr 定数据地基是否修复
+- （用户侧）H2 摸底 baseline ×3 seeds（命令见下一步块，不带 --test）+ 可选存档复核（probe v2 ×2 + list-meters）；回传三份完整 stdout
+- （本侧）无阻塞；待回传判读 H2 baseline KPI（对照 H1 摸底：EE −0.060~−0.093 / F1 0.789-0.846；H2 预期 EE 偏正）→ 定 tune 搜索方案
 
 ## 下一步（TODO）
-1. 用户：git pull 后跑探针定谳（+可选重跑 --house 2 --list-meters 对照当前文件）：
+1. 用户：H2 摸底 baseline ×3 seeds（纪元已锁，Test 冻结——不带 --test，eval_test 缺省 False）：
+   python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 42 --out reports\base_h2_s42
+   python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 2024 --out reports\base_h2_s2024
+   python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 7 --out reports\base_h2_s7
+2. 可选存档复核（10 秒级，不阻塞摸底；预期 m8 起点必显 2013-02-17 16:00:22、m1 满跨度格数 3,377,384，不符再开对账）：
    python scripts\probe_meter.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --meter 8 --cutoff "2013-04-16 21:18:09"
-2. 本侧判读 probe 输出 → 杂散行坐实则纪元锁定（npz 已证不受影响）→ 摸底 baseline ×3 seeds（House2 纪元 Test 预算独立 2 次）；probe 显示 Apr 16 起点（无杂散）则网格数字另有来源，继续排查（同 seeds 42/2024/7）→ 定 tune.py 重搜方案：A 胜→搜索以 do0/nhead8/bs64/lr3e-4 邻域为中心；B 胜（100k 显著优）→重搜用大 train 预算；均不胜→以 baseline 为锚全空间粗搜；val 预算一律扩 30000。Test 预算剩 1 次（最终锁定用）
-3. 判读红旗：agg_off_mean≈0 且 corr≈1 → 确认 aggregate 泄漏 → 修数据制备（prepare_ukdale.py --list-meters 核对 mains 表号 → 重新生成 npz → 人工抽查 aggregate 一天曲线）→ 全部 KPI 重启（先 baseline 再走搜索，Test 协议重置一次并记录）；若数据无误（agg_off_mean 数百 W）→ 回到漂移结论：方向 B（记录教训收尾）或 C（改切分）
-4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push（视红旗结论而定）
+   python scripts\probe_meter.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --meter 1
+   python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --list-meters
+3. 本侧判读摸底（val MAE/F1/EE/σ 三种子；H2 val 段仅 22.35 天 × 7.78 evt/day → val 6000 子样本 ON≈50 量级，搜索阶段须扩 val 30000 同 H1 纪律）→ tune 搜索方案：H1 F4 邻域平移起步（w96 结论不跨纪元须重验）+ composite S 多种子均值
+4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
 
 ## 决策记录 / 踩坑
@@ -120,12 +126,14 @@
 - 2026-09-09（决策·网格对齐）：多表秒级相位差是 UK-DALE 常态，对齐必须先 resample 到统一网格再 join，精确时间戳 join 不可用；data_spec schema_version 升 2 标记口径变化
 - 2026-09-09（决策·单总表）：mains 只用 meter1（2 为锅炉回路，加进去 double count）；新 npz 另存 v2 不覆盖旧文件（旧文件关联历史 KPI/Test 记录）；diagnose 设证伪口
 - 2026-09-09（踩坑·工具）：同一回合内并行发给同一文件的多个 edit_file 只会活一个（互相覆盖）→ 同文件多处改动必须串行或单次原子写入（bash/python 整段改），且 commit 前必须 grep 验活
+- 2026-09-10（定谳·H2 网格异常闭环→纪元锁定）：probe 实测 meter8 表头 8 行 2013-02-17 16:00:22 起 0W 杂散（安装测试残留），主体 2,094,515 行自 Apr 16 21:18:09 起；kettle 网格 3,377,557=meter8 真实跨度（Feb17→Oct10，234.55 天）满格数——「超上限」系误把主体起点当表起点；剔除 1,231,859=头部 172+静默 837,606+交叠内 394,081 一字不差；「与 list-meters 互斥」系实录 24 转写误差（list-meters start=原始 min 且 0W 行保留、n=2,094,523 两处一致）→ 撤回「不同文件状态」假说；npz 双证有效（孪生复现×probe 机制）→ House2 kettle 纪元锁定，Test 预算 2 次
+- 2026-09-10（踩坑·probe 交付测试盲区）：`DatetimeIndex < Timestamp` 返回 ndarray（无 .to_numpy()）→ 用户侧 crash；上轮沙箱测试未覆盖「截断前行存在」分支——教训：交付脚本必须以用户同款 CLI 入口端到端跑全部分支，后加代码必须重新回归（本次孪生 v2 三项全过：m8+cutoff / m1 无 cutoff / prepare 端到端）
 
 ## 关键文件路径
 - 协议：`BOOTSTRAP.md`（v2.1）、`ROLE.md`（角色库，默认角色=资深电力算法专家）
 - 续接：`STATUS.md`（本文件）、`session/NILM_AC_session_complete.md`（会话纪要，session 收尾追加）
 - 报告：`REPORT_TEST.md`（专题，追加式）、`REPORT.md`（稳定结论）、`TUNING_GUIDE.md`（调参教学）
-- 代码：`src/`（data / model / metrics / objective / trainer / experiment）、`scripts/`（train / evaluate / tune / prepare_ukdale / inspect_h5 / run_smoke）、`configs/`（baseline.yaml / tuning.yaml）
+- 代码：`src/`（data / model / metrics / objective / trainer / experiment）、`scripts/`（train / evaluate / tune / prepare_ukdale / diagnose_split / probe_meter / parse_nilmtk_metadata / inspect_h5 / run_smoke）、`configs/`（baseline / baseline_100k / tuning / tuning_v5 / fine_v5）
 - 运行：`run_baseline.ps1` / `run_tuning.ps1` / `run_real.ps1`（Windows + Conda）
 - 产物：`reports/smoke/`（smoke 基线，git 跟踪勿覆盖）、`reports/`（实验输出目录）
 - 测试：`tests/`（test_model / test_objective / test_prepare_ukdale）；依赖：`requirements.txt`
