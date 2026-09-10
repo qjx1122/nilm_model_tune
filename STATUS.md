@@ -5,6 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
+- 【进行中·用户任务】House1 dish_washer 纪元启动（实录 34 立项）：数据已过身份链（实录 23：ukdale_dw.npz，n=10.69M/742 天），**纪元锁定悬置于事件口径定夺**——当前=阈值敏感性 20/100/200/500 四跑（预注册判读框架：事件收敛度/双峰分离/可学性/分辨率四判据）→ 口径定夺+纪元锁定 → 摸底 baseline（Test 预算独立 2 次；窗口维上限放宽议题随摸底定）
 - 【已收官·2026-09-10】House2 kettle 纪元全流程闭环（实录 24-33：身份链→probe 定谳→纪元锁定→摸底→粗搜 32→细搜两批次 34 runs→锁定 f5_t9→Test 四线全过 S_test 0.0252/F1 0.9398/EE −0.02% 死零；Test 预算 2 用 1 封存；REPORT.md v1.1 §7+两纪元对照+跨纪元结论五条）——等待用户下一任务（候选：House1 dw 纪元，须先 --on-threshold 100/200 敏感性；或其他 house/电器）
 - 本任务角色：工程实现工程师（泛化改造）；沙箱验证完毕，待用户回传后转实验/调参教练判读
 - 【已完成·收官】任务 3「调参执行」：F4（v2_do00×w96）锁定 + Test 验收四线全过（实录 20：S_test 0.0541 / F1 0.8941 / R 0.9268 / EE +5.2%；对照旧纪元 S 2.3 倍改善）。任务起点阻塞（Test EE −23%）正式关闭。
@@ -64,18 +65,21 @@
 - [x] 2026-09-10 H2 细搜批次 1 判读（实录 31）：赢家诅咒兑现（f0 0.0149→0.0302±0.0040 垫底+EE+6.42%+ep20→2.3，粗搜排名降权为细搜唯一选型依据）；2×2 因子定谳（t11 协议出局、t18 窗口不敏感、EE 稳定性随协议）；d128 方向性优势（未显著但三分量一致）；L1 兑现（f5 0.0175±0.0017 领跑+F1 0.9656±0.0007 最紧+ep8.0 最健康）；top-3 统计并列（极差 0.0004≪2×SEM，分量权衡留批次 2）；fb n=2 缺 1 run；批次 2 交付（f6_f5d128/f7_f5w96 配置生成+单变量校验）
 - [x] 2026-09-10 H2 细搜批次 2 判读+**锁定 f5_t9**（实录 32）：判定树①不触发（f6 容量关闭，EE −0.98%±0.05 记为未来线索）；top-3 n=5 S 全不显著→分量定谳（F1 6.2×SEM+recall 决定性 vs EE 2.2×SEM 边缘——倾向规则预设的 EE-vs-F1 取舍未出现，f5 兼得）；窗口因子收官（t9 强依赖 w192 显著/t18 不敏感→窗口敏感性协议依赖）；搜索收敛不开批次 3；fb 补缺未执行（n=2 如实记录，锚结论不变）；锁定 f5_t9+Test 预注册交付（seed 9000，H2 #1/2）
 - [x] 2026-09-10 **H2 Test 终局验收通过+纪元收官**（实录 33）：四线全过（S_test 0.0252≤0.0317 富余 0.0065/F1 0.9398/R 0.9070/EE −0.02% 死零）+无漂移（Δ+0.0085<0.015）；test 事件解码闭环（TP39/FN4/FP1/ON43）；EE 方向预判未兑现（drift 签名→EE 推理链不成立，代价在 recall）；Test 预算审计闭合（2 用 1 封存，全周期 test:None）；REPORT.md v1.1（§7+两纪元对照+跨纪元结论五条）+TUNING_GUIDE 第三纪元战史+踩坑 9-11
+- [x] 2026-09-10 H1 dish_washer 纪元立项+阈值敏感性设计（实录 34）：口径问题本质三层拆解（事件统计/F1 业务定义/分辨率）；四判据+决策规则预注册（200W 倾向：evt/day∈[0.5,3]+kWh/evt≥0.3+ON≥90）；EE 阈值无关确认（npz 免重跑）；窗口上限放宽议题备忘（dw 周期 1-2h≫窗口）；四跑命令交付
 
 ## 进行中
-- （用户侧）无阻塞；H2 纪元已收官，等待下一任务指令
-- （本侧）无阻塞；默认角色=资深电力算法专家（实验/调参教练随 H2 收官卸任）
+- （用户侧）dw 阈值敏感性 ×4（命令见下一步块，秒-分钟级）→ 回传四份完整输出
+- （本侧）无阻塞；待口径判读（四判据+决策规则预注册于实录 34）→ 纪元锁定 → 摸底设计（baseline_dw 配置：选定阈值+窗口议题）
 
 ## 下一步（TODO）
-1. 等待用户下一任务。候选方向（若开新纪元，须重走身份验证→摸底→搜索→细搜→Test 全流程，Test 预算各 2 次）：
-   - House1 dish_washer：**前置条件**=先做 --on-threshold 100/200 事件阈值敏感性（20W 切碎周期，0.16 kWh/evt vs 典型 1-1.5 kWh/周期，实录 23 预警）
-   - 其他 house/电器（House2 有 rice cooker=m9/wm=m12/dw=m13/fridge=m14/mw=m15/toaster=m16；fridge 为常开型，须换事件口径）
-   - 或工程向：多电器统一框架 / 推理侧工作（阈值后处理/事件合并）
-2. 收尾仪式已随实录 33 完成（REPORT.md v1.1 / TUNING_GUIDE 补章 / STATUS / session 纪要 / commit+push）
-3. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
+1. 用户：dw 阈值敏感性 ×4（显式 --on-threshold 留痕）：
+   python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 20
+   python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 100
+   python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 200
+   python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 500
+2. 本侧口径判读（实录 34 预注册框架）→ 推荐+理由 → 纪元锁定宣告 → 摸底设计（configs/baseline_dw.yaml：选定 on_threshold_watts+w128 起步可比性；Test 预算 2 次声明）→ 摸底 ×3 seeds → 粗搜/细搜（窗口上限 384/512 议题）
+3. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
+4. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
 
 ## 决策记录 / 踩坑
 - 2026-09-08：`ROLE.md.md` 与台账文件名（`ROLE.md`）不一致，且最近 commit 意图即「上传ROLE.md」→ 执行 `git mv ROLE.md.md ROLE.md`，无损、可回退
@@ -150,6 +154,7 @@
 - 2026-09-10（发现·窗口敏感性协议依赖）：{t9,t18}×{w96,w192} 全因子完成——t9 强依赖 w192（Δ0.0059 显著）、t18 不敏感（Δ0.0001）；粗搜 rank-1 w96 被细搜推翻（第三纪元第三次窗口反转）→ 窗口维结论必须每纪元细搜重验，粗搜窗口信号不可信
 - 2026-09-10（踩坑·沙箱第九次重置）：同新形态，SOP 直接适用，零丢失；连续重置第 5 回合（五至九）
 - 2026-09-10（验收·H2 Test 通过·纪元收官）：f5_t9 seed 9000 预注册一跑四线全过（S 0.0252/F1 0.9398/R 0.9070/EE −0.02%）；两纪元对照 H2 全面占优（S 好 2.1 倍，结构性=3kW 壶信噪比）且锁定配置零参数重叠（L1/w192/bs128 vs L2/w96/bs64）——跨纪元不迁移定谳；Test 预算 2 用 1 封存（对比 H1 摸底误碰：eval_test 缺省翻转的工程价值完整兑现）；EE 方向不可由 drift 签名预判（预判偏正实测死零，代价在 recall 0.9533→0.9070）——入 REPORT.md §7 跨纪元结论
+- 2026-09-10（立项·H1 dw 纪元）：事件阈值=业务定义选择（全周期 vs 加热相位）而非纯技术参数——泵相位 120W 对 agg 基线对比度弱（corr 0.35-0.41），可学性与业务纯度须权衡；EE 与阈值无关故口径悬置不阻塞数据有效性；判读框架先预注册后看数（防事后择优）
 
 ## 关键文件路径
 - 协议：`BOOTSTRAP.md`（v2.1）、`ROLE.md`（角色库，默认角色=资深电力算法专家）

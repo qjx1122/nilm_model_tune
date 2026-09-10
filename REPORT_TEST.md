@@ -1009,3 +1009,22 @@
 - **Test 预算审计（H2 纪元闭合）**：预算 2 次，实际触碰 **1 次**（本次终局验收；摸底/粗搜/细搜全周期 test:None 冻结实战）——1 次未用封存，纪元闭合。对照 H1 纪元：摸底误碰 1 次+终局 1 次（2/2 用尽）——eval_test 缺省翻转修复的完整价值兑现。
 - **收官动作**：REPORT.md v1.1（新增 §7 House2 纪元+两纪元对照+跨纪元结论，§6 版本历史追加）；TUNING_GUIDE §3 战史补章（第三纪元）+§4 踩坑清单追加；STATUS 收官更新；session 纪要追加；commit/push。
 - 是否进入 REPORT.md：**是**（验收通过触发，v1.1）。
+
+### 执行实录 34（2026-09-10）：House1 dish_washer 纪元立项——事件阈值敏感性设计（前置条件）+ 预注册判读框架
+- **本任务角色**：实验/调参教练（新纪元设计）
+- **立项依据**：用户选定方向 ①（H2 kettle 纪元已收官，实录 33）；dw 数据已制备并过身份链（实录 23：`ukdale_dw.npz`，mains=meter1/dw=meter6，n=10,685,551/742.1 天，aggOffW 317-406、corr 0.35-0.41 身份链过）——**但纪元锁定悬置于事件口径定夺**（实录 23 预警：20W 阈值把洗涤周期多相位切碎，0.16 kWh/evt vs 典型 1-1.5 kWh/周期）。
+- **口径问题本质（立项分析）**：阈值只影响 F1/P/R 与事件统计，**EE 与阈值无关**（能量=功率求和）；prepare/npz 无需重跑。三个层面：
+  1. **事件统计**（diagnose evt/day·kWh/evt）：20W 已知切碎（泵相位间隙=多次 rising edge）；
+  2. **F1 口径=「运行中」的业务定义**：20W=全周期（含泵 120W med）vs 200W=加热相位（p95 2363W）vs 500W=强加热——口径选择=业务纯度 vs 可学性权衡（泵相位 120W 对 ~350W agg 基线对比度极弱，corr 0.35-0.41 已示 dw 信号占比小）；
+  3. **分辨率**：on_frac@20W=0.0222（val 30000→ON≈667）；阈值升高 ON 数下降，F1 量子变粗——须守住 ON≥90（val 30000）下限。
+- **预注册判读框架（阈值 20/100/200/500 四跑对照）**：①事件收敛度=evt/day 向真实周期数量级（家用 ~0.5-2 次/天）收敛 + kWh/evt 向周期能量靠拢的程度；②ON 功率分布=med（泵）与 p95（加热）在各阈值的留存（双峰分离点）；③可学性代理=on_frac 与 ON med 对 aggOffW 基线的对比度；④分辨率=val ON 数 ≥90。决策规则：200W 若 evt/day∈[0.5,3] 且 kWh/evt≥0.3 且 ON≥90 → 倾向 200W（加热相位=可检测签名）；100W 与 200W 无差 → 取 100W（更近全周期）；20W 仅作切碎对照、500W 作下界对照。最终口径由数据+业务含义判读定夺（判读时给推荐+理由，用户可否决）。
+- **后续设计备忘（摸底时再定）**：dw 周期 1-2h=600-1200 样本 ≫ 窗口（w96-192 仅 9.6-19.2 min）——seq2point 只见相位片段，周期级上下文不可见；粗搜空间窗口维上限考虑放宽（384/512），以摸底结果定。dw 纪元 Test 预算独立 2 次（规则既定）。
+- **待用户（阈值敏感性 ×4，秒-分钟级）**：
+  ```powershell
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 20
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 100
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 200
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 500
+  ```
+- **回传要求**：四份完整输出（含表头行——阈值与来源行是口径留痕）。
+- 是否进入 REPORT.md：否（口径未定，纪元未锁）。
