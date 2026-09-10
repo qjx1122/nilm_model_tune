@@ -1028,3 +1028,33 @@
   ```
 - **回传要求**：四份完整输出（含表头行——阈值与来源行是口径留痕）。
 - 是否进入 REPORT.md：否（口径未定，纪元未锁）。
+
+### 执行实录 35（2026-09-10）：House1 dish_washer 阈值敏感性判读——**口径定夺 200W（加热相位定义），纪元锁定**；摸底交付（val 30000 统一）
+- **本任务角色**：实验/调参教练（口径判读 + 摸底设计）
+- **用户执行命令（2026-09-10，实录 34 交付版）**：
+  ```powershell
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 20
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 100
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 200
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 500
+  ```
+- **输出关键数字（evt/day 与 kWh/evt，train/val/test）**：20W：2.53/2.17/2.70，0.160 kWh/evt（切碎，实录 23 预警确认）；100W：2.04/1.46/1.81，0.198；**200W：0.98/0.91/1.02，0.411/0.345/0.404**；500W：0.90/0.76/0.90，0.451/0.409/0.461。ON 分布：@20/100W 双峰（med 120-122/p95 2363）；@200/500W 单峰紧致（med 2330-2337/p95 2383-2387）。on_frac：@20/100W 0.019-0.024；@200/500W **三段四位小数完全一致**（0.0061/0.0045/0.0062）。总能量/kWh/day/corr/aggOffW 四跑完全不变（EE 阈值无关的实证）。
+- **判读 1（四判据执行，实录 34 预注册框架）**：①事件收敛度——大断层在 **100→200W**（evt/day 减半 2.04→0.98、medW 122→2335 跳变=泵相位出局），200→500 仅再并 ~10%；②双峰分离点在 100-200W 之间——@200W 起为纯加热签名（2330-2390W 紧致单峰）；③可学性——泵相位 120W **低于总负荷基线本身**（aggOffW 321-408W）→ 从 aggregate 不可学；加热 2335W 对 ~350W 基线强对比 ✓；④分辨率——val ON@30000 = 0.0045×30000 = **135 ≥ 90** ✓（@6000 仅 27）。
+- **判读 2（预注册规则命中）**：200W：evt/day 0.91-1.02 ∈[0.5,3] ✓、kWh/evt 0.345-0.411 ≥0.3 ✓、ON 135 ≥90 ✓ → **倾向 200W 三条件全中**；100W 与 200W 差异显著（evt 2.04 vs 0.98、on_frac 3.5×）→ 不取 100W。
+- **判读 3（200 vs 500 口径等价，取 200）**：on_frac 三段四位小数一致 → [200,500) 带样本 <1e-4；F1/P/R 为逐样本口径，事件数差异（511 vs 466）只影响 diagnose 统计不影响模型评估 → 两阈值对训练与评估**几乎完全等价**，取 200W（边缘多捕获、阈值落点对噪声更稳健）。
+- **判读 4（周期结构算术闭环）**：dw 总能量 0.405 kWh/day ÷ 典型 0.8-1 kWh/周期 = 真实周期 **0.4-0.5 次/天**；×每周期 2 个加热相位 = 0.8-1.0 相位/天，与 @200W 实测 0.91-1.02 **精确吻合** → @200W 事件=加热相位（非整周期）；单相位能量交叉验证 2333W×8.9min=0.347 kWh ✓（=kWh/evt 0.345-0.411 的构成）；加热相位占 dw 总能量 **84%**（14.2W/16.9W 平均功率）→ 200W=能量主体相位，F1 口径与 EE 语义对齐。
+- **判读 5（口径业务含义定谳）**：「dw 运行中」在本纪元=**加热相位中**（非全周期）：泵相位不可学（判读 1③）且占 @20W ON 样本的 ~72%（on_frac 0.0222→0.0061）→ @20W 是可学性陷阱（recall 理论天花板 ~0.28）；真周期级事件须推理侧 min-gap 后处理合并（未来工作备忘，不影响本纪元训练与验收）。
+- **判读 6（drift 签名记录）**：test 偏重（evt 1.12×/kWh 1.32× vs val），H1 kettle 同向——按跨纪元结论 #4（EE 方向不可预判）仅记录不预测，Test 时观察。
+- **纪元锁定宣告**：**House1 dish_washer 纪元锁定**——npz=`ukdale_dw.npz`（实录 23 身份链过+本实录口径定夺），**F1 口径 on_threshold=200W（加热相位定义）**（npz/data_spec 不变，口径在训练 config metrics 字段）；Test 预算 2 次 untouched。
+- **摸底设计（configs/baseline_dw.yaml）**：架构/训练=baseline.yaml 同款（d64/h4/L2/ff128/do0.1/bs128/lr5e-4/30/7）；两处纪元适配：①threshold 200；②**val 30000**（dw val ON@6000 仅 27 无分辨率；与搜索口径统一，消除 H2 时代的摸底-搜索口径不可直比警示）；w128 起步（加热相位平均 8.9min < 12.8min 窗口，单相位可见；周期级长窗 384/512 留粗搜）。
+- **待用户（摸底 ×3 + val KPI 补读 ×3，一次回传）**：
+  ```powershell
+  python scripts\train.py --config configs\baseline_dw.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed 42 --out reports\base_dw_s42
+  python scripts\train.py --config configs\baseline_dw.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed 2024 --out reports\base_dw_s2024
+  python scripts\train.py --config configs\baseline_dw.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed 7 --out reports\base_dw_s7
+  python scripts\evaluate.py --run-dir reports\base_dw_s42
+  python scripts\evaluate.py --run-dir reports\base_dw_s2024
+  python scripts\evaluate.py --run-dir reports\base_dw_s7
+  ```
+- **回传要求**：三份完整 stdout + 三份 evaluate JSON（本轮直接并回，省一轮往返）。
+- 是否进入 REPORT.md：否（口径判读+摸底交付，实验结论待摸底）。

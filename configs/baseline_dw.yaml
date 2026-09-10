@@ -1,0 +1,38 @@
+# House1 dish_washer 纪元摸底 baseline（REPORT_TEST.md 实录 35）：
+#   架构/训练 = baseline.yaml 同款（d64/h4/L2/ff128/do0.1/bs128/lr5e-4/wd1e-4/30/7）；
+#   两处纪元适配：
+#   ① metrics.on_threshold_watts = 200（阈值敏感性定夺：20/100W 切碎+泵相位不可学，
+#      200/500W 口径等价 on_frac 一致；200W=加热相位定义，能量占比 ~85%，判据实录 34 预注册命中）；
+#   ② max_samples_val = 30000（6000 时 dw val ON 仅 ~27 个，F1 无分辨率；
+#      与搜索口径统一，消除 H2 时代的摸底-搜索口径不可直比警示）。
+#   窗口 128（12.8min）起步：@200W 加热相位平均 ~8.9min，单相位可见；
+#   周期级长窗（384/512）议题留粗搜。Test 预算独立 2 次，摸底不带 --test。
+seed: 42
+device: auto
+data:
+  path: ''
+  appliance: dish_washer
+  window_size: 128
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  max_samples_train: 30000
+  max_samples_val: 30000
+  max_samples_test: 6000
+model:
+  input_dim: 1
+  d_model: 64
+  nhead: 4
+  num_layers: 2
+  dim_feedforward: 128
+  dropout: 0.1
+training:
+  batch_size: 128
+  epochs: 30
+  lr: 0.0005
+  weight_decay: 0.0001
+  patience: 7
+  grad_clip: 1.0
+  loss: mse
+metrics:
+  on_threshold_watts: 200.0

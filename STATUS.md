@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】House1 dish_washer 纪元启动（实录 34 立项）：数据已过身份链（实录 23：ukdale_dw.npz，n=10.69M/742 天），**纪元锁定悬置于事件口径定夺**——当前=阈值敏感性 20/100/200/500 四跑（预注册判读框架：事件收敛度/双峰分离/可学性/分辨率四判据）→ 口径定夺+纪元锁定 → 摸底 baseline（Test 预算独立 2 次；窗口维上限放宽议题随摸底定）
+- 【进行中·用户任务】House1 dish_washer 纪元**已锁定**（实录 35：阈值敏感性四跑判读——口径定夺 **200W 加热相位定义**：预注册规则三条件全中/泵相位 120W<aggOffW 基线不可学/周期结构闭环 0.4-0.5 周期/天×2 相位=0.8-1.0 vs 实测 0.91-1.02 吻合/加热占能量 84%/200 与 500 口径等价）→ 摸底已交付（baseline_dw.yaml：threshold 200+val 30000[ON 135]+w128 起步）→ 当前=用户跑摸底 ×3+evaluate ×3 → 判读定 dw 搜索方案（Test 预算 2 次 untouched；长窗 384/512 议题留粗搜）
 - 【已收官·2026-09-10】House2 kettle 纪元全流程闭环（实录 24-33：身份链→probe 定谳→纪元锁定→摸底→粗搜 32→细搜两批次 34 runs→锁定 f5_t9→Test 四线全过 S_test 0.0252/F1 0.9398/EE −0.02% 死零；Test 预算 2 用 1 封存；REPORT.md v1.1 §7+两纪元对照+跨纪元结论五条）——等待用户下一任务（候选：House1 dw 纪元，须先 --on-threshold 100/200 敏感性；或其他 house/电器）
 - 本任务角色：工程实现工程师（泛化改造）；沙箱验证完毕，待用户回传后转实验/调参教练判读
 - 【已完成·收官】任务 3「调参执行」：F4（v2_do00×w96）锁定 + Test 验收四线全过（实录 20：S_test 0.0541 / F1 0.8941 / R 0.9268 / EE +5.2%；对照旧纪元 S 2.3 倍改善）。任务起点阻塞（Test EE −23%）正式关闭。
@@ -66,18 +66,21 @@
 - [x] 2026-09-10 H2 细搜批次 2 判读+**锁定 f5_t9**（实录 32）：判定树①不触发（f6 容量关闭，EE −0.98%±0.05 记为未来线索）；top-3 n=5 S 全不显著→分量定谳（F1 6.2×SEM+recall 决定性 vs EE 2.2×SEM 边缘——倾向规则预设的 EE-vs-F1 取舍未出现，f5 兼得）；窗口因子收官（t9 强依赖 w192 显著/t18 不敏感→窗口敏感性协议依赖）；搜索收敛不开批次 3；fb 补缺未执行（n=2 如实记录，锚结论不变）；锁定 f5_t9+Test 预注册交付（seed 9000，H2 #1/2）
 - [x] 2026-09-10 **H2 Test 终局验收通过+纪元收官**（实录 33）：四线全过（S_test 0.0252≤0.0317 富余 0.0065/F1 0.9398/R 0.9070/EE −0.02% 死零）+无漂移（Δ+0.0085<0.015）；test 事件解码闭环（TP39/FN4/FP1/ON43）；EE 方向预判未兑现（drift 签名→EE 推理链不成立，代价在 recall）；Test 预算审计闭合（2 用 1 封存，全周期 test:None）；REPORT.md v1.1（§7+两纪元对照+跨纪元结论五条）+TUNING_GUIDE 第三纪元战史+踩坑 9-11
 - [x] 2026-09-10 H1 dish_washer 纪元立项+阈值敏感性设计（实录 34）：口径问题本质三层拆解（事件统计/F1 业务定义/分辨率）；四判据+决策规则预注册（200W 倾向：evt/day∈[0.5,3]+kWh/evt≥0.3+ON≥90）；EE 阈值无关确认（npz 免重跑）；窗口上限放宽议题备忘（dw 周期 1-2h≫窗口）；四跑命令交付
+- [x] 2026-09-10 H1 dw 阈值敏感性判读+**纪元锁定**（实录 35）：四判据执行（断层在 100→200W=泵相位出局；@200W 起纯加热单峰 2330-2390W；泵 120W<aggOffW 321-408 不可学；val ON 135@30000 ✓）；预注册规则三条件全中→口径定夺 **200W**；200 vs 500 口径等价（on_frac 四位小数一致）取 200；周期结构闭环（0.4-0.5 周期/天×2 相位=0.8-1.0 vs 实测 0.91-1.02；单相位 0.347 kWh；加热占能量 84%）；@20W=可学性陷阱（recall 天花板 ~0.28）记录；drift test 偏重（1.12×/1.32×）仅记录；baseline_dw.yaml 交付（threshold 200+val 30000+w128）
 
 ## 进行中
-- （用户侧）dw 阈值敏感性 ×4（命令见下一步块，秒-分钟级）→ 回传四份完整输出
-- （本侧）无阻塞；待口径判读（四判据+决策规则预注册于实录 34）→ 纪元锁定 → 摸底设计（baseline_dw 配置：选定阈值+窗口议题）
+- （用户侧）dw 摸底 ×3 + evaluate ×3（命令见下一步块，一次回传省一轮）
+- （本侧）无阻塞；待摸底判读（vs H1 kettle 摸底 EE −0.090/−0.094/−0.060、H2 摸底 val F1 0.9773/EE +2.91%；dw 可学性预期更难：corr 0.35-0.41+相位定义）→ 定 tune 搜索方案（窗口上限 384/512 议题）
 
 ## 下一步（TODO）
-1. 用户：dw 阈值敏感性 ×4（显式 --on-threshold 留痕）：
-   python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 20
-   python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 100
-   python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 200
-   python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer --on-threshold 500
-2. 本侧口径判读（实录 34 预注册框架）→ 推荐+理由 → 纪元锁定宣告 → 摸底设计（configs/baseline_dw.yaml：选定 on_threshold_watts+w128 起步可比性；Test 预算 2 次声明）→ 摸底 ×3 seeds → 粗搜/细搜（窗口上限 384/512 议题）
+1. 用户：dw 摸底 ×3 + val KPI 补读 ×3（Test 冻结，不带 --test）：
+   python scripts\train.py --config configs\baseline_dw.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed 42 --out reports\base_dw_s42
+   python scripts\train.py --config configs\baseline_dw.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed 2024 --out reports\base_dw_s2024
+   python scripts\train.py --config configs\baseline_dw.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed 7 --out reports\base_dw_s7
+   python scripts\evaluate.py --run-dir reports\base_dw_s42
+   python scripts\evaluate.py --run-dir reports\base_dw_s2024
+   python scripts\evaluate.py --run-dir reports\base_dw_s7
+2. 本侧摸底判读（val MAE/F1/EE/σ 三种子+train 曲线健康度）→ tune 搜索方案（configs/tuning_dw.yaml：窗口维上限放宽 384/512 议题+val 30000+composite）→ 粗搜/细搜/Test 预注册全流程
 3. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
 4. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
 
@@ -155,6 +158,7 @@
 - 2026-09-10（踩坑·沙箱第九次重置）：同新形态，SOP 直接适用，零丢失；连续重置第 5 回合（五至九）
 - 2026-09-10（验收·H2 Test 通过·纪元收官）：f5_t9 seed 9000 预注册一跑四线全过（S 0.0252/F1 0.9398/R 0.9070/EE −0.02%）；两纪元对照 H2 全面占优（S 好 2.1 倍，结构性=3kW 壶信噪比）且锁定配置零参数重叠（L1/w192/bs128 vs L2/w96/bs64）——跨纪元不迁移定谳；Test 预算 2 用 1 封存（对比 H1 摸底误碰：eval_test 缺省翻转的工程价值完整兑现）；EE 方向不可由 drift 签名预判（预判偏正实测死零，代价在 recall 0.9533→0.9070）——入 REPORT.md §7 跨纪元结论
 - 2026-09-10（立项·H1 dw 纪元）：事件阈值=业务定义选择（全周期 vs 加热相位）而非纯技术参数——泵相位 120W 对 agg 基线对比度弱（corr 0.35-0.41），可学性与业务纯度须权衡；EE 与阈值无关故口径悬置不阻塞数据有效性；判读框架先预注册后看数（防事后择优）
+- 2026-09-10（决策·dw 口径 200W·纪元锁定）：F1 口径=加热相位定义（非全周期）——判据=预注册规则命中+周期结构算术闭环+可学性（泵相位低于基线）+能量主体（84%）；200 与 500 的 on_frac 四位小数一致（F1 逐样本口径下等价）→ 阈值落点稳健性取 200；摸底 val 直接 30000（dw@6000 仅 ON 27 无分辨率，且与搜索口径统一消除不可直比警示——H2 教训前置消化）；真周期事件合并=推理侧 min-gap 后处理，留未来工作
 
 ## 关键文件路径
 - 协议：`BOOTSTRAP.md`（v2.1）、`ROLE.md`（角色库，默认角色=资深电力算法专家）
