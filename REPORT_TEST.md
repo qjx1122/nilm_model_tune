@@ -904,3 +904,24 @@
   ```
 - **回传要求**：summarize_fine 输出全文（按变体 mean±std 表）；个别 run 异常时补该 run 的 evaluate.py JSON。
 - 是否进入 REPORT.md：否（细搜未跑）。
+
+### 执行实录 30（2026-09-10）：细搜批次 1 命令 PowerShell 解析错误定谳——foreach 裸词列表（台账既有坑重犯）；引号版修正交付
+- **本任务角色**：工程实现工程师（命令修复）
+- **用户执行命令（2026-09-10，实录 29 交付版原文）**：
+  ```powershell
+  foreach ($c in f0_t11,f1_t11w192,f2_t18,f3_t18w96,f4_t18d64,f5_t9,fb_basearch) {  foreach ($s in 8000,8001,8002) {    python scripts\train.py --config configs\fine_h2\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed $s --out reports\fine_h2\${c}_s$s  }}
+  ```
+- **输出**：`ParserError: 参数列表中缺少参量（MissingArgument）`，错误位置行:1 字符:22、光标在首个逗号之后（f0_t11, 处）；错误回显中路径显示为 `\x5c` 转义、尾部附着 GUID（6bd10074-…）——多行粘贴被折叠为单行+粘贴标记噪音，非根因。
+- **判读（根因=裸词列表）**：foreach 的集合子句是**表达式上下文**——裸词 `f0_t11` 被按命令调用解析，随后的逗号触发 MissingArgument（光标位置=首逗号，精确吻合）；数字列表 `8000,8001,8002` 合法（数值字面量），无需引号。**这是台账既有坑（「PowerShell 裸词列表加引号」，session 首日记录）的重犯——实录 29 交付侧责任**，向用户致歉；H1 时代同构循环命令（引号版）曾顺利跑通 20+ runs。
+- **修正（最小变更=仅给 7 个配置名加单引号，其余字节不变）**：
+  ```powershell
+  foreach ($c in 'f0_t11','f1_t11w192','f2_t18','f3_t18w96','f4_t18d64','f5_t9','fb_basearch') {
+    foreach ($s in 8000,8001,8002) {
+      python scripts\train.py --config configs\fine_h2\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed $s --out reports\fine_h2\${c}_s$s
+    }
+  }
+  python scripts\summarize_fine.py --runs-dir reports\fine_h2
+  ```
+- **验证边界（如实）**：沙箱无 pwsh，本修正未在沙箱实测；依据=台账既有坑的既验修复模式（H1 实录 18/19 引号版循环 20+ runs 实战通过）。若修正版仍报错（如粘贴标记噪音导致 command-not-found），回传报错全文再定谳。
+- **待用户**：跑修正版（21 runs + summarize，~40-70min GPU，Test 冻结）→ 回传 summarize_fine 全文。
+- 是否进入 REPORT.md：否（工具修复）。

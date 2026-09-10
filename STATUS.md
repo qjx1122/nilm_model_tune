@@ -60,6 +60,7 @@
 - [x] 2026-09-10 H2 摸底判读完成（实录 27）：val F1 0.9773±0.0056/P 0.9774±0.0111/R 0.9773（=86/88 三种子固定，F1 差异=纯 FP 噪声 1/2/3）/EE +2.91%±3.84%（方向反转 vs H1 −7.1%±3.0% 坐实）/全门槛过富余大；val ON=88@6000（估算 80 的 1.1 倍）；sae=|EE| 口径补记；configs/tuning_h2.yaml 交付（tuning_v5 空间原样平移+双锚可达，pyyaml 校验过）
 - [x] 2026-09-10 H2 粗搜 32 trials 判读·上（实录 28）：32/32 过门槛（守门员强纪元失区分度属预期）；top-1 trial11 S=0.0149（w96 d64 L2 lr2e-4）；S 构成算术三 trial 复核全对上（S 方差≈F1 项）；方向信号=lr 下行（2e-4 三席/5e-4 零席）+w192 苗头（三席，窗口三纪元三翻转）+L1/d128 苗头；口径警示兑现（F1 0.977@6000→0.963-0.972@30000、EE→近零）；赢家诅咒预警（极差 0.0017 噪声内）；csv+best_config 补料待回
 - [x] 2026-09-10 H2 粗搜判读·下（实录 29）：csv 重构+算术全闭环（S 分解/sae/seed 32/32）；P/R 口径定谳 seq2point 中心点（N=400/407、F1 量子 0.0025）；w96 双峰（rank1+底部 6 席占 5+|EE|>2% 全 5 例）vs w192 EE 稳健（12 trial max|EE|1.8%）vs w128 中庸；lr 信号修正（top-10 三档均衡）；ff256/h8/bs64 信号；baseline 精确点未采样（最近邻 trial26 rank6）；configs/fine_h2/ ×7 交付（f0/f2/f5=粗搜行精确复核、f1/f3=2×2 因子、f4=容量、fb=协议锚；pyyaml 校验+单变量交叉校验）
+- [x] 2026-09-10 细搜命令 PowerShell 解析错误定谳与修正（实录 30）：裸词列表在 foreach 表达式上下文按命令解析（MissingArgument 光标=首逗号）——台账既有坑（REPORT_TEST.md:591 引号版记录）重犯、交付侧责任；\x5c 转义与尾部 GUID=粘贴标记噪音非根因；引号版修正交付（最小变更=仅 7 个配置名加单引号；沙箱无 pwsh 未实测，依据=既有坑既验修复模式）
 
 ## 进行中
 - （用户侧）H2 细搜批次 1：7 配置 ×3 seeds（命令见下一步块，~40-70min GPU）→ 回传 summarize_fine 全文
@@ -67,7 +68,7 @@
 
 ## 下一步（TODO）
 1. 用户：H2 细搜批次 1（21 runs + 汇总，Test 冻结）：
-   foreach ($c in f0_t11,f1_t11w192,f2_t18,f3_t18w96,f4_t18d64,f5_t9,fb_basearch) {
+   foreach ($c in 'f0_t11','f1_t11w192','f2_t18','f3_t18w96','f4_t18d64','f5_t9','fb_basearch') {
      foreach ($s in 8000,8001,8002) {
        python scripts\train.py --config configs\fine_h2\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed $s --out reports\fine_h2\${c}_s$s
      }
@@ -142,6 +143,7 @@
 - 2026-09-10（发现·H2 窗口维三态）：w96 双峰（rank1 但底部 6 席占 5、|EE|>2% 全部 5 例皆 w96，max+8.9%）/ w192 稳健（无底部队、12 trial 全部 |EE|≤1.8%）/ w128 中庸（top-10 4 席）→ 细搜 2×2 因子 {t11,t18}×{w96,w192} 正面对决；lr 信号修正：top-10 三档均衡（3/3/4），上轮「5e-4 零席」仅 top-5 事实、不外推
 - 2026-09-10（决策·fine_h2 批次 1）：7 配置×3 seeds（8000-8002 fresh 族）——f0/f2/f5 粗搜行精确复核（赢家诅咒）+f1/f3 窗口 2×2+f4 容量（d128 必要性）+fb 协议锚；预注册判定纪律六条+Test seed 9000 预注册意向；epochs 维持 25/5（trial11 ep20/25 临界仅记录，H1 30/7 劣化教训）
 - 2026-09-10（踩坑·~/.local 不持久）：pip --user 装的包在 ~/.local（快照排除清单）→ 跨回合丢失（与沙箱重置无关，CLEAN 回合同样发生）；每回合需重装 pyyaml（--break-system-packages）
+- 2026-09-10（踩坑·PowerShell 裸词列表重犯）：foreach 集合子句为表达式上下文，裸词按命令解析、逗号即 ParserError(MissingArgument)——session 首日已踩（REPORT_TEST.md:591 引号版修正），实录 29 交付重犯；铁律：**交付 PowerShell 列表命令前逐条过一遍既有坑清单**（裸词列表/路径引号/反引号转义）；数字字面量列表无需引号
 
 ## 关键文件路径
 - 协议：`BOOTSTRAP.md`（v2.1）、`ROLE.md`（角色库，默认角色=资深电力算法专家）
