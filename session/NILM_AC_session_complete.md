@@ -264,3 +264,17 @@
 - 关键决策：npz 可用性不悬置（复现证明杂散行被剔除），但纪元锁定待 probe 定谳（先对账再锁定）
 - 未决问题：用户 probe meter8 输出
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；scripts/probe_meter.py / REPORT_TEST.md（实录 24）/ STATUS.md
+
+## 2026-09-10 · House2 kettle 纪元：probe 定谳 → 纪元锁定 → 摸底/粗搜/细搜 → f5_t9 锁定 → Test 四线全过收官
+- 本会话角色：资深电力算法专家（对账判读）→ 实验/调参教练（摸底/搜索/锁定/Test）→ 收官卸任
+- 完成项：
+  - 网格异常定谳（实录 25）：probe 实测 meter8 表头 8 行 Feb17 0W 杂散（安装测试残留）；算术全闭环（kettle 网格 3,377,557=真实跨度满格数、剔除 172+837,606+394,081、保留 84.5%）；「与 list-meters 互斥」系转写误差（n 两处一致+start=原始 min 不滤 0W）→ 纪元锁定；probe v2 crash 修复（ndarray 无 to_numpy）
+  - 摸底（实录 26/27）：baseline ×3 训练健康；test:None ×3（Test 冻结实战生效）；val F1 0.9773±0.0056/EE +2.91%±3.84%（方向反转 vs H1 坐实）；val ON=88@6000（recall=86/88 三种子固定）
+  - 粗搜（实录 28/29）：32/32 过门槛；csv 全貌 S 分解 32/32 闭环；P/R 口径定谳 seq2point 中心点（N=400/407、F1 量子 0.0025）；w96 双峰 vs w192 EE 稳健；赢家诅咒预警
+  - 细搜（实录 30-32）：PowerShell 裸词列表重犯修正（实录 30）；批次 1 赢家诅咒兑现（f0 0.0149→0.0302 垫底）+t11 出局+L1 领跑；批次 2 分量显著性定谳（F1 6.2×SEM+recall 零方差 vs EE 2.2×SEM 边缘）→ 锁定 f5_t9（w192/d64/h8/L1/ff128/do0/bs128/lr3e-4/wd1e-4）
+  - Test 终局（实录 33）：seed 9000 预注册一跑四线全过（S_test 0.0252≤0.0317/F1 0.9398/R 0.9070/EE −0.02% 死零）+无漂移（Δ+0.0085）；test 事件解码闭环（TP39/FN4/FP1/ON43）；EE 方向预判未兑现（如实披露：代价在 recall 不在能量）；Test 预算 2 用 1 封存
+  - 收官沉淀：REPORT.md v1.1（§7 House2 纪元+两纪元对照+跨纪元结论五条：架构零重叠/赢家诅咒复现/窗口协议依赖/EE 方向不可预判/Test 冻结工程价值）；TUNING_GUIDE 第三纪元战史+踩坑 9-11
+  - 沙箱重置五次（第五至九次，同新形态=HEAD 回基点+工作区幸免），SOP（显式 fetch arena 分支+mixed reset）五次零丢失；新坑入账：~/.local 不持久（pip --user 跨回合丢）
+- 关键决策：锁定依据=分量显著性（S 层面并列时 F1 显著+recall 决定性压过 EE 边缘差异，预注册倾向规则的取舍前提未成立）；不开批次 3（搜索收敛：两新变体均不优+top-3 跨批次稳定）
+- 未决问题：无（等待用户下一任务；候选=H1 dw 纪元，前置 --on-threshold 敏感性）
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；configs/fine_h2/f5_t9.yaml（最终配置）/ configs/tuning_h2.yaml / REPORT_TEST.md（实录 25-33）/ REPORT.md v1.1 §7 / TUNING_GUIDE.md §3-4 / scripts/probe_meter.py v2
