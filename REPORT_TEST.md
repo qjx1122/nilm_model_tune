@@ -804,3 +804,26 @@
   ```
 - **回传要求**：摸底三份完整 stdout（含逐 epoch val 行与 best epoch 摘要）；摸底不碰 Test；可选复核输出一并存档。
 - 是否进入 REPORT.md：否（对账+工具+纪元锁定；实验结论待摸底产生）。
+
+### 执行实录 26（2026-09-10）：House2 kettle 摸底 baseline ×3 seeds stdout 判读——训练健康/Test 冻结首次实战生效（test:None ×3）；val F1/EE 待补读
+- **本任务角色**：实验/调参教练（摸底判读）
+- **用户执行命令（2026-09-10，实录 25 交付版）**：
+  ```powershell
+  python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 42 --out reports\base_h2_s42
+  python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 2024 --out reports\base_h2_s2024
+  python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 7 --out reports\base_h2_s7
+  ```
+- **输出关键数字（三份完整 stdout）**：best_epoch 12/16/15；best val MAE **4.95/4.12/5.30**（均值 4.79±0.61）；best val R² 0.9594/0.9596/0.9380；早停于 19/23/22 epochs（=best+patience7 恰好，三种子算术全闭环）；runtime 71.1/81.7/78.5s（cuda）；n_train/val/test=30000/6000/6000；逐 epoch val MAE 抖动 4.1↔13.2（H1 同款 val 噪声签名）；**`'test': None` ×3**；可选 probe/list-meters 复核未跑（不阻塞，实录 25 已定谳）。
+- **判读 1（Test 冻结首次实战验证）**：三份 result 均 `test: None`——实录 14 的 eval_test 缺省翻转修复在首个新纪元摸底中实战生效，**H2 Test 预算 2 次 untouched**（摸底全程零触碰；对照 H1 时代摸底曾因缺省 True 误碰 #1）。
+- **判读 2（训练健康/日志完整性法证）**：三种子中程收敛（best 12/16/15，无 epoch1 崩溃、无 30 跑满）；val R² 0.94-0.96；train MAE 终值 5.1-6.3 正常收敛。stdout 各缺一行（s42 的 Epoch 009、s2024 的 Epoch 014）——trainer 每 epoch 无条件打印 + 早停算术 best+7=last 三种子全闭环 → **系粘贴/终端层丢失而非训练缺失**，且缺失行均非 best epoch，判读不受影响。
+- **判读 3（vs H1 摸底对照）**：H1 v5 摸底 val best MAE ≈3.3/3.9（实录 14）vs H2 4.1-5.3——同量级略高（H2 壶功率 2950W vs 2344W、aggOffW 基线相近，方向合理）；runtime 同量级。
+- **判读 4（val 分辨率估算）**：val 段 321,855 样本（22.35 天）× on_frac 0.0133 → 全 val ON≈4,281；6000 linspace 子采样 → **val ON≈80**（H1 ≈36 的 2.2 倍，方向利好），但搜索选型仍须扩 val 30000（ON≈400）+ 多种子均值（H1 纪律直接沿用）。
+- **缺口（本实录边界）**：train.py stdout 只打 val MAE/R2/score——**val F1/EE/P/R 不可见，摸底判读未完成**；EE 方向验证（drift 反向签名预判偏正）是下一步核心目的。须走 evaluate.py 补读通道（实录 14/15 建立：读 result.json+history.json 的 best_epoch_val，不重训、不碰 Test）。
+- **待用户（val KPI 补读 ×3）**：
+  ```powershell
+  python scripts\evaluate.py --run-dir reports\base_h2_s42
+  python scripts\evaluate.py --run-dir reports\base_h2_s2024
+  python scripts\evaluate.py --run-dir reports\base_h2_s7
+  ```
+- **回传要求**：三份 JSON 全文（重点 best_epoch_val 的 val_f1 / val_energy_error / val_precision / val_recall）。
+- 是否进入 REPORT.md：否（摸底进行中，val KPI 未齐）。

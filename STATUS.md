@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】House2 kettle 数据纪元**已锁定**（实录 24 身份链过 + 实录 25 probe 定谳：8 行 Feb17 0W 杂散坐实、kettle 网格 3,377,557=meter8 真实跨度满格数、算术全闭环、「互斥」系实录 24 转写误差；npz=ukdale_h2_kettle.npz，mains=m1/kettle=m8；**Test 预算 2 次 untouched**）→ 当前=摸底 baseline ×3 seeds → 判读后定 H2 搜索方案（drift 反向签名：val 7.78 evt/day 重/test 3.71 轻，EE 预期偏正）
+- 【进行中·用户任务】House2 kettle 数据纪元**已锁定**（实录 24 身份链过 + 实录 25 probe 定谳：8 行 Feb17 0W 杂散坐实、kettle 网格 3,377,557=meter8 真实跨度满格数、算术全闭环、「互斥」系实录 24 转写误差；npz=ukdale_h2_kettle.npz，mains=m1/kettle=m8；**Test 预算 2 次 untouched**）→ 摸底 ×3 seeds 完成、stdout 判读过（实录 26：训练健康、test:None ×3 冻结实战生效、best val MAE 4.95/4.12/5.30）→ 当前=evaluate 补读 val F1/EE（EE 方向=drift 反向签名直接检验，预判偏正）→ 定 H2 搜索方案
 - 本任务角色：工程实现工程师（泛化改造）；沙箱验证完毕，待用户回传后转实验/调参教练判读
 - 【已完成·收官】任务 3「调参执行」：F4（v2_do00×w96）锁定 + Test 验收四线全过（实录 20：S_test 0.0541 / F1 0.8941 / R 0.9268 / EE +5.2%；对照旧纪元 S 2.3 倍改善）。任务起点阻塞（Test EE −23%）正式关闭。
 - 本任务角色：实验/调参教练（已随任务收官回归默认角色「资深电力算法专家」）
@@ -56,23 +56,20 @@
 - [x] 2026-09-09 prepare 首跑 n=345 确诊秒级相位差并修复（REPORT_TEST.md 执行实录 9）：meter1=:15 vs meter10=:18 精确 join 拼不上；改统一 6s 网格 resample 对齐；schema_version→2；--mains-ids 默认→1；偏移 3s 回归测试；pytest 13 passed
 - [x] 2026-09-09 metadata 全文回传→定表号（REPORT_TEST.md 执行实录 8）：mains=meter1 单表、kettle=meter10；meter2=锅炉回路（纠正 1,2 假设）；meter54=1s mains 备选
 - [x] 2026-09-10 H2 网格异常 probe 定谳 + **House2 kettle 纪元锁定**（实录 25）：杂散 8 行坐实（Feb 17 16:00:22 起 0W，安装测试残留）；算术全闭环（kettle 网格 3,377,557=真实跨度满格数、剔除 1,231,859=172+837,606+394,081、保留 149.0 天=84.5%）；「与 list-meters 互斥」系转写误差（n=2,094,523 两处一致+start 语义=原始 min 不滤 0W）→ 撤回文件状态假说；孪生 v2 真实时间戳端到端复现（mains 3377384/kettle 3377557 一字不差）；probe v2 crash 修复+增强（CLI 端到端测试过，pytest 16 passed）；摸底 baseline ×3 seeds 命令交付
+- [x] 2026-09-10 H2 摸底 baseline ×3 seeds stdout 判读（实录 26）：训练健康（best 12/16/15、val MAE 4.95/4.12/5.30 均值 4.79±0.61、val R² 0.94-0.96、patience 算术三种子闭环）；Test 冻结实战生效（test:None ×3，H2 预算 2 次 untouched）；val ON≈80（H1 的 2.2 倍）；val F1/EE 待 evaluate 补读
 
 ## 进行中
-- （用户侧）H2 摸底 baseline ×3 seeds（命令见下一步块，不带 --test）+ 可选存档复核（probe v2 ×2 + list-meters）；回传三份完整 stdout
-- （本侧）无阻塞；待回传判读 H2 baseline KPI（对照 H1 摸底：EE −0.060~−0.093 / F1 0.789-0.846；H2 预期 EE 偏正）→ 定 tune 搜索方案
+- （用户侧）evaluate 补读 val KPI ×3（命令见下一步块）→ 回传三份 JSON 全文
+- （本侧）无阻塞；待 val F1/EE 判读（对照 H1 摸底 val：F1 0.918 / EE −7.1%±3.0%，实录 15；EE 方向检验 drift 反向签名预判偏正）→ 定 H2 tune 搜索方案并交付配置
 
 ## 下一步（TODO）
-1. 用户：H2 摸底 baseline ×3 seeds（纪元已锁，Test 冻结——不带 --test，eval_test 缺省 False）：
-   python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 42 --out reports\base_h2_s42
-   python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 2024 --out reports\base_h2_s2024
-   python scripts\train.py --config configs\baseline.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 7 --out reports\base_h2_s7
-2. 可选存档复核（10 秒级，不阻塞摸底；预期 m8 起点必显 2013-02-17 16:00:22、m1 满跨度格数 3,377,384，不符再开对账）：
-   python scripts\probe_meter.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --meter 8 --cutoff "2013-04-16 21:18:09"
-   python scripts\probe_meter.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --meter 1
-   python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --list-meters
-3. 本侧判读摸底（val MAE/F1/EE/σ 三种子；H2 val 段仅 22.35 天 × 7.78 evt/day → val 6000 子样本 ON≈50 量级，搜索阶段须扩 val 30000 同 H1 纪律）→ tune 搜索方案：H1 F4 邻域平移起步（w96 结论不跨纪元须重验）+ composite S 多种子均值
-4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
-5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
+1. 用户：val KPI 补读 ×3（不重训、不碰 Test）：
+   python scripts\evaluate.py --run-dir reports\base_h2_s42
+   python scripts\evaluate.py --run-dir reports\base_h2_s2024
+   python scripts\evaluate.py --run-dir reports\base_h2_s7
+2. 本侧判读 val KPI（重点 val_f1/val_energy_error/val_precision/val_recall；对照 H1：val F1 0.918/P 1.0/R 0.848/EE −7.1%±3.0%）→ 定 H2 tune 搜索方案：H1 F4 邻域平移起步（w96 结论不跨纪元须重验）+ val 扩 30000（H2 val ON≈80@6000 → ≈400@30000）+ composite S 多种子均值 → 交付 configs/tuning_h2.yaml
+3. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
+4. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
 
 ## 决策记录 / 踩坑
 - 2026-09-08：`ROLE.md.md` 与台账文件名（`ROLE.md`）不一致，且最近 commit 意图即「上传ROLE.md」→ 执行 `git mv ROLE.md.md ROLE.md`，无损、可回退
@@ -128,6 +125,8 @@
 - 2026-09-09（踩坑·工具）：同一回合内并行发给同一文件的多个 edit_file 只会活一个（互相覆盖）→ 同文件多处改动必须串行或单次原子写入（bash/python 整段改），且 commit 前必须 grep 验活
 - 2026-09-10（定谳·H2 网格异常闭环→纪元锁定）：probe 实测 meter8 表头 8 行 2013-02-17 16:00:22 起 0W 杂散（安装测试残留），主体 2,094,515 行自 Apr 16 21:18:09 起；kettle 网格 3,377,557=meter8 真实跨度（Feb17→Oct10，234.55 天）满格数——「超上限」系误把主体起点当表起点；剔除 1,231,859=头部 172+静默 837,606+交叠内 394,081 一字不差；「与 list-meters 互斥」系实录 24 转写误差（list-meters start=原始 min 且 0W 行保留、n=2,094,523 两处一致）→ 撤回「不同文件状态」假说；npz 双证有效（孪生复现×probe 机制）→ House2 kettle 纪元锁定，Test 预算 2 次
 - 2026-09-10（踩坑·probe 交付测试盲区）：`DatetimeIndex < Timestamp` 返回 ndarray（无 .to_numpy()）→ 用户侧 crash；上轮沙箱测试未覆盖「截断前行存在」分支——教训：交付脚本必须以用户同款 CLI 入口端到端跑全部分支，后加代码必须重新回归（本次孪生 v2 三项全过：m8+cutoff / m1 无 cutoff / prepare 端到端）
+- 2026-09-10（验证·Test 冻结实战生效）：H2 摸底三份 result 均 test:None——实录 14 eval_test 缺省翻转修复首次实战验证通过，摸底零触碰 Test（H1 时代同环节曾误碰 #1）；另证：早停算术 last=best+patience 三种子全闭环可作训练日志完整性判据（stdout 缺行系粘贴丢失而非训练缺失，trainer 每 epoch 无条件打印）
+- 2026-09-10（踩坑·沙箱第五次重置·新形态）：/tmp 清空（dvenv 失，本轮无 pandas 需求未重建）+ 本地 .git 被替换为 main 单分支克隆（HEAD=7824bb4、默认 fetch 只拉 origin/main，`git fetch origin` 不拉 arena 分支、FETCH_HEAD=main 头）→ 恢复 SOP 增补：须显式 `git fetch origin arena/01a07f1d-nilm-model-tune` 再 mixed reset（实录 26 仅在工作区，禁 --hard）；对账=reset 后 git status 应仅剩本轮增量，其余逐文件内容哈希一致（本次零丢失）
 
 ## 关键文件路径
 - 协议：`BOOTSTRAP.md`（v2.1）、`ROLE.md`（角色库，默认角色=资深电力算法专家）
