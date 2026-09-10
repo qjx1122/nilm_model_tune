@@ -241,3 +241,15 @@
 - 关键决策：别名不废弃（v5 冻结命令长期可用）；每 (house,appliance) 独立数据纪元 Test 预算 2 次
 - 未决问题：待用户真实数据验证（House1 dw meter6 + House2 探查）
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；scripts/{prepare_ukdale,diagnose_split,parse_nilmtk_metadata}.py / tests/ / README.md / REPORT_TEST.md（实录 22）
+
+## [2026-09-09] 会话纪要（泛化真实数据验证 + House2 kettle pilot 设计）
+- 目标：判读 House1 dw 全链 + House2 探查；定下一电器纪元
+- 本会话角色：工程实现工程师（验证判读）→ 实验/调参教练（pilot 设计）
+- 完成项：
+  - House1 dw 判读：身份链过（aggOffW 317-406/corr 0.35-0.41）；meter6 覆盖 99.96%（远健壮于 kettle 表）；n=10.69M/742 天；预警=20W 阈值切碎周期（0.16 kWh/evt，双峰 120/2363W）
+  - House2 探查判读：双 mains（m1 6s apparent 235d / m20 1s active 12.17M 177d）；meter7 metadata 有 h5 无（同 H1 meter0）；19 电器映射（kettle=m8、rice cooker=m9、wm=12、dw=13、fridge=14、mw=15）；表两批分期安装
+  - 泛化验证结论：全链真实数据通过，任务 4 代码目标达成；House2 kettle pilot 命令交付（mains m1 默认+m20 备选）
+  - 台账（ROLE v1.2 三件套）：实录 23（命令+输出+判读）；STATUS 更新+验活；commit+push
+- 关键决策：dw 事件阈值预警入档；House2 独立纪元 Test 预算 2 次
+- 未决问题：用户回传 H2 kettle prepare+diagnose（含缺口处理行）
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；REPORT_TEST.md（实录 23）/ STATUS.md

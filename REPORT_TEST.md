@@ -731,3 +731,22 @@
   ```
 - **判读要点（预注册预期）**：dw 的 diagnose——aggOffW 数百 W（真实基线）、corr<0.5、on_frac 远低于 kettle 属正常（洗碗机占空比低）；House2 mains 表号须以 list-meters+parse 实测为准（**不猜表号**纪律）。**每个 (house, appliance) 为独立数据纪元：Test 预算各 2 次，须重走身份验证→摸底→搜索→锁定→Test 全流程。**
 - 是否进入 REPORT.md：否（工具泛化非实验结论；真实数据验证后再议 README/REPORT 收录）。
+
+### 执行实录 23（2026-09-09）：泛化真实数据验证——House1 dish_washer 全链过 + House2 探查（双 mains/19 电器表）；dw 事件阈值预警
+- **本任务角色**：工程实现工程师（验证判读）→ 转实验/调参教练（下一电器纪元设计）
+- **用户执行命令（2026-09-09，真实数据）**：
+  ```powershell
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 1 --mains-ids 1 --appliance-meter-id 6 --appliance dish_washer --out D:\Work\testPython\datasets\ukdale_dw.npz
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_dw.npz --appliance dish_washer
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --list-meters
+  python scripts\parse_nilmtk_metadata.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2
+  ```
+- **输出关键数字**：①House1 dw：n=10,685,551（742.1 天，跨度保留 94.3%），mains 网格 11,323,076 / dw 网格 11,323,174（meter6 覆盖 ≈99.96% 近乎无缺口，远健壮于 kettle 表的 79%）；diagnose（20W 表值）：evt/day 2.53/2.17/2.70、on_frac 0.0222/0.0188/0.0235、ON 功率 mean 722/649/699、**med 120**、p95 2363、kWh/day 0.405/0.313/0.414、aggOffW 348.6/317.5/406.4、corr 0.413/0.400/0.353。②House2：20 表（meter7 在 metadata 有映射但 h5 无组，同 House1 meter0 现象）；**双 mains 结构**——meter1（apparent，6s，2013-02-17→10-10，235 天）+ meter20（**active，1s，12,166,699 样本**，亚秒时间戳，2013-04-16→10-10，177 天）；电器表两批分期安装（m8-11 起于 2013-04-16、m12-19 起于 2013-05-20）；映射：kettle=m8、rice cooker=m9、washing machine=m12、dish washer=m13、fridge=m14、microwave=m15、toaster=m16 等 19 项。
+- **判读**：
+  1. **House1 dw 身份链通过**：aggOffW 317-406（真实基线）+ corr 0.35-0.41（aggregate 含 dw+其他）——NILM 前提成立，泛化口径产出结构合法（时间范围与 kettle 口径一致到分钟级）。
+  2. **dw 事件定义预警（若开 dw 纪元须先处理）**：0.405 kWh/day ÷ 2.53 evt/day ≈ **0.16 kWh/事件**，远低于洗碗机典型周期 1-1.5 kWh；ON 功率双峰（med 120W 泵相位 / p95 2363W 加热相位）→ 20W 阈值把一个洗涤周期的多相位**切分成多个"事件"**（水壶 v4 补0切碎的原生版）。做 dw 纪元前须做事件阈值敏感性（--on-threshold 100/200 对照）或事件合并（min-gap）——已记入预警，不影响本次验证结论。
+  3. **缺口处理行未随贴**：用户贴文跳过了 prepare 的「缺口处理」行（桥接格数/接缝/最大段在 data_spec.json gap_policy 有档）；后续回传请带上该行（档案可复现纪律）。
+  4. **House2 结构判读**：meter1 与 House1 meter1 同型（6s apparent mains）；meter20 与 House1 meter54 同型（1s active mains，12.17M 样本）——且 prepare 的 6s 网格 resample 对 1s 源**自动 bin-mean 降采样**（实录 9 修复的副产品能力），meter20 可直接 `--mains-ids 20` 使用（active 语义更纯，代价是跨度 177 天 < meter1 的 235 天）。kettle=meter8 纪元与 mains 交集 ≈2013-04-16→10-10（约 177 天，独立数据纪元）。
+  5. **泛化验证结论**：prepare（通用名+别名）/diagnose（阈值表+标签）/parse（命令模板）在真实 House1 dw 与 House2 探查全链工作正常——任务 4 代码目标达成。
+- **下一步（House2 kettle pilot，独立纪元 Test 预算 2 次）**：命令见 STATUS；预期 n≈2-2.5M、~170-180 天、aggOffW 数百 W、corr<0.5（证伪口同前：aggOffW≈0 则 mains 判错，备选 meter20）。
+- 是否进入 REPORT.md：否（工具验证+探查判读，非实验结论）。
