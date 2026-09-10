@@ -967,3 +967,29 @@
   ```
 - **回传要求**：目录清单（确定缺哪个 run）+ 批次 2 后的 summarize_fine 全文（f5/f3/f2 将以 n=5 聚合）。
 - 是否进入 REPORT.md：否（细搜进行中）。
+
+### 执行实录 32（2026-09-10）：House2 kettle 细搜批次 2 判读 → **锁定 f5_t9**；Test 预注册执行交付（seed 9000，H2 预算 #1/2）
+- **本任务角色**：实验/调参教练（批次 2 判读 + 锁定 + Test 预注册执行）
+- **用户执行命令（2026-09-10，实录 31 交付版引号循环）**：
+  ```powershell
+  foreach ($c in 'f5_t9','f3_t18w96','f2_t18') { foreach ($s in 8003,8004) {
+      python scripts\train.py --config configs\fine_h2\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed $s --out reports\fine_h2\${c}_s$s } }
+  foreach ($c in 'f6_f5d128','f7_f5w96') { foreach ($s in 8000,8001,8002) {
+      python scripts\train.py --config configs\fine_h2\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed $s --out reports\fine_h2\${c}_s$s } }
+  python scripts\summarize_fine.py --runs-dir reports\fine_h2
+  ```
+- **输出关键数字（32 run 目录）**：top-3 n=5：f5 **0.0167±0.0016**（F1 0.9654±0.0005/EE +0.66%±0.87%/R 0.9533±0.0000/ep 7.2）；f2 0.0180±0.0020；f3 0.0181±0.0011（EE −0.40%±0.64%/MAE 6.42 最低）；f6_f5d128 0.0185±0.0017（EE −0.98%±0.05 全场最紧）；f7_f5w96 0.0226±0.0009；fb 仍 n=2；f0 0.0302 垫底不变。
+- **判读 1（判定树①不触发）**：f6（0.0185）不优于 f5（0.0167），容量方向对 L1 线关闭；f6 的 EE −0.98%±0.05（σ 全场最小）记录为未来纪元线索（EE 敏感场景的 L1×d128 方向），本纪元 S 更差不锁。
+- **判读 2（top-3 n=5 S 全不显著）**：f5 vs f3 Δ0.0014 < 2×SEM 0.0017；f5 vs f2 Δ0.0013 < 0.0023；f2 vs f3 Δ0.0001——S 层面三分量并列，进分量权衡。
+- **判读 3（分量显著性定谳，锁定依据）**：f5 vs f3——**F1 +0.0049（2 量子）=6.2×SEM 显著**；**recall +0.0173（f5 σ=0.0000，5 种子确定性）决定性**；EE gap 0.0106=2.2×SEM 仅边缘性；MAE（f3 优 0.48）与 S σ 比（F=2.12<6.4）不显著。倾向规则（EE 近零+σ 小优先于 F1 最高）的**触发前提未成立**：该规则预设「F1 冠军 EE 坏」的取舍（如 f0 +6.4%），而 f5 的 EE +0.66%±0.87% 本身近零（与 f3 差异仅边缘性，两者均 ≪15% 门槛）→ f5 无 EE 牺牲，兼得 F1 最高+EE 近零 → **判定性锁定 f5_t9**。
+- **判读 4（窗口因子收官）**：f7（t9×w96）0.0226 vs f5（t9×w192）0.0167：Δ0.0059 > 2×SEM 0.0018 显著——t9 协议强依赖 w192；t18 协议窗口不敏感（0.0178≈0.0179）→ **窗口敏感性是协议依赖的**（批 1 结论加固）；粗搜 rank-1 是 w96 的再次反转，细搜定谳 w192。
+- **判读 5（搜索收敛，不开批次 3）**：批 2 两新变体均不优于 f5，top-3 排序跨批次稳定（f5 0.0175→0.0167 / f2 0.0179→0.0180 / f3 0.0178→0.0181），方向信号全部探明（窗口/容量/L 数/d128）无剩余增益空间 → 搜索收敛。
+- **判读 6（小偏差如实记录）**：fb_basearch 补缺 run 未执行（仍 n=2；目录清单未随贴，仅扫描计数 32）——锚角色 n=2 已足（top-3 全体 0.0167-0.0181 < 锚 0.0227 结论不变），不回溯追补。
+- **锁定宣告**：**House2 kettle 纪元最终配置 = f5_t9**（configs/fine_h2/f5_t9.yaml：w192 / d64 / h8 / **L1** / ff128 / do0.0 / bs128 / lr3e-4 / wd1e-4，25/5 composite val30000）；val S 0.0167±0.0016（n=5）、F1 0.9654±0.0005、EE +0.66%±0.87%、R 0.9533、MAE 6.90±1.26、best_ep 7.2。vs 协议锚 fb 0.0227：调参收益 0.0060（26%）。
+- **Test 预注册执行（H2 触碰 #1/2）**：fresh seed 9000 × `--test` 恰一次；验收四线：**S_test≤0.0317**（=0.0167+0.015）、**F1≥0.75**、**R≥0.70**、**|EE|≤0.15**；观察量=EE 方向（drift 反向签名预期偏正，>+5% 如实披露）。Test 通过→REPORT.md H2 章节+收尾；不过→预算剩 1 次重新锁定（候选=f3）。
+- **待用户（Test 一跑，~2-4min）**：
+  ```powershell
+  python scripts\train.py --config configs\fine_h2\f5_t9.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed 9000 --test --out reports\final_h2_f5_s9000
+  ```
+- **回传要求**：完整 stdout（逐 epoch 行+末尾 result JSON）。
+- 是否进入 REPORT.md：待 Test 结果（通过后 H2 章节随收尾一并写入）。
