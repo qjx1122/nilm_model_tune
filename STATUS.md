@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】House2 kettle 数据纪元**已锁定**（实录 24 身份链过 + 实录 25 probe 定谳：8 行 Feb17 0W 杂散坐实、kettle 网格 3,377,557=meter8 真实跨度满格数、算术全闭环、「互斥」系实录 24 转写误差；npz=ukdale_h2_kettle.npz，mains=m1/kettle=m8；**Test 预算 2 次 untouched**）→ 摸底 ×3 seeds 完成、stdout 判读过（实录 26：训练健康、test:None ×3 冻结实战生效、best val MAE 4.95/4.12/5.30）→ 摸底判读完成（实录 27：val F1 0.9773±0.0056/R 0.9773=86/88 三种子固定/EE +2.91%±3.84% 方向反转坐实/全门槛过富余大）→ 粗搜配置 tuning_h2.yaml 已交付（tuning_v5 空间原样平移+双锚可达+val 30000）→ 粗搜完成（实录 28 上：32/32 过门槛、top-1 trial11 S=0.0149 w96 d64 L2 lr2e-4、Top-5 极差 0.0017 噪声内、lr 下行+w192 苗头、EE 收敛近零、口径警示兑现）→ 当前=待 csv 全貌+best_config（参数/锚缺口）→ 细搜设计
+- 【进行中·用户任务】House2 kettle 数据纪元**已锁定**（实录 24 身份链过 + 实录 25 probe 定谳：8 行 Feb17 0W 杂散坐实、kettle 网格 3,377,557=meter8 真实跨度满格数、算术全闭环、「互斥」系实录 24 转写误差；npz=ukdale_h2_kettle.npz，mains=m1/kettle=m8；**Test 预算 2 次 untouched**）→ 摸底 ×3 seeds 完成、stdout 判读过（实录 26：训练健康、test:None ×3 冻结实战生效、best val MAE 4.95/4.12/5.30）→ 摸底判读完成（实录 27：val F1 0.9773±0.0056/R 0.9773=86/88 三种子固定/EE +2.91%±3.84% 方向反转坐实/全门槛过富余大）→ 粗搜配置 tuning_h2.yaml 已交付（tuning_v5 空间原样平移+双锚可达+val 30000）→ 粗搜完成（实录 28 上：32/32 过门槛、top-1 trial11 S=0.0149 w96 d64 L2 lr2e-4、Top-5 极差 0.0017 噪声内、lr 下行+w192 苗头、EE 收敛近零、口径警示兑现）→ 粗搜全貌判读完成（实录 29：S 分解 32/32 闭环、P/R 口径定谳 seq2point 中心点 N=400/407·F1 量子 0.0025、w96 双峰 vs w192 EE 稳健 max|EE|1.8%、lr 信号修正、ff256/h8/bs64 信号、baseline 精确点未采样最近邻 rank6）→ fine_h2 细搜批次 1 已交付（7 配置×3 seeds：2×2 因子+容量+L1+协议锚，预注册判定纪律含 Test seed 9000）→ 当前=用户跑细搜 21 runs
 - 本任务角色：工程实现工程师（泛化改造）；沙箱验证完毕，待用户回传后转实验/调参教练判读
 - 【已完成·收官】任务 3「调参执行」：F4（v2_do00×w96）锁定 + Test 验收四线全过（实录 20：S_test 0.0541 / F1 0.8941 / R 0.9268 / EE +5.2%；对照旧纪元 S 2.3 倍改善）。任务起点阻塞（Test EE −23%）正式关闭。
 - 本任务角色：实验/调参教练（已随任务收官回归默认角色「资深电力算法专家」）
@@ -59,16 +59,21 @@
 - [x] 2026-09-10 H2 摸底 baseline ×3 seeds stdout 判读（实录 26）：训练健康（best 12/16/15、val MAE 4.95/4.12/5.30 均值 4.79±0.61、val R² 0.94-0.96、patience 算术三种子闭环）；Test 冻结实战生效（test:None ×3，H2 预算 2 次 untouched）；val ON≈80（H1 的 2.2 倍）；val F1/EE 待 evaluate 补读
 - [x] 2026-09-10 H2 摸底判读完成（实录 27）：val F1 0.9773±0.0056/P 0.9774±0.0111/R 0.9773（=86/88 三种子固定，F1 差异=纯 FP 噪声 1/2/3）/EE +2.91%±3.84%（方向反转 vs H1 −7.1%±3.0% 坐实）/全门槛过富余大；val ON=88@6000（估算 80 的 1.1 倍）；sae=|EE| 口径补记；configs/tuning_h2.yaml 交付（tuning_v5 空间原样平移+双锚可达，pyyaml 校验过）
 - [x] 2026-09-10 H2 粗搜 32 trials 判读·上（实录 28）：32/32 过门槛（守门员强纪元失区分度属预期）；top-1 trial11 S=0.0149（w96 d64 L2 lr2e-4）；S 构成算术三 trial 复核全对上（S 方差≈F1 项）；方向信号=lr 下行（2e-4 三席/5e-4 零席）+w192 苗头（三席，窗口三纪元三翻转）+L1/d128 苗头；口径警示兑现（F1 0.977@6000→0.963-0.972@30000、EE→近零）；赢家诅咒预警（极差 0.0017 噪声内）；csv+best_config 补料待回
+- [x] 2026-09-10 H2 粗搜判读·下（实录 29）：csv 重构+算术全闭环（S 分解/sae/seed 32/32）；P/R 口径定谳 seq2point 中心点（N=400/407、F1 量子 0.0025）；w96 双峰（rank1+底部 6 席占 5+|EE|>2% 全 5 例）vs w192 EE 稳健（12 trial max|EE|1.8%）vs w128 中庸；lr 信号修正（top-10 三档均衡）；ff256/h8/bs64 信号；baseline 精确点未采样（最近邻 trial26 rank6）；configs/fine_h2/ ×7 交付（f0/f2/f5=粗搜行精确复核、f1/f3=2×2 因子、f4=容量、fb=协议锚；pyyaml 校验+单变量交叉校验）
 
 ## 进行中
-- （用户侧）补料 ×2（秒级）：tuning_summary.csv 全文 + best_config.yaml 全文（命令见下一步块）
-- （本侧）无阻塞；待 csv 全貌判读（baseline 锚位置/F1-EE 分布/空间覆盖/nhead·ff·do·bs·wd 五维）→ 细搜设计（多候选×多种子+双锚，赢家诅咒纪律）→ 锁定 → Test 预注册（H2 预算 #1/2）
+- （用户侧）H2 细搜批次 1：7 配置 ×3 seeds（命令见下一步块，~40-70min GPU）→ 回传 summarize_fine 全文
+- （本侧）无阻塞；待细搜判读（预注册纪律：赢家诅咒检验/SEM/0.0025 F1 量子并列/EE σ 权衡）→ 锁定 → Test 预注册执行（seed 9000，H2 预算 #1/2）
 
 ## 下一步（TODO）
-1. 用户：粗搜补料 ×2（秒级）：
-   Get-Content reports\tuning_h2\tuning_summary.csv
-   Get-Content reports\tuning_h2\best_config.yaml
-2. 本侧 csv 全貌判读 → 细搜设计（configs/fine_h2/ 多配置：w96×w192 交叉·lr2e-4 中心·trial11/18 复核+baseline 协议锚，×3 seeds）→ 判读 → 锁定候选 → Test 预注册（seed/--test 恰一次/验收口径+EE 偏正观察量，H2 预算 #1/2）
+1. 用户：H2 细搜批次 1（21 runs + 汇总，Test 冻结）：
+   foreach ($c in f0_t11,f1_t11w192,f2_t18,f3_t18w96,f4_t18d64,f5_t9,fb_basearch) {
+     foreach ($s in 8000,8001,8002) {
+       python scripts\train.py --config configs\fine_h2\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed $s --out reports\fine_h2\${c}_s$s
+     }
+   }
+   python scripts\summarize_fine.py --runs-dir reports\fine_h2
+2. 本侧细搜判读（实录 29 预注册纪律）→ 批次 2 或锁定候选 → Test 预注册（seed 9000 × --test 恰一次；验收 S_test≤val 均值+0.015、F1≥0.75、R≥0.70、|EE|≤0.15；EE 方向观察量预期偏正）
 3. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
 4. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
 
@@ -133,6 +138,10 @@
 - 2026-09-10（踩坑·沙箱第六次重置）：同第五次新形态（HEAD 回 7824bb4+工作区幸存），SOP（显式 fetch arena 分支+mixed reset）直接适用，零丢失；pyyaml 装系统 python3 需 --break-system-packages（--user 被 PEP 668 拦）
 - 2026-09-10（发现·H2 粗搜方向信号）：lr 2e-4 占 Top-5 三席且 5e-4 零席（H1 粗搜冠军 lr 失效——H2 信噪比高、低 lr 稳收敛）；w192 三席但 top-1 为 w96 → 窗口维三纪元三翻转（旧 w128→H1 v5 w96→H2 w192 苗头）未收敛，细搜须 w96×w192 交叉；EE 在 30000-val 上收敛近零（摸底 +2.91%±3.84%@6000 的离散化效应为主），H2 EE 风险重心移至 test 侧（drift 反向签名考场）
 - 2026-09-10（踩坑·沙箱第七次重置）：同新形态（HEAD 回 7824bb4+工作区幸存），SOP 直接适用，零丢失；重置频率上升（第五/六/七次连续三回合），回合初 git 对账为固定动作
+- 2026-09-10（定谳·P/R 口径 seq2point 中心点）：y=target[center] 单值预测，P/R/F1/EE 均为采样中心逐点口径；val_centers linspace 边界随 w 偏移 → ON 中心数 N=400（w96/w128）/407（w192）→ F1 量化步长≈0.0025，F1 差小于此=并列（细搜判定纪律）
+- 2026-09-10（发现·H2 窗口维三态）：w96 双峰（rank1 但底部 6 席占 5、|EE|>2% 全部 5 例皆 w96，max+8.9%）/ w192 稳健（无底部队、12 trial 全部 |EE|≤1.8%）/ w128 中庸（top-10 4 席）→ 细搜 2×2 因子 {t11,t18}×{w96,w192} 正面对决；lr 信号修正：top-10 三档均衡（3/3/4），上轮「5e-4 零席」仅 top-5 事实、不外推
+- 2026-09-10（决策·fine_h2 批次 1）：7 配置×3 seeds（8000-8002 fresh 族）——f0/f2/f5 粗搜行精确复核（赢家诅咒）+f1/f3 窗口 2×2+f4 容量（d128 必要性）+fb 协议锚；预注册判定纪律六条+Test seed 9000 预注册意向；epochs 维持 25/5（trial11 ep20/25 临界仅记录，H1 30/7 劣化教训）
+- 2026-09-10（踩坑·~/.local 不持久）：pip --user 装的包在 ~/.local（快照排除清单）→ 跨回合丢失（与沙箱重置无关，CLEAN 回合同样发生）；每回合需重装 pyyaml（--break-system-packages）
 
 ## 关键文件路径
 - 协议：`BOOTSTRAP.md`（v2.1）、`ROLE.md`（角色库，默认角色=资深电力算法专家）

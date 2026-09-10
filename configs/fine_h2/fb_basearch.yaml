@@ -1,0 +1,40 @@
+# House2 kettle 细搜批次 1（REPORT_TEST.md 实录 29）：H2 摸底 baseline 架构协议归一（架构=摸底冠军；协议=25/5 composite val30000——双锚纪律的协议锚，H1 fb_basearch 同构）。
+# 协议与粗搜完全一致（25/5 composite、train 30k/val 30000/test 6000、eval_test=false）；
+# 种子由 CLI --seed 8000/8001/8002 覆盖（fresh 族，粗搜为 42-74）。
+seed: 42
+device: auto
+data:
+  path: ''
+  appliance: kettle
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  max_samples_train: 30000
+  max_samples_val: 30000
+  max_samples_test: 6000
+  eval_test: false
+  window_size: 128
+model:
+  input_dim: 1
+  d_model: 64
+  nhead: 4
+  num_layers: 2
+  dim_feedforward: 128
+  dropout: 0.1
+training:
+  batch_size: 128
+  epochs: 25
+  lr: 0.0005
+  weight_decay: 0.0001
+  patience: 5
+  grad_clip: 1.0
+  loss: mse
+  select_metric: composite
+  objective:
+    weights:
+      mae: 0.4
+      f1: 0.4
+      energy_error: 0.2
+    mae_norm_watts: 2000.0
+metrics:
+  on_threshold_watts: 500.0

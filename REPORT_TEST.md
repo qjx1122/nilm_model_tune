@@ -870,3 +870,37 @@
   ```
 - **回传要求**：csv 全文（33 行量级，含表头与全部 32 trials）+ best_config.yaml 全文（trial 11 完整参数）。
 - 是否进入 REPORT.md：否（粗搜判读进行中，细搜未设计）。
+
+### 执行实录 29（2026-09-10）：House2 kettle 粗搜判读·下（csv 全貌）——S 分解 32/32 闭环/P·R 口径定谳 seq2point 中心点/w96 双峰 vs w192 EE 稳健/lr 信号修正；细搜批次 1（fine_h2 ×7 配置）交付
+- **本任务角色**：实验/调参教练（粗搜全貌判读 + 细搜设计）
+- **用户执行命令（2026-09-10，实录 28 交付版）**：
+  ```powershell
+  Get-Content reports\tuning_h2\tuning_summary.csv
+  Get-Content reports\tuning_h2\best_config.yaml
+  ```
+- **输出关键数字**：csv 32 行全量（粘贴处 4 处行合并已重构，全部 32 trial 恢复）；best_config=trial 11 完整参数（w96 d64 h8 L2 ff256 do0.1 bs64 lr2e-4 wd1e-4，与 csv 行逐字段一致）；全员 val_r2 0.916-0.942、gate=pass 32/32。
+- **判读 1（转录重构+算术全闭环）**：S 分解（0.4·MAE/2000+0.4·(1−F1)+0.2·|EE|）**32/32 一致**（±0.0006 内）；sae=|EE| 32/32；seed=42+trial 32/32——csv 转录与代码口径全部对账闭合。
+- **判读 2（P/R 口径定谳——seq2point 中心点逐点）**：读 src/metrics.py+src/data.py 证据：模型预测 target[center]（y=中心点单值），P/R/F1/EE 均为 30000 采样中心的逐点口径；val_centers 随 window_size 偏移边界（linspace 起点含 w//2）→ ON 中心数 N 随窗口微变：**N=400（w96/w128）/407（w192）**（recall 分母全解码：388/400、379/400、400/407、388/407…）。推论：**F1 量化步长 ≈1/400≈0.0025**——top-5 F1 差 0.963-0.972 仅 4 个量子；判定纪律：F1 差 <0.0025 视为并列。
+- **判读 3（全貌修正实录 28 两判读）**：①**lr 信号弱化**——top-5 lr2e-4×3 但 top-10 三档均衡（2e-4×3/3e-4×3/5e-4×4），「5e-4 失效」不成立，仅「top-2 均 2e-4」；②**w96 双峰性**——rank1 在 w96，但底部 6 席占 5、|EE|>2% 的 5 例全部是 w96（max +8.9%）；**w192 无底部队且 12 trial 全部 |EE|≤1.8%**（EE 稳健维）；w128 top-10 占 4 席（ranks 5/6/8/10）中庸。窗口维结论：w96 高方差（赢可夺冠、输可爆 EE）、w192 稳健、w128 居中。
+- **判读 4（其余维度信号）**：**ff256** top-10 占 7（top-1 为 d64+ff256=4×d，打破 H1 ff=2×d 惯例）；**h8** top-5 全席（top-10 6/10）；**bs64** top-10 7/10；**L1 双峰**（top-10 5 席但底部 6 席占 5——快而便宜但高风险）；do0 top-10 7 席但 top-2 均 do0.1；wd 均衡无信号。
+- **判读 5（baseline 锚）**：摸底 baseline 精确架构点（…bs128 lr5e-4）**未被采样**（32/1152≈2.8% 覆盖，随机缺失属预期）；最近邻 trial 26（仅 lr 3e-4≠5e-4）rank 6——baseline 架构区域有竞争力，协议锚由细搜 fb_basearch 补齐。
+- **判读 6（epochs 观察）**：best_epoch≥15 仅 trial 11（20/25，lr2e-4）与 trial 14（19/25）——cap 25 仅对 trial 11 临界；维持 25/5 协议（可比性+H1 30/7 劣化教训），30-epoch 敏感性留批次 2 备选。
+- **判读 7（细搜批次 1 设计，configs/fine_h2/ ×7，均 25/5 composite val30000 协议=与粗搜可比）**：
+  - **f0_t11**=粗搜 top-1 精确复核（赢家诅咒检验，对照 0.0149）；**f2_t18**=top-2 精确复核（MAE/F1 双最高档）；
+  - **f1_t11w192 / f3_t18w96**：完成 {t11,t18}×{w96,w192} **2×2 因子**——窗口敏感性定谳（w96 高方差 vs w192 EE 稳健的正面对决）；
+  - **f4_t18d64**：容量问题（top-5 唯一 d128 点，d128 是否必需）；
+  - **f5_t9**：L1 苗头+EE 最优（−0.06%）复核；
+  - **fb_basearch**：摸底 baseline 架构协议归一（双锚纪律的协议锚，H1 fb_basearch 同构）。
+  - 种子 8000-8002（fresh 族；粗搜 42-74）；21 runs ≈40-70min。校验：f0/f2/f5 与粗搜 csv 行逐字段一致、f1/f3/f4 单变量交叉、协议字段 7 配置统一（pyyaml 全解析）。
+- **预注册判定纪律（批次 1 判读时执行）**：①summarize_fine mean±σ val_score 排序；②赢家诅咒检验：f0 均值 vs 粗搜 0.0149（劣化 >+0.003 则粗搜排名整体降权）；③top-1 与次优差 <2×合并 SEM → 分量全优/σ 小者优先；④F1 差 <0.0025（1 量子）视为并列；⑤EE 的 σ 与方向计入权衡（w192 稳健性 vs w96 高方差）；⑥锁定后 Test 预注册：fresh seed 9000 × --test 恰一次，验收 S_test≤val 均值+0.015、F1≥0.75、R≥0.70、|EE|≤0.15，观察量=EE 方向（drift 反向签名预期偏正，>+5% 须如实披露）；H2 Test 预算 #1/2。
+- **待用户（细搜批次 1：21 runs + 汇总）**：
+  ```powershell
+  foreach ($c in f0_t11,f1_t11w192,f2_t18,f3_t18w96,f4_t18d64,f5_t9,fb_basearch) {
+    foreach ($s in 8000,8001,8002) {
+      python scripts\train.py --config configs\fine_h2\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --seed $s --out reports\fine_h2\${c}_s$s
+    }
+  }
+  python scripts\summarize_fine.py --runs-dir reports\fine_h2
+  ```
+- **回传要求**：summarize_fine 输出全文（按变体 mean±std 表）；个别 run 异常时补该 run 的 evaluate.py JSON。
+- 是否进入 REPORT.md：否（细搜未跑）。
