@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】House2 kettle 数据纪元**已锁定**（实录 24 身份链过 + 实录 25 probe 定谳：8 行 Feb17 0W 杂散坐实、kettle 网格 3,377,557=meter8 真实跨度满格数、算术全闭环、「互斥」系实录 24 转写误差；npz=ukdale_h2_kettle.npz，mains=m1/kettle=m8；**Test 预算 2 次 untouched**）→ 摸底 ×3 seeds 完成、stdout 判读过（实录 26：训练健康、test:None ×3 冻结实战生效、best val MAE 4.95/4.12/5.30）→ 当前=evaluate 补读 val F1/EE（EE 方向=drift 反向签名直接检验，预判偏正）→ 定 H2 搜索方案
+- 【进行中·用户任务】House2 kettle 数据纪元**已锁定**（实录 24 身份链过 + 实录 25 probe 定谳：8 行 Feb17 0W 杂散坐实、kettle 网格 3,377,557=meter8 真实跨度满格数、算术全闭环、「互斥」系实录 24 转写误差；npz=ukdale_h2_kettle.npz，mains=m1/kettle=m8；**Test 预算 2 次 untouched**）→ 摸底 ×3 seeds 完成、stdout 判读过（实录 26：训练健康、test:None ×3 冻结实战生效、best val MAE 4.95/4.12/5.30）→ 摸底判读完成（实录 27：val F1 0.9773±0.0056/R 0.9773=86/88 三种子固定/EE +2.91%±3.84% 方向反转坐实/全门槛过富余大）→ 粗搜配置 tuning_h2.yaml 已交付（tuning_v5 空间原样平移+双锚可达+val 30000）→ 当前=用户跑粗搜 32 trials → 判读定细搜方案
 - 本任务角色：工程实现工程师（泛化改造）；沙箱验证完毕，待用户回传后转实验/调参教练判读
 - 【已完成·收官】任务 3「调参执行」：F4（v2_do00×w96）锁定 + Test 验收四线全过（实录 20：S_test 0.0541 / F1 0.8941 / R 0.9268 / EE +5.2%；对照旧纪元 S 2.3 倍改善）。任务起点阻塞（Test EE −23%）正式关闭。
 - 本任务角色：实验/调参教练（已随任务收官回归默认角色「资深电力算法专家」）
@@ -57,17 +57,16 @@
 - [x] 2026-09-09 metadata 全文回传→定表号（REPORT_TEST.md 执行实录 8）：mains=meter1 单表、kettle=meter10；meter2=锅炉回路（纠正 1,2 假设）；meter54=1s mains 备选
 - [x] 2026-09-10 H2 网格异常 probe 定谳 + **House2 kettle 纪元锁定**（实录 25）：杂散 8 行坐实（Feb 17 16:00:22 起 0W，安装测试残留）；算术全闭环（kettle 网格 3,377,557=真实跨度满格数、剔除 1,231,859=172+837,606+394,081、保留 149.0 天=84.5%）；「与 list-meters 互斥」系转写误差（n=2,094,523 两处一致+start 语义=原始 min 不滤 0W）→ 撤回文件状态假说；孪生 v2 真实时间戳端到端复现（mains 3377384/kettle 3377557 一字不差）；probe v2 crash 修复+增强（CLI 端到端测试过，pytest 16 passed）；摸底 baseline ×3 seeds 命令交付
 - [x] 2026-09-10 H2 摸底 baseline ×3 seeds stdout 判读（实录 26）：训练健康（best 12/16/15、val MAE 4.95/4.12/5.30 均值 4.79±0.61、val R² 0.94-0.96、patience 算术三种子闭环）；Test 冻结实战生效（test:None ×3，H2 预算 2 次 untouched）；val ON≈80（H1 的 2.2 倍）；val F1/EE 待 evaluate 补读
+- [x] 2026-09-10 H2 摸底判读完成（实录 27）：val F1 0.9773±0.0056/P 0.9774±0.0111/R 0.9773（=86/88 三种子固定，F1 差异=纯 FP 噪声 1/2/3）/EE +2.91%±3.84%（方向反转 vs H1 −7.1%±3.0% 坐实）/全门槛过富余大；val ON=88@6000（估算 80 的 1.1 倍）；sae=|EE| 口径补记；configs/tuning_h2.yaml 交付（tuning_v5 空间原样平移+双锚可达，pyyaml 校验过）
 
 ## 进行中
-- （用户侧）evaluate 补读 val KPI ×3（命令见下一步块）→ 回传三份 JSON 全文
-- （本侧）无阻塞；待 val F1/EE 判读（对照 H1 摸底 val：F1 0.918 / EE −7.1%±3.0%，实录 15；EE 方向检验 drift 反向签名预判偏正）→ 定 H2 tune 搜索方案并交付配置
+- （用户侧）H2 粗搜 32 trials（命令见下一步块，~30-60min GPU）→ 回传门槛统计+Top-5 完整参数行
+- （本侧）无阻塞；待粗搜判读（锚=空间内 baseline 可达点；EE 收敛+σ 为重心；赢家诅咒纪律）→ 细搜设计→锁定→Test 预注册（H2 预算 #1/2）
 
 ## 下一步（TODO）
-1. 用户：val KPI 补读 ×3（不重训、不碰 Test）：
-   python scripts\evaluate.py --run-dir reports\base_h2_s42
-   python scripts\evaluate.py --run-dir reports\base_h2_s2024
-   python scripts\evaluate.py --run-dir reports\base_h2_s7
-2. 本侧判读 val KPI（重点 val_f1/val_energy_error/val_precision/val_recall；对照 H1：val F1 0.918/P 1.0/R 0.848/EE −7.1%±3.0%）→ 定 H2 tune 搜索方案：H1 F4 邻域平移起步（w96 结论不跨纪元须重验）+ val 扩 30000（H2 val ON≈80@6000 → ≈400@30000）+ composite S 多种子均值 → 交付 configs/tuning_h2.yaml
+1. 用户：H2 粗搜 32 trials（Test 冻结，eval_test 缺省 False）：
+   python scripts\tune.py --config configs\tuning_h2.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --out reports\tuning_h2
+2. 本侧判读粗搜（门槛统计+Top-5；对照空间内 baseline 可达点=锚）→ 细搜设计（双锚+多种子，实录 18 纪律）→ 锁定候选 → Test 预注册（seed/--test 恰一次/验收口径，H2 预算 #1/2）
 3. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
 4. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
 
@@ -127,6 +126,9 @@
 - 2026-09-10（踩坑·probe 交付测试盲区）：`DatetimeIndex < Timestamp` 返回 ndarray（无 .to_numpy()）→ 用户侧 crash；上轮沙箱测试未覆盖「截断前行存在」分支——教训：交付脚本必须以用户同款 CLI 入口端到端跑全部分支，后加代码必须重新回归（本次孪生 v2 三项全过：m8+cutoff / m1 无 cutoff / prepare 端到端）
 - 2026-09-10（验证·Test 冻结实战生效）：H2 摸底三份 result 均 test:None——实录 14 eval_test 缺省翻转修复首次实战验证通过，摸底零触碰 Test（H1 时代同环节曾误碰 #1）；另证：早停算术 last=best+patience 三种子全闭环可作训练日志完整性判据（stdout 缺行系粘贴丢失而非训练缺失，trainer 每 epoch 无条件打印）
 - 2026-09-10（踩坑·沙箱第五次重置·新形态）：/tmp 清空（dvenv 失，本轮无 pandas 需求未重建）+ 本地 .git 被替换为 main 单分支克隆（HEAD=7824bb4、默认 fetch 只拉 origin/main，`git fetch origin` 不拉 arena 分支、FETCH_HEAD=main 头）→ 恢复 SOP 增补：须显式 `git fetch origin arena/01a07f1d-nilm-model-tune` 再 mixed reset（实录 26 仅在工作区，禁 --hard）；对账=reset 后 git status 应仅剩本轮增量，其余逐文件内容哈希一致（本次零丢失）
+- 2026-09-10（发现·H2 val 事件结构）：recall 0.9773=86/88 三种子一致 → val 6000 的 ON 窗口=88、TP=86/FN=2 固定（硬窗口，种子不敏感）、FP=1/2/3 → F1 种子差异=纯 FP 噪声；@val 30000 → ON≈440；val_sae=|val_energy_error|（s2024 反号坐实）
+- 2026-09-10（决策·H2 粗搜空间）：tuning_h2.yaml=tuning_v5 原样平移（F4 邻域即 v2_do00 邻域；H2 摸底 baseline 架构点在空间内可达=天然锚；w96/128/192 重验窗口结论）+ val 30000/train 30k/gates 不变；头室管理：F1 0.977 天花板 <2.3pt，搜索重心=EE 收敛+多种子 σ；口径警示：H1 摸底 6000-val vs H2 搜索 30000-val 数字不可直比，锚须在搜索协议下重建
+- 2026-09-10（踩坑·沙箱第六次重置）：同第五次新形态（HEAD 回 7824bb4+工作区幸存），SOP（显式 fetch arena 分支+mixed reset）直接适用，零丢失；pyyaml 装系统 python3 需 --break-system-packages（--user 被 PEP 668 拦）
 
 ## 关键文件路径
 - 协议：`BOOTSTRAP.md`（v2.1）、`ROLE.md`（角色库，默认角色=资深电力算法专家）

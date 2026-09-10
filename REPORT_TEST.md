@@ -827,3 +827,25 @@
   ```
 - **回传要求**：三份 JSON 全文（重点 best_epoch_val 的 val_f1 / val_energy_error / val_precision / val_recall）。
 - 是否进入 REPORT.md：否（摸底进行中，val KPI 未齐）。
+
+### 执行实录 27（2026-09-10）：House2 kettle 摸底判读完成——val F1 0.9773/EE +2.91% 方向反转坐实/全门槛过；H2 粗搜配置 tuning_h2.yaml 交付
+- **本任务角色**：实验/调参教练（摸底判读 + 搜索方案设计）
+- **用户执行命令（2026-09-10，实录 26 交付版）**：
+  ```powershell
+  python scripts\evaluate.py --run-dir reports\base_h2_s42
+  python scripts\evaluate.py --run-dir reports\base_h2_s2024
+  python scripts\evaluate.py --run-dir reports\base_h2_s7
+  ```
+- **输出关键数字（best_epoch_val，val 6000）**：val F1 **0.9829/0.9773/0.9718**（均值 0.9773±0.0056）；val P 0.9885/0.9773/0.9663（0.9774±0.0111）；val R **0.9773×3（三种子完全一致）**；val EE **+2.83%/−0.90%/+6.78%**（+2.91%±3.84%）；val MAE 4.95/4.12/5.30（与 stdout 一致）；val RMSE 71.3/71.1/88.1；val R² 0.9594/0.9596/0.9380；test 字段无（evaluate 只读 result+history，不碰 Test）。
+- **判读 1（val 事件结构数字法证）**：recall 0.977273=**86/88** 三种子一致 → **val 6000 窗口中 ON 窗口=88 个**（实录 26 估算 80 的 1.1 倍，linspace 均匀+on_frac 段均值可解释）；逐种子解码全闭环——TP=86、FN=2 **固定**（2 个硬窗口疑边缘/低幅，种子不敏感）、FP=1/2/3（precision 86/87、86/88、86/89，F1=172/175、172/176、172/177 全对上）→ **F1 种子差异=纯 FP 噪声**。@val 30000 → ON≈440，判别力充分。
+- **判读 2（sae 口径补记）**：val_sae=|val_energy_error|（s2024 反号坐实：sae +0.00895/EE −0.00895）。
+- **判读 3（EE 方向反转=drift 反向签名 val 侧坐实）**：H2 摸底 val EE **+2.91%±3.84%** vs H1 摸底 val EE **−7.1%±3.0%**（实录 15）——方向反转成立（H2 三种子 2 正 1 负、均值正；H1 全负）。Test 侧检验留锁定后（H1 经验 val→test 同向放大，H2 预期偏正方向；此为纪元验收时的关键观察量）。
+- **判读 4（摸底判读完成，全门槛过）**：F1 0.9773≥0.75、R 0.9773≥0.70、|EE| max 6.78%≤0.15——富余巨大。vs H1 摸底 val（F1 0.918/R 0.848）全面占优；结构原因：①H2 壶 3kW 档对 ~300W 基线信噪比更高（corr 0.56-0.67 vs H1 0.35-0.53）；②val ON 88 vs H1 33（事件样本多一倍以上）。MAE 4.79 略高于 H1 的 3.3-3.9（壶功率更大，方向合理）。
+- **判读 5（搜索方案）**：`configs/tuning_h2.yaml` = **tuning_v5.yaml 搜索空间原样平移**（pyyaml 校验：结构逐字段一致+双锚可达——H1 锁定 F4 点（w96/d64/h8/L2/ff128/do0/bs64/lr3e-4/wd1e-4）与 H2 摸底 baseline 架构点（w128/d64/h4/do0.1/bs128/lr5e-4/wd1e-4）均在空间内）；val 30000/train 30k/gates 不变/epochs 25/pat 5/trial seed=42+i。依据：①「H1 F4 邻域平移起步」既定方针（F4 邻域=v2_do00 邻域，空间本就以其为中心）；②w96 结论不跨纪元 → 窗口维 [96,128,192] 重验；③baseline 可达点=粗搜内天然锚（区分「搜索发现」与「单 seed 运气」）。**头室管理**：F1 已 0.977（天花板 <2.3pt），搜索价值重心=EE 收敛+多种子 σ 稳健性；**对照口径警示**：H1 摸底 val=6000 口径、本搜索=30000，数字不可直接比，锚须在搜索协议下重建。
+- **沙箱事故记录**：第六次平台重置（同第五次新形态：HEAD 回 7824bb4+工作区幸存）；SOP 直接适用（显式 `git fetch origin arena/...`+mixed reset），逐文件对账零丢失；/tmp 再清空，pyyaml 以 --break-system-packages 装入系统 python3（--user 被 PEP 668 拦）。
+- **待用户（粗搜 32 trials，~30-60min GPU）**：
+  ```powershell
+  python scripts\tune.py --config configs\tuning_h2.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_kettle.npz --out reports\tuning_h2
+  ```
+- **回传要求**：门槛统计（过/总数）+ Top-5 完整参数行（含 val S/F1/MAE/EE 与全部超参），同 H1 粗搜回传格式（实录 17）。
+- 是否进入 REPORT.md：否（搜索未跑，摸底结论待搜索+Test 后一并沉淀）。

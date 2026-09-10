@@ -1,0 +1,62 @@
+# House2 kettle 数据纪元粗搜配置（REPORT_TEST.md 执行实录 27，摸底判读落地）：
+#   摸底 baseline ×3 seeds（seeds 42/2024/7，val 6000）：val F1 0.9773±0.0056、
+#     P 0.9774±0.0111、R 0.9773（=86/88 三种子完全一致——val ON 窗口 88、TP=86、
+#     FN=2 固定，F1 种子差异=纯 FP 噪声 1/2/3 个）、EE +2.91%±3.84%
+#     （方向反转 vs H1 摸底 −7.1%±3.0%，drift 反向签名 val 侧坐实）→ 业务门槛
+#     F1/R/|EE| 全过且富余大；
+#   搜索空间 = tuning_v5.yaml 原样平移：H1 最终锁定 F4=v2_do00×w96 邻域为中心
+#     （w96 结论不跨纪元，窗口维 [96,128,192] 重验）；摸底 baseline 架构点
+#     （w128/d64/h4/L2/ff128/do0.1/bs128/lr5e-4/wd1e-4）在空间内可达=天然锚；
+#   val 扩 30000（ON≈440）：摸底 6000 val ON=88 → 判别力充分；
+#   头室管理：F1 已 0.977（天花板 <2.3pt），搜索价值重心=EE 收敛+多种子 σ；
+#   对照口径警示：H1 摸底 val KPI 为 6000 口径，本搜索为 30000，数字不可直接比，
+#     锚须在本搜索协议下重建（粗搜含 baseline 可达点；细搜按实录 18 双锚纪律）。
+# 纪律：eval_test 缺省 False（H2 纪元 Test 预算 2 次 untouched，最终锁定用 1 次）；
+#   trial seed=42+i，单 seed 排名噪声由细搜多 seed 复核消化（赢家诅咒，实录 17/18）。
+seed: 42
+device: auto
+
+data:
+  path: ""
+  appliance: kettle
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  max_samples_train: 30000
+  max_samples_val: 30000     # 实录 15/16 决策：扩 5 倍提判别力
+  max_samples_test: 6000
+  eval_test: false
+
+search:
+  trials: 32
+  report_test: false
+  objective:
+    metric: composite
+    mae_norm_watts: 2000.0
+    weights: {mae: 0.4, f1: 0.4, energy_error: 0.2}
+    gates:
+      enabled: true
+      f1_min: 0.75
+      recall_min: 0.70
+      abs_energy_error_max: 0.15
+
+# 搜索空间：以旧优胜 v2_do00（w128 d64 h8 L2 ff128 do0 bs64 lr3e-4）为中心裁剪。
+# 相对旧 tuning.yaml 删去：w64/w256、d32、nhead2、L4、ff512、do0.2、lr1e-4/lr1e-3、
+# wd0（旧纪元低天花板或未用区域），保留中心两侧一档探索。
+model_search:
+  window_size: [96, 128, 192]
+  d_model: [64, 128]
+  nhead: [4, 8]
+  num_layers: [1, 2]
+  dim_feedforward: [128, 256]
+  dropout: [0.0, 0.1]
+
+training_search:
+  batch_size: [64, 128]
+  lr: [0.0002, 0.0003, 0.0005]
+  weight_decay: [0.00001, 0.0001]
+  epochs: 25
+  patience: 5
+
+metrics:
+  on_threshold_watts: 500.0
