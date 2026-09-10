@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】House2 kettle pilot（首个 House2 数据纪元）：泛化已验证（实录 23：House1 dw 全链过+House2 探查，双 mains=m1/m20、kettle=m8、~177 天）→ 待用户跑 prepare+diagnose 回传
+- 【进行中·用户任务】House2 kettle pilot：身份链过/npz 可用（实录 24：aggOffW 266-309、evt 3.7-7.8/天、3kW 壶、最大段 75.8 天），但 kettle 网格点 3,377,557 超 meter8 跨度上限（对账结论：代码沙箱复核无罪，疑表内 ~172 行 mains 覆盖前杂散，与上轮 list-meters 互斥）→ 待用户跑 probe_meter 定谳后宣布纪元锁定
 - 本任务角色：工程实现工程师（泛化改造）；沙箱验证完毕，待用户回传后转实验/调参教练判读
 - 【已完成·收官】任务 3「调参执行」：F4（v2_do00×w96）锁定 + Test 验收四线全过（实录 20：S_test 0.0541 / F1 0.8941 / R 0.9268 / EE +5.2%；对照旧纪元 S 2.3 倍改善）。任务起点阻塞（Test EE −23%）正式关闭。
 - 本任务角色：实验/调参教练（已随任务收官回归默认角色「资深电力算法专家」）
@@ -51,6 +51,7 @@
 - [x] 2026-09-09 流程复盘（用户指令）：执行实录遗漏命令的 ROLE.md 条款层归因（实录 21 沉淀）——五层叠加：收尾条款只沉淀结果结论/职责边界无人负责命令归档/验收标准缺档案可复现维度/极简偏好裁剪/台账无字段+STATUS 滚动覆盖；改进建议待用户裁定（ROLE.md 收尾条款+验收标准补丁）
 - [x] 2026-09-09 任务 4 立项+泛化改造（实录 22）：prepare_ukdale 通用名 --appliance/--appliance-meter-id/--appliance-gap-min + --kettle-* 别名兼容（冲突报错）+ data_spec 通用键/legacy 键并存（v5 冻结口径零回归）；diagnose 电器标签+默认阈值表+常开型提示；parse 命令模板；README 工作流章节；新增 2 测试 16 passed
 - [x] 2026-09-09 泛化真实数据验证（实录 23）：House1 dish_washer 全链过（n=10.69M/742 天/身份链过；meter6 覆盖 99.96%；预警：20W 阈值切碎周期相位，0.16 kWh/evt，开纪元前须阈值敏感性）；House2 探查完成（20 表/双 mains m1 6s apparent+m20 1s active 12.17M/19 电器映射/表分期安装）——任务 4 代码目标达成
+- [x] 2026-09-09 House2 kettle pilot 判读（实录 24）：身份链过（aggOffW/evt/3kW 壶/corr 0.56-0.67）+结构健康（149 天/9 缝/最大段 75.8 天）+drift 反向签名（val 重 test 轻，与 H1 相反）；网格点异常对账：沙箱孪生复现 A/B 证明代码无罪+杂散行场景精确复现+npz 不受影响；scripts/probe_meter.py 交付（沙箱测试过）；第四次沙箱重置恢复（零丢失）
 - [x] 2026-09-09 改进落盘（用户批准三条）：ROLE.md v1.2（资深电力算法专家/实验调参教练：收尾条款增命令三件套落盘、验收标准增档案可复现维度）；BOOTSTRAP.md v2.2（专题模板新增「用户执行命令」字段，版本号同步）；技术成果转化顾问/工程实现工程师未动（归因不涉及，留待再议）
 - [x] 2026-09-09 prepare 首跑 n=345 确诊秒级相位差并修复（REPORT_TEST.md 执行实录 9）：meter1=:15 vs meter10=:18 精确 join 拼不上；改统一 6s 网格 resample 对齐；schema_version→2；--mains-ids 默认→1；偏移 3s 回归测试；pytest 13 passed
 - [x] 2026-09-09 metadata 全文回传→定表号（REPORT_TEST.md 执行实录 8）：mains=meter1 单表、kettle=meter10；meter2=锅炉回路（纠正 1,2 假设）；meter54=1s mains 备选
@@ -60,11 +61,9 @@
 - （本侧）无阻塞；判读 aggOffW/corr 定数据地基是否修复
 
 ## 下一步（TODO）
-1. 用户：跑 House2 kettle pilot（独立纪元，不带 --test）：
-   python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --mains-ids 1 --appliance-meter-id 8 --appliance kettle --out D:\Work\testPython\datasets\ukdale_h2_kettle.npz
-   python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_kettle.npz --appliance kettle
-   （⚠️ 回传请带上 prepare 的「缺口处理」行——实录 23 判读 3）
-2. 本侧判读（身份指标 aggOffW/corr/evt 形态）→ 通过则 House2 kettle 纪元数据锁定，摸底 baseline ×3 seeds；若 meter1 身份异常（aggOffW≈0）→ 备选 --mains-ids 20（1s active mains，resample 自动降采样）；House2 纪元 Test 预算独立 2 次（同 seeds 42/2024/7）→ 定 tune.py 重搜方案：A 胜→搜索以 do0/nhead8/bs64/lr3e-4 邻域为中心；B 胜（100k 显著优）→重搜用大 train 预算；均不胜→以 baseline 为锚全空间粗搜；val 预算一律扩 30000。Test 预算剩 1 次（最终锁定用）
+1. 用户：git pull 后跑探针定谳（+可选重跑 --house 2 --list-meters 对照当前文件）：
+   python scripts\probe_meter.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --meter 8 --cutoff "2013-04-16 21:18:09"
+2. 本侧判读 probe 输出 → 杂散行坐实则纪元锁定（npz 已证不受影响）→ 摸底 baseline ×3 seeds（House2 纪元 Test 预算独立 2 次）；probe 显示 Apr 16 起点（无杂散）则网格数字另有来源，继续排查（同 seeds 42/2024/7）→ 定 tune.py 重搜方案：A 胜→搜索以 do0/nhead8/bs64/lr3e-4 邻域为中心；B 胜（100k 显著优）→重搜用大 train 预算；均不胜→以 baseline 为锚全空间粗搜；val 预算一律扩 30000。Test 预算剩 1 次（最终锁定用）
 3. 判读红旗：agg_off_mean≈0 且 corr≈1 → 确认 aggregate 泄漏 → 修数据制备（prepare_ukdale.py --list-meters 核对 mains 表号 → 重新生成 npz → 人工抽查 aggregate 一天曲线）→ 全部 KPI 重启（先 baseline 再走搜索，Test 协议重置一次并记录）；若数据无误（agg_off_mean 数百 W）→ 回到漂移结论：方向 B（记录教训收尾）或 C（改切分）
 4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push（视红旗结论而定）
 5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
@@ -113,6 +112,8 @@
 - 2026-09-09（决策·泛化兼容策略）：通用名与别名并存（--kettle-* 不废弃，v5 冻结命令长期可用）；别名冲突显式报错；data_spec 通用键+legacy 键（kettle 路径）并存，schema_version 保持 5（policy 未变）；每 (house,appliance) 独立数据纪元、Test 预算各 2 次
 - 2026-09-09（预警·dw 事件定义）：20W 阈值下洗碗机单周期被切成多事件（0.16 kWh/evt vs 典型 1-1.5 kWh/周期；ON 功率双峰 med 120W/p95 2363W）→ 开 dw 纪元前须 --on-threshold 100/200 敏感性对照或事件合并，F1 事件口径才有业务意义
 - 2026-09-09（发现·House2 双 mains）：meter1（6s apparent，235 天）与 meter20（1s active，12.17M 样本，177 天）同型于 House1 的 meter1/meter54；6s 网格 resample 对 1s 源自动 bin-mean 降采样（实录 9 修复的副产品）→ meter20 可直接作 mains 备选
+- 2026-09-09（发现·H2 网格点异常）：kettle 网格 3,377,557 > meter8 跨度上限 2,539,200（并集算术：n+剔除=网格数、超 mains 网格 173 格）→ 表内疑含 ~172 行 mains 覆盖前杂散（Feb 17 ~16:00）；沙箱孪生复现：代码无罪（变体 A 正确/变体 B 精确复现且 list-meters 会显示杂散起点）→ 两份用户输出对应不同文件状态，probe 定谳
+- 2026-09-09（方法论·数字对账）：诊断输出中每个数字都要能算术闭环（n+剔除=并集、网格≤跨度上限、跨度×14400=天数）——实录 11「240万→49格」与本例均由数字不对账捕获；沙箱孪生复现是对账无法收敛时的标准手段
 - 2026-09-09（踩坑·沙箱第三次重置·新形态）：平台重启后本地 .git 被打回原始基点 7824bb4 而工作区文件完整 → 本轮提交落在错误基点、push 被拒（non-fast-forward）；恢复=fetch+reset --soft 9265e62（暂存区即真实增量）+清理被误加的 __pycache__；教训：重置后先 git log 对账再提交，add -A 前清缓存
 - 2026-09-09（发现·数据杠杆边界）：30k→100k train 在 6000-val 分辨率下无可测收益（配对 1 胜 2 负）；模型当前更受容量/正则而非数据量约束的假设待细搜后复核
 - 2026-09-09（踩坑·沙箱重克隆）：平台可整箱重克隆沙箱（本地 commit 链消失、/tmp 清空）；远端分支是唯一可靠真值——回合初 git log + git ls-remote 对账，恢复=fetch+逐文件哈希比对+reset

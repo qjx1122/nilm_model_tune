@@ -750,3 +750,24 @@
   5. **泛化验证结论**：prepare（通用名+别名）/diagnose（阈值表+标签）/parse（命令模板）在真实 House1 dw 与 House2 探查全链工作正常——任务 4 代码目标达成。
 - **下一步（House2 kettle pilot，独立纪元 Test 预算 2 次）**：命令见 STATUS；预期 n≈2-2.5M、~170-180 天、aggOffW 数百 W、corr<0.5（证伪口同前：aggOffW≈0 则 mains 判错，备选 meter20）。
 - 是否进入 REPORT.md：否（工具验证+探查判读，非实验结论）。
+
+### 执行实录 24（2026-09-09）：House2 kettle pilot 判读——身份链过/数据可用，但 kettle 网格点异常对账（代码沙箱复核无罪，probe 交付定谳）
+- **本任务角色**：实验/调参教练（判读）+ 工程实现工程师（对账复现）
+- **用户执行命令（2026-09-09，真实数据）**：
+  ```powershell
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --mains-ids 1 --appliance-meter-id 8 --appliance kettle --out D:\Work\testPython\datasets\ukdale_h2_kettle.npz
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_kettle.npz --appliance kettle
+  ```
+- **输出关键数字**：n=2,145,698（149.0 天）；桥接 agg 97,137 / kettle 52,038；长缺口剔除 1,231,859；接缝 9 处；最大段 1,091,839（**75.8 天**）；diagnose（500W 表值）：evt/day 5.23/7.78/3.71、on_frac 0.0096/0.0133/0.0064、ON 功率 med 2947/2973/2969、p95 3028/3051/3052（**H2 壶为 3kW 档**，H1 为 2344W）、kWh/day 0.70/0.97/0.48、aggOffW 285.4/308.6/266.0、corr 0.6212/0.6665/0.555。
+- **判读 1（身份链过）**：aggOffW 266-309（真实基线）+ evt 形态壶样（3.7-7.8 次/天、3kW）+ corr 0.56-0.67（高于 H1 的 0.35-0.53——H2 壶功率 2950W 对 ~300W 家庭均值占方差比更大，方向合理）→ meter1=mains / meter8=kettle 成立。
+- **判读 2（结构健康）**：交叠区 176.3 天保留 149.0 天（84.5%）；9 接缝；最大段 75.8 天。
+- **判读 3（网格点异常对账，本节核心）**：prepare 打印「kettle 网格点 3,377,557」**大于 meter8 跨度理论上限**（2013-04-16 21:18→10-10 05:15 ≈ 2,539,200 格），超出 838,399 格 ≈ 58.2 天（恰为 Feb17→Apr16 间隔）；且 n+剔除=3,377,557=外连接并集 > mains 网格（3,377,384）173 格（≈172 格在 mains 起点 2013-02-17 16:17:34 之前 +1 格在终点后 05:15:58=meter8 表列终点）→ 算术指向 **meter8 表内含 ~172 个 mains 覆盖前的 finite 杂散行（约 Feb 17 16:00 起）**。**但**与上轮 list-meters（meter8 起点 2013-04-16、n=2,094,523）互斥。
+- **沙箱孪生复现（代码无罪证明）**：构造 mains 早于 kettle 7 天的迷你 House2——变体 A（无杂散）：kettle 网格=自身跨度 ✓ 正确；变体 B（表内 20 行 mains 前杂散）：kettle 网格≈mains 全跨度、**list-meters 起点变为杂散时间**、npz 输出与变体 A 完全一致（杂散行因 agg 缺失被长缺口剔除）→ 代码不可能从 Apr 起点数据产出 3.38M 网格；若表有杂散行，list-meters 必然显示 Feb 起点 → **用户两份输出对应不同的文件状态（或转写误差）**，须以当前文件实测定谳。
+- **判读 4（npz 有效性）**：由变体 B 证明：即便存在杂散行（mains 覆盖之外），输出 npz 不受影响——本 npz 的 target 严格为 Apr 16→Oct 10 的壶数据，可用性不因异常悬置（但纪元锁定仍待 probe 定谳后宣布，先对账再锁定纪律）。
+- **判读 5（H2 drift 反向签名）**：val 段 7.78 evt/day / 0.97 kWh/day 远重于 test 3.71 / 0.48——与 H1（test 重 +50%）方向相反；H2 纪元若训练，选型段偏重、考核段偏轻，EE 预期偏正方向。另：val 段仅 22.35 天（若训练，val 子样本 30000 时 ON≈400，F1 分辨率尚可）。
+- **沙箱事故记录**：第四次平台重置（HEAD 漂回 7824bb4、/tmp 清空）；逐文件哈希对账全一致后 reset 恢复，零丢失；新增 scripts/probe_meter.py（零过滤单表探查：rows/min/max/NaT/重复/NaN/截断点前后明细，沙箱变体 B 测试通过）。
+- **待用户**：probe meter8 定谳（+可选重跑 list-meters 对照当前文件状态）：
+  ```powershell
+  python scripts\probe_meter.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --meter 8 --cutoff "2013-04-16 21:18:09"
+  ```
+- 是否进入 REPORT.md：否（pilot 判读+工具，纪元未锁）。

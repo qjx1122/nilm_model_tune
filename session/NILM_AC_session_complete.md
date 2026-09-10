@@ -253,3 +253,14 @@
 - 关键决策：dw 事件阈值预警入档；House2 独立纪元 Test 预算 2 次
 - 未决问题：用户回传 H2 kettle prepare+diagnose（含缺口处理行）
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；REPORT_TEST.md（实录 23）/ STATUS.md
+
+## [2026-09-09] 会话纪要（H2 kettle pilot 判读 + 网格点异常对账）
+- 目标：判读 House2 kettle pilot；处理 kettle 网格点异常
+- 本会话角色：实验/调参教练（判读）+ 工程实现工程师（复现对账）
+- 完成项：
+  - pilot 判读：身份链过（aggOffW 266-309/evt 3.7-7.8 每天/3kW 壶/corr 0.56-0.67）、结构健康（149 天/9 缝/最大段 75.8 天）、drift 反向签名（val 7.78 vs test 3.71 evt/day，与 H1 相反）
+  - 网格点异常对账：算术定位（网格>跨度上限 838,399 格；并集超 mains 173 格→疑 ~172 行 mains 前杂散）；沙箱孪生复现 A/B（代码无罪+杂散场景精确复现+npz 不受影响+list-meters 会显示杂散起点→用户两份输出互斥=文件状态差异）；scripts/probe_meter.py 交付并测试
+  - 第四次沙箱重置恢复（哈希对账+reset，零丢失）；实录 24、STATUS、纪要；commit+push
+- 关键决策：npz 可用性不悬置（复现证明杂散行被剔除），但纪元锁定待 probe 定谳（先对账再锁定）
+- 未决问题：用户 probe meter8 输出
+- 相关文件/分支：arena/01a07f1d-nilm-model-tune；scripts/probe_meter.py / REPORT_TEST.md（实录 24）/ STATUS.md
