@@ -1058,3 +1058,29 @@
   ```
 - **回传要求**：三份完整 stdout + 三份 evaluate JSON（本轮直接并回，省一轮往返）。
 - 是否进入 REPORT.md：否（口径判读+摸底交付，实验结论待摸底）。
+
+### 执行实录 36（2026-09-10）：House1 dish_washer 摸底判读——全门槛过 ×3 seeds/EE 系统性 −5.3% 紧 σ/事件解码 N=130 闭环；粗搜配置 tuning_dw.yaml 交付（窗口维 +384 周期探针）
+- **本任务角色**：实验/调参教练（摸底判读 + 粗搜设计）
+- **用户执行命令（2026-09-10，实录 35 交付版）**：
+  ```powershell
+  python scripts\train.py --config configs\baseline_dw.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed 42 --out reports\base_dw_s42
+  python scripts\train.py --config configs\baseline_dw.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed 2024 --out reports\base_dw_s2024
+  python scripts\train.py --config configs\baseline_dw.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed 7 --out reports\base_dw_s7
+  python scripts\evaluate.py --run-dir reports\base_dw_s42
+  python scripts\evaluate.py --run-dir reports\base_dw_s2024
+  python scripts\evaluate.py --run-dir reports\base_dw_s7
+  ```
+- **输出关键数字（best_epoch_val，val 30000，threshold 200W）**：best 12/7/6；val MAE 5.79/6.01/5.43（**5.74±0.29**）；F1 0.8897/0.8696/0.9157（**0.8917±0.0231**）；P 0.8797/0.8943/0.9580（0.9107±0.0416）；R 0.9000/0.8462/0.8769（0.8744±0.0270）；EE −5.32%/−5.57%/−4.99%（**−5.29%±0.29%**）；RMSE 74.0/71.7/58.2；R² 0.768/0.783/0.857；test:None ×3；runtime 88/66/65s。
+- **判读 1（事件解码全闭环）**：三份 P/R/F1 同构解码——**val ON 窗口 N=130**（0.00433 子采样率，与 diagnose 全段 0.0045 一致）：TP/FN/FP = 117/13/16、110/20/13、114/16/5，三指标×三种子九项全部一字不差 ✓。F1 量子≈1/130≈0.0077，种子极差 0.046≈**6 量子=真实种子方差**（dw 比 kettle 难：H2 摸底极差仅 1-3 量子）；FN 13-20 与 FP 5-16 双侧都有（kettle 以 FN 为主）——相位边缘检测是双向难点。
+- **判读 2（全门槛过 ×3，dw 纪元有可用基线）**：F1 min 0.870>0.75、R min 0.846>0.70、|EE| max 5.57%<15——三种子全部过门槛且富余健康；「dw 可学性难」的担忧（corr 0.35-0.41）未成灾：**200W 相位口径的红利**（不可学的泵相位已剔除，见实录 35）+ val F1 0.892 与 H1 kettle 细搜档（0.860-0.903@30000）同档——dw 并不比 kettle 本质更难，难在口径而非信号。
+- **判读 3（EE 系统性 −5.3%，本纪元核心特征）**：三种子全负且 σ=±0.29% 极紧——**系统性低估而非噪声**（对照：H2 摸底 +2.91%±3.84% 宽散）。机制假设：加热相位边缘削波（模型对 ramp-up/down 的部分相位窗输出 <200W 等效的低值）——**w384 长窗**（相位对+周期内上下文可见）是搜索中的直接检验变量；若长窗不治，推理侧阈值后处理/边缘平滑为后备（未来工作）。drift 记录：test kWh/day 1.32× 偏重 + val EE 已 −5.3% → test EE 负向风险在案（跨纪元结论 #4：不预测只观察，验收线 ±15% 有 3 倍余量）。
+- **判读 4（收敛更慢更难，符合预期）**：best 6-12（H2 摸底 15-16）、train R² 0.78-0.88（kettle 0.94+）、val 曲线抖动大（6↔20）——周期相位结构比 kettle 的方波难拟合，搜索窗口/容量维有真实空间。
+- **判读 5（粗搜设计，configs/tuning_dw.yaml）**：**tuning_h2 基础上仅改三处**（pyyaml 校验：diff=data.appliance / model_search.window_size / metrics.on_threshold_watts）——①appliance=dish_washer；②窗口维 **[96,128,192,384]**（新增 384=周期结构探针：加热相位 ~89 样本、相位对 ~180 样本，384 可见相位对+周期内上下文；512 因 runtime 预算弃，窗口信号指长再于细搜重议）；③threshold 200。其余八维不动（两纪元搜索空间沿用）；摸底 baseline 架构点在空间内=天然锚；空间 1536 点、trials 32、seed 42+i、val 30000 与摸底统一（口径直比）。
+- **沙箱事故记录**：第十次平台重置发生于本回合中（HEAD 回基点致首次 commit 落错基点、push 被拒非 fast-forward）——本侧违反「回合初 git 对账」固定动作（教训重申：**提交前必须 `git log --oneline -1` 核对基点**，回合初检查不足以覆盖回合中重置）；恢复=fetch+reset --soft（暂存区恰为本轮 3 文件增量）+重提交，零丢失。
+- **待用户（粗搜 32 trials，~60-100min GPU，w384 trials 更慢）+ csv 一次到位（吸取实录 28/29 两轮往返教训）**：
+  ```powershell
+  python scripts\tune.py --config configs\tuning_dw.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --out reports\tuning_dw
+  Get-Content reports\tuning_dw\tuning_summary.csv
+  ```
+- **回传要求**：门槛统计+Top-5（tune 自动打印）**+ tuning_summary.csv 全文**（32 行全量，一次回传省一轮）。
+- 是否进入 REPORT.md：否（搜索未跑）。

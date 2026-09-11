@@ -1,0 +1,75 @@
+# House1 dish_washer 数据纪元粗搜配置（REPORT_TEST.md 执行实录 36，摸底判读落地）：
+#   摸底 baseline ×3 seeds（val 30000，threshold 200W 加热相位口径）：val F1 0.8917±0.0231、
+#     P 0.9107±0.0416、R 0.8744±0.0270、EE −5.29%±0.29%（三种子全负且 σ 极紧=系统性低估，
+#     疑加热相位边缘削波）、MAE 5.74±0.29——全门槛过（F1 min 0.870/R min 0.846/|EE| max 5.6%）；
+#     val ON=130（TP/FN/FP 三种子解码闭环 117/13/16、110/20/13、114/16/5）；
+#   搜索空间 = tuning_h2 基础上仅改窗口维 [96,128,192,384]（新增 384=周期结构探针：
+#     dw 加热相位 ~89 样本/相位对 ~2 相位=半周期 ~180 样本，384 可见相位对+周期内上下文；
+#     512 因 runtime 预算弃，若窗口信号指长再于细搜重议）；其余八维不动
+#     （d/h/L/ff/do/bs/lr/wd 两纪元搜索空间沿用）；摸底 baseline 架构点在空间内=天然锚；
+#   口径：on_threshold 200W（实录 35 定夺）；val 30000/train 30k/test 6000 与摸底统一。
+# 纪律：eval_test 缺省 False（dw 纪元 Test 预算 2 次 untouched）；trial seed=42+i；
+#   单 seed 排名噪声由细搜多 seed 复核消化（赢家诅咒两纪元复现，实录 31/32）。
+seed: 42
+device: auto
+data:
+  path: ''
+  appliance: dish_washer
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  max_samples_train: 30000
+  max_samples_val: 30000
+  max_samples_test: 6000
+  eval_test: false
+search:
+  trials: 32
+  report_test: false
+  objective:
+    metric: composite
+    mae_norm_watts: 2000.0
+    weights:
+      mae: 0.4
+      f1: 0.4
+      energy_error: 0.2
+    gates:
+      enabled: true
+      f1_min: 0.75
+      recall_min: 0.7
+      abs_energy_error_max: 0.15
+model_search:
+  window_size:
+  - 96
+  - 128
+  - 192
+  - 384
+  d_model:
+  - 64
+  - 128
+  nhead:
+  - 4
+  - 8
+  num_layers:
+  - 1
+  - 2
+  dim_feedforward:
+  - 128
+  - 256
+  dropout:
+  - 0.0
+  - 0.1
+training_search:
+  batch_size:
+  - 64
+  - 128
+  lr:
+  - 0.0002
+  - 0.0003
+  - 0.0005
+  weight_decay:
+  - 1.0e-05
+  - 0.0001
+  epochs: 25
+  patience: 5
+metrics:
+  on_threshold_watts: 200.0
