@@ -1174,3 +1174,24 @@
   ```
 - **回传要求**：summarize_fine 全文（d5 将以 n=5 聚合）。
 - 是否进入 REPORT.md：否（细搜索敛中）。
+
+### 执行实录 40（2026-09-10）：House1 dish_washer 细搜批次 3 判读 → **锁定 d1_t11d64**（字典序判定树③ |EE| 裁决）；Test 预注册执行交付（seed 12000，dw 预算 #1/2）
+- **本任务角色**：实验/调参教练（批次 3 判读 + 锁定 + Test 预注册执行）
+- **用户执行命令（2026-09-10，实录 39 交付版）**：
+  ```powershell
+  foreach ($s in 11003,11004) {
+    python scripts\train.py --config configs\fine_dw\d5_d1lr3e4.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed $s --out reports\fine_dw\d5_d1lr3e4_s$s
+  }
+  python scripts\summarize_fine.py --runs-dir reports\fine_dw
+  ```
+- **输出关键数字（30 run 目录）**：d5_d1lr3e4 (n=5) **0.0293±0.0044**（F1 0.9411±0.0106/EE −1.90%±2.31%/MAE 5.31±0.83/ep 6.0）；d1_t11d64 (n=5) 0.0289±0.0045（不变）；其余不变。
+- **判读 1（字典序判定树执行，实录 39 预注册）**：①S：d1 0.0289 vs d5 0.0293——Δ0.0004 ≪ 2×SEM 0.0056 → **并列**（d1 名义反低）；②F1：gap 0.0041 < 1 量子（1/140≈0.0071）且 < 2×SEM 0.0122 → **并列**；③**|val EE|：d1 1.20% < d5 1.90% → 裁决锁定 d1_t11d64**（dw EE 负向风险防御性条款按预注册生效）。
+- **判读 2（d5 名义优势蒸发，配对对称纪律四验）**：d5 n=3 0.0271（F1 0.9479±0.0008 极紧）→ n=5 0.0293（F1 0.9411±0.0106）——新种子拖低 S 与 F1、σ 回归正常，n=3 的极紧系运气；**批次效应第四现**（d5 自身加种子劣化，与 d1 三现同构）——「n 不对称时先补种子再判定」的预注册决策被结果追认：若在批次 2 直接裁 d5，将锁错配置。
+- **锁定宣告**：**House1 dish_washer 纪元最终配置 = d1_t11d64**（configs/fine_dw/d1_t11d64.yaml：**w192 / d64 / h8 / L2 / ff128 / do0.0 / bs128 / lr2e-4 / wd1e-5**，25/5 composite val30000 threshold200）；val（n=5）：S 0.0289±0.0045、F1 0.9370±0.0085、EE −1.20%±1.50%、R 0.9457±0.0193、MAE 4.74±0.32、best_ep 7.8。vs 协议锚 db 0.0651：调参收益 **56%**。跨纪元架构：L2（H2 为 L1）、w192（与 H2 重叠的唯一维度）、bs128、lr2e-4——再证每纪元独立搜索。
+- **Test 预注册执行（dw 触碰 #1/2）**：fresh seed 12000 × `--test` 恰一次；验收四线：**S_test≤0.0439**（=0.0289+0.015）、**F1≥0.75**、**R≥0.70**、**|EE|≤0.15**；观察量=EE 方向（负向风险在案：val 已 −1.2%+test kWh 1.32× 偏重；|EE| 线有 10 倍富余；跨纪元结论 #4——不预测只实测）。Test 通过→REPORT.md dw 章节+收官；不过→预算剩 1 次重新锁定（候选=d5）。
+- **待用户（Test 一跑，~2-3min）**：
+  ```powershell
+  python scripts\train.py --config configs\fine_dw\d1_t11d64.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed 12000 --test --out reports\final_dw_d1_s12000
+  ```
+- **回传要求**：完整 stdout（逐 epoch 行+末尾 result JSON）。
+- 是否进入 REPORT.md：待 Test 结果（通过后 dw 章节随收官写入）。
