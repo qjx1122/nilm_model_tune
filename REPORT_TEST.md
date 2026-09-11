@@ -1148,3 +1148,29 @@
   ```
 - **回传要求**：summarize_fine 全文（d1/d0 将以 n=5 聚合）。
 - 是否进入 REPORT.md：否（细搜进行中）。
+
+### 执行实录 39（2026-09-10）：House1 dish_washer 细搜批次 2 判读——d5 名义登顶但 n 不对称/批次效应再现；批次 3 交付（d5 加种子对称化 2 runs，字典序判定树预注册）
+- **本任务角色**：实验/调参教练（批次 2 判读 + 批次 3 设计）
+- **用户执行命令（2026-09-10，实录 38 交付版引号循环）**：
+  ```powershell
+  foreach ($c in 'd1_t11d64','d0_t11') { foreach ($s in 11003,11004) {
+      python scripts\train.py --config configs\fine_dw\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed $s --out reports\fine_dw\${c}_s$s } }
+  foreach ($c in 'd5_d1lr3e4','d6_d1ff256') { foreach ($s in 11000,11001,11002) {
+      python scripts\train.py --config configs\fine_dw\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed $s --out reports\fine_dw\${c}_s$s } }
+  python scripts\summarize_fine.py --runs-dir reports\fine_dw
+  ```
+- **输出关键数字（28 run 目录）**：**d5_d1lr3e4 (n=3) 0.0271±0.0040**（F1 **0.9479±0.0008** 全场最高最紧/P 0.9446/R 0.9524/RMSE 50.02 最低/EE −2.58%±2.18%/ep 5.0 最快）；d1_t11d64 (n=5) 0.0289±0.0045（F1 0.9370±0.0085/MAE 4.74 最低/EE −1.20%±1.50%）；d0_t11 (n=5) 0.0310±0.0062；d6_d1ff256 (n=3) 0.0337±0.0021（ep 11.0，出局）；其余不变。
+- **判读 1（判定树执行）**：①d5 vs d1：ΔS=0.0018 < 2×SEM 0.0061 → S 不显著（d6 出局）；②d1 vs d0（n=5 对称）：Δ=0.0021 < 0.0069 不显著，分量 d1 全面优/并列（F1 +0.0023/P +0.0090/MAE 优/σ 小）→ **d0 出局**。
+- **判读 2（d5 的 F1「显著性」是口径假象，配对检验缩水）**：表面 d5 F1 0.9479 vs d1 0.9370 gap 0.0109 > 2×SEM 0.0077——但 d1 的 n=5 池化 F1 被新种子 11003/11004 拖低（批 1 n=3 为 0.9422）；**同种子配对**（11000-11002）：F1 差仅 +0.0057 <1 量子，S 配对 d5 反而略差 0.0005 → d5-vs-d1 的判定被「n=3 vs n=5 不对称 + 种子批次效应」双重污染，不可直接裁。
+- **判读 3（批次效应再现）**：d1 n=3→n=5：0.0266±0.0013→0.0289±0.0045（加种子劣化）——H1 实录 19 同款（c2 的 6000 系假阳性），池化+配对纪律的又一证。
+- **批次 3 设计（2 runs ≈5-8min，零新配置）**：d5 ×11003/11004 → n=5 对 n=5 池化对称判定（与 H1 最终锁定 v2 前的池化操作同构）。
+- **预注册字典序判定树（批次 3 后执行）**：①S（n=5 池化）显著（>2×合并 SEM）→ 锁高者；②S 并列 → F1 配对显著 → 锁 F1 高者；③F1 并列（差 <1 量子≈0.007）→ 锁 |val EE| 小者（防御性：dw EE 负向风险+test 偏重 1.32×）；④EE 并列 → 锁 MAE 小者。锁定后 Test 预注册：fresh seed 12000 × --test 恰一次（验收四线，dw 预算 2 次 untouched）。
+- **待用户（批次 3：2 runs + 汇总）**：
+  ```powershell
+  foreach ($s in 11003,11004) {
+    python scripts\train.py --config configs\fine_dw\d5_d1lr3e4.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed $s --out reports\fine_dw\d5_d1lr3e4_s$s
+  }
+  python scripts\summarize_fine.py --runs-dir reports\fine_dw
+  ```
+- **回传要求**：summarize_fine 全文（d5 将以 n=5 聚合）。
+- 是否进入 REPORT.md：否（细搜索敛中）。
