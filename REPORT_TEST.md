@@ -1112,3 +1112,39 @@
   ```
 - **回传要求**：summarize_fine 全文（按变体 mean±std）。
 - 是否进入 REPORT.md：否（细搜未跑）。
+
+### 执行实录 38（2026-09-10）：House1 dish_washer 细搜批次 1 判读——分量级赢家诅咒（t11 F1 系 +3σ 运气）/d1_t11d64 领跑/w192 决定性；批次 2 交付（加种子+lr/ff 双探针）
+- **本任务角色**：实验/调参教练（批次 1 判读 + 批次 2 设计）
+- **用户执行命令（2026-09-10，实录 37 交付版引号循环）**：
+  ```powershell
+  foreach ($c in 'd0_t11','d1_t11d64','d2_t11w96','d3_t27','d4_t22','db_basearch') {
+    foreach ($s in 11000,11001,11002) {
+      python scripts\train.py --config configs\fine_dw\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed $s --out reports\fine_dw\${c}_s$s
+    }
+  }
+  python scripts\summarize_fine.py --runs-dir reports\fine_dw
+  ```
+- **输出关键数字（n=3 each）**：**d1_t11d64 0.0266±0.0013**（F1 0.9422±0.0047/MAE 4.84±0.35/EE −0.97%±1.60%/ep 8.0）；d0_t11 0.0284±0.0026（F1 0.9346±0.0073/EE −0.60%±0.58%）；d4_t22 0.0358±0.0086；d3_t27 0.0388±0.0068；d2_t11w96 0.0537±0.0052（EE σ ±10.4%）；db_basearch 0.0651±0.0319（EE +6.17%±12.5%，σ 巨大）。
+- **判读 1（赢家诅咒第三形态：分量级）**：d0（粗搜 top-1 单 seed 0.0199）3 fresh seeds **0.0284，劣化 +0.0085>0.003 阈值 → 判定树①触发，粗搜 top-1 降权**。但形态异于 H2（f0 垫底）：d0 居 #2——劣化几乎全在 **F1 分量**（t11 的 0.9565 在 fresh 族 0.9346±0.0073 中 ≈+3σ，纯运气）；实录 37「d128=F1 引擎 +4pt」归因**未复现**（d1 的 d64 F1 0.9422 反而更高）→ d128 非必需，d64 兼得 F1/MAE/σ。
+- **判读 2（d1 领跑但与 d0 不显著）**：ΔS=0.0018 < 2×SEM 0.0034 → 统计并列；分量权衡 d1 全面优/并列：F1 +0.0076（1 量子）、MAE 4.84 vs 4.96、**σ 减半**（0.0013 vs 0.0026，F=4.0）；d0 仅 EE σ 略紧（0.0058 vs 0.0160）→ 倾向 d1，留批次 2 n=5 定谳。
+- **判读 3（窗口定谳）**：d2（w96 d128）0.0537 vs d1 0.0266：Δ0.0271 ≫ 2×SEM 0.0062——**w192 决定性**；d2 EE σ ±10.4% 复现粗搜 w96 EE 不稳。
+- **判读 4（粗搜排名再证不可靠）**：粗搜 #2/#3（t22/t27）→ 细搜 #3/#4（0.0358/0.0388）；粗搜 #1 → 细搜 #2——三纪元一致：粗搜只筛方向（w192/EE 族），不选冠军。
+- **判读 5（协议锚+协议效应观察）**：db 0.0651 → 调参收益 **59%**（dw 纪元最大）。注意：db EE +6.17%±12.5% vs 摸底同架构 EE −5.29%±0.29%——30/7+MAE 选型 vs 25/5+composite 选型选不同 best epoch 的**协议效应**（非数据变化），记录备查；锚 σ 大（0.0319）系单 seed 崩（P 0.8703±0.0789），不影响「全体变体优于锚」结论。
+- **批次 2 设计（10 runs ≈25-35min）**：①d1/d0 加种子 **11003/11004**（n=5：top-2 稳定化+d1-vs-d0 定谳）；②**d5_d1lr3e4**（d1×lr3e-4：粗搜 top-10 lr3e-4 占 4 席、该精确架构未测）；③**d6_d1ff256**（d1×ff256：粗搜 top-5 的 t10/t13 均 ff256；H2 冠军亦 d64+ff256=4×d）。配置单变量校验过（d5 仅 lr、d6 仅 ff）。
+- **预注册判定树（批次 2）**：①d5/d6 显著优于 d1（>2×合并 SEM）→ 锁该变体；②否则 d1（n=5）为锁定候选（d1 vs d0 在 n=5 重验：d1 仍优或并列且分量优 → 锁 d1）；③分量权衡口径：F1 量子≈1/140≈0.007、EE 负向风险在案（test 1.32× 偏重）、σ 小者优先；④锁定 → Test 预注册：fresh seed 12000 × --test 恰一次，验收 S_test≤val 均值+0.015、F1≥0.75、R≥0.70、|EE|≤0.15（dw 预算 2 次 untouched）。
+- **待用户（批次 2：10 runs + 汇总）**：
+  ```powershell
+  foreach ($c in 'd1_t11d64','d0_t11') {
+    foreach ($s in 11003,11004) {
+      python scripts\train.py --config configs\fine_dw\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed $s --out reports\fine_dw\${c}_s$s
+    }
+  }
+  foreach ($c in 'd5_d1lr3e4','d6_d1ff256') {
+    foreach ($s in 11000,11001,11002) {
+      python scripts\train.py --config configs\fine_dw\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --seed $s --out reports\fine_dw\${c}_s$s
+    }
+  }
+  python scripts\summarize_fine.py --runs-dir reports\fine_dw
+  ```
+- **回传要求**：summarize_fine 全文（d1/d0 将以 n=5 聚合）。
+- 是否进入 REPORT.md：否（细搜进行中）。
