@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】House1 dish_washer 纪元**已锁定**（实录 35：阈值敏感性四跑判读——口径定夺 **200W 加热相位定义**：预注册规则三条件全中/泵相位 120W<aggOffW 基线不可学/周期结构闭环 0.4-0.5 周期/天×2 相位=0.8-1.0 vs 实测 0.91-1.02 吻合/加热占能量 84%/200 与 500 口径等价）→ 摸底已交付（baseline_dw.yaml：threshold 200+val 30000[ON 135]+w128 起步）→ 摸底判读完成（实录 36：全门槛过 ×3，val F1 0.8917±0.0231/R 0.8744/EE −5.29%±0.29% 系统性低估·σ 极紧/MAE 5.74；事件解码 N=130 九项闭环；与 H1 kettle 细搜同档——难在口径不在信号）→ 粗搜配置 tuning_dw.yaml 已交付（tuning_h2 仅改三处：appliance/窗口+384 周期探针/threshold 200；空间 1536·trials 32）→ 当前=用户跑粗搜 32 trials+csv 一次回传
+- 【进行中·用户任务】House1 dish_washer 纪元**已锁定**（实录 35：阈值敏感性四跑判读——口径定夺 **200W 加热相位定义**：预注册规则三条件全中/泵相位 120W<aggOffW 基线不可学/周期结构闭环 0.4-0.5 周期/天×2 相位=0.8-1.0 vs 实测 0.91-1.02 吻合/加热占能量 84%/200 与 500 口径等价）→ 摸底已交付（baseline_dw.yaml：threshold 200+val 30000[ON 135]+w128 起步）→ 摸底判读完成（实录 36：全门槛过 ×3，val F1 0.8917±0.0231/R 0.8744/EE −5.29%±0.29% 系统性低估·σ 极紧/MAE 5.74；事件解码 N=130 九项闭环；与 H1 kettle 细搜同档——难在口径不在信号）→ 粗搜配置 tuning_dw.yaml 已交付（tuning_h2 仅改三处：appliance/窗口+384 周期探针/threshold 200；空间 1536·trials 32）→ 粗搜完成（实录 37：30/32 过门槛·门槛首次咬人且全咬 w384+d128+L1+do0 角；top-1 trial 11 S=0.0199 结构性登顶领先 #2 达 0.0119=EE 项+F1 项双领先；w192=EE 解药/w96 全负/w384 周期假设证伪出局；d128=F1 引擎 +4pt；L2 9/10 与 H2 L1 锁定相反再证不迁移）→ fine_dw 细搜批次 1 已交付（6 配置×3 seeds 11000-11002：d0 复核+d1 容量分解+d2 窗口交叉+d3/d4 族复核+db 锚；判定树预注册含 Test seed 12000）→ 当前=用户跑细搜 18 runs
 - 【已收官·2026-09-10】House2 kettle 纪元全流程闭环（实录 24-33：身份链→probe 定谳→纪元锁定→摸底→粗搜 32→细搜两批次 34 runs→锁定 f5_t9→Test 四线全过 S_test 0.0252/F1 0.9398/EE −0.02% 死零；Test 预算 2 用 1 封存；REPORT.md v1.1 §7+两纪元对照+跨纪元结论五条）——等待用户下一任务（候选：House1 dw 纪元，须先 --on-threshold 100/200 敏感性；或其他 house/电器）
 - 本任务角色：工程实现工程师（泛化改造）；沙箱验证完毕，待用户回传后转实验/调参教练判读
 - 【已完成·收官】任务 3「调参执行」：F4（v2_do00×w96）锁定 + Test 验收四线全过（实录 20：S_test 0.0541 / F1 0.8941 / R 0.9268 / EE +5.2%；对照旧纪元 S 2.3 倍改善）。任务起点阻塞（Test EE −23%）正式关闭。
@@ -68,16 +68,15 @@
 - [x] 2026-09-10 H1 dish_washer 纪元立项+阈值敏感性设计（实录 34）：口径问题本质三层拆解（事件统计/F1 业务定义/分辨率）；四判据+决策规则预注册（200W 倾向：evt/day∈[0.5,3]+kWh/evt≥0.3+ON≥90）；EE 阈值无关确认（npz 免重跑）；窗口上限放宽议题备忘（dw 周期 1-2h≫窗口）；四跑命令交付
 - [x] 2026-09-10 H1 dw 阈值敏感性判读+**纪元锁定**（实录 35）：四判据执行（断层在 100→200W=泵相位出局；@200W 起纯加热单峰 2330-2390W；泵 120W<aggOffW 321-408 不可学；val ON 135@30000 ✓）；预注册规则三条件全中→口径定夺 **200W**；200 vs 500 口径等价（on_frac 四位小数一致）取 200；周期结构闭环（0.4-0.5 周期/天×2 相位=0.8-1.0 vs 实测 0.91-1.02；单相位 0.347 kWh；加热占能量 84%）；@20W=可学性陷阱（recall 天花板 ~0.28）记录；drift test 偏重（1.12×/1.32×）仅记录；baseline_dw.yaml 交付（threshold 200+val 30000+w128）
 - [x] 2026-09-10 H1 dw 摸底判读完成（实录 36）：全门槛过 ×3（F1 min 0.870/R min 0.846/|EE| max 5.57%）；val F1 0.8917±0.0231（极差 6 量子=真实种子方差，dw 比 kettle 难）；EE −5.29%±0.29% 系统性低估（三种子全负 σ 极紧；机制假设=加热相位边缘削波，w384 直接检验变量；test 1.32× 偏重→负向风险在案）；事件解码 N=130 九项闭环（TP/FN/FP=117/13/16、110/20/13、114/16/5，FN FP 双侧难点）；与 H1 kettle 细搜 0.860-0.903 同档；configs/tuning_dw.yaml 交付（tuning_h2 仅改三处+锚可达+空间 1536，pyyaml 校验）
+- [x] 2026-09-10 H1 dw 粗搜判读（实录 37）：csv 32 行 S 分解/sae/seed 全闭环；t11 事件解码 TP132/FN8/FP4/N140；结构性登顶（ΔS 0.0119=EE 0.0087+F1 0.0032，领先 H2 top-1 17 倍但赢家诅咒检验仍执行）；EE 解药=w192（w96 全负/w192 d64 正值族/t11 近零）、F1 引擎=d128（+4pt）；w384 证伪出局+门槛首次咬人（2 fail 全在 w384+d128+L1+do0 角，t30 全线崩 F1 0.558/|EE| 21%）；L2 9/10 与 H2 L1 相反；configs/fine_dw/ ×6 交付（d0/d1/d2 因子+d3/d4 族复核+db 锚，pyyaml 校验+单变量交叉）
 
 ## 进行中
-- （用户侧）dw 粗搜 32 trials + tuning_summary.csv 全文（命令见下一步块，~60-100min，一次回传省一轮）
-- （本侧）无阻塞；待粗搜判读（锚=baseline 可达点；EE −5.3% 系统性低估是否被 w384 治=核心观察量；赢家诅咒纪律）→ 细搜设计 → 锁定 → Test 预注册（dw 预算 2 次 untouched）
+- （用户侧）dw 细搜批次 1：6 配置 ×3 seeds（命令见下一步块，~35-50min）→ 回传 summarize_fine 全文
+- （本侧）无阻塞；待细搜判读（判定树：赢家诅咒检验/容量与窗口分解/分量权衡）→ 锁定 → Test 预注册（seed 12000，dw 预算 2 次 untouched）
 
 ## 下一步（TODO）
-1. 用户：dw 粗搜（Test 冻结）+ csv 一次到位：
-   python scripts\tune.py --config configs\tuning_dw.yaml --data-path D:\Work\testPython\datasets\ukdale_dw.npz --out reports\tuning_dw
-   Get-Content reports\tuning_dw\tuning_summary.csv
-2. 本侧粗搜判读（门槛统计+Top-5+csv 全量：S 分解闭环/维度统计/锚位置/w384 对 EE 的效应）→ 细搜设计（多候选×多种子+双锚）→ 锁定 → Test 预注册（seed fresh × --test 恰一次；验收 S_test≤val 均值+0.015、F1≥0.75、R≥0.70、|EE|≤0.15；EE 负向风险观察量）
+1. 用户：dw 细搜批次 1（18 runs + 汇总，Test 冻结，引号版命令见实录 37）→ summarize_fine
+2. 本侧细搜判读（实录 37 判定树）→ 批次 2 或锁定候选 → Test 预注册（seed 12000 × --test 恰一次；验收 S_test≤val 均值+0.015、F1≥0.75、R≥0.70、|EE|≤0.15；EE 方向观察量：w192 族 val EE 近零，test 负向风险在案）
 3. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
 4. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果）
 
@@ -158,12 +157,15 @@
 - 2026-09-10（立项·H1 dw 纪元）：事件阈值=业务定义选择（全周期 vs 加热相位）而非纯技术参数——泵相位 120W 对 agg 基线对比度弱（corr 0.35-0.41），可学性与业务纯度须权衡；EE 与阈值无关故口径悬置不阻塞数据有效性；判读框架先预注册后看数（防事后择优）
 - 2026-09-10（决策·dw 口径 200W·纪元锁定）：F1 口径=加热相位定义（非全周期）——判据=预注册规则命中+周期结构算术闭环+可学性（泵相位低于基线）+能量主体（84%）；200 与 500 的 on_frac 四位小数一致（F1 逐样本口径下等价）→ 阈值落点稳健性取 200；摸底 val 直接 30000（dw@6000 仅 ON 27 无分辨率，且与搜索口径统一消除不可直比警示——H2 教训前置消化）；真周期事件合并=推理侧 min-gap 后处理，留未来工作
 - 2026-09-10（发现·dw 摸底特征）：①EE 系统性 −5.3%±0.29%（对照 H2 +2.91%±3.84% 宽散）——dw 纪元核心特征，w384 长窗为机制检验变量、推理侧后处理为后备；②FN（13-20）与 FP（5-16）双侧都有（kettle 以 FN 为主）——相位边缘双向误差；③摸底-搜索口径统一（val 30000）兑现：摸底数字与粗搜直接可比；④回传流程优化：csv 全文随粗搜一次回传（吸取实录 28/29 两轮往返教训）
+- 2026-09-10（定谳·dw EE 解药=w192·d128=F1 引擎）：摸底系统性 −5.3% 由 w192 治愈（19.2min 窗口>加热相位 8.9min 完整覆盖+前后文），非 w384（周期假设证伪：7 trial 无 top-5 且 2 fail）；d128 再添 F1 ~4pt（5-6 量子）；机制假设升级：边缘削波=窗口不足而非周期上下文不足——细搜 d1/d2 单变量分解检验
+- 2026-09-10（发现·门槛首次咬人）：三纪元首见 gate fail（H1/H2 均 32/32）——2 例全在 w384+d128+L1+do0 过拟合死角（t30 F1 0.558/R 0.528/|EE| 21% 全线崩）；门槛在难纪元恢复区分度，守门员价值兑现
+- 2026-09-10（踩坑·沙箱第十一次重置）：同新形态 SOP 恢复零丢失；连续重置第 3 回合（九/十/十一）——第十次为回合中形态（教训：提交前 git log 核基点已入流程）
 
 ## 关键文件路径
 - 协议：`BOOTSTRAP.md`（v2.1）、`ROLE.md`（角色库，默认角色=资深电力算法专家）
 - 续接：`STATUS.md`（本文件）、`session/NILM_AC_session_complete.md`（会话纪要，session 收尾追加）
 - 报告：`REPORT_TEST.md`（专题，追加式）、`REPORT.md`（稳定结论）、`TUNING_GUIDE.md`（调参教学）
-- 代码：`src/`（data / model / metrics / objective / trainer / experiment）、`scripts/`（train / evaluate / tune / prepare_ukdale / diagnose_split / probe_meter / parse_nilmtk_metadata / inspect_h5 / run_smoke）、`configs/`（baseline / baseline_100k / baseline_dw / tuning / tuning_v5 / tuning_h2 / tuning_dw / fine_v5 / fine_h2）
+- 代码：`src/`（data / model / metrics / objective / trainer / experiment）、`scripts/`（train / evaluate / tune / prepare_ukdale / diagnose_split / probe_meter / parse_nilmtk_metadata / inspect_h5 / run_smoke）、`configs/`（baseline / baseline_100k / baseline_dw / tuning / tuning_v5 / tuning_h2 / tuning_dw / fine_v5 / fine_h2 / fine_dw）
 - 运行：`run_baseline.ps1` / `run_tuning.ps1` / `run_real.ps1`（Windows + Conda）
 - 产物：`reports/smoke/`（smoke 基线，git 跟踪勿覆盖）、`reports/`（实验输出目录）
 - 测试：`tests/`（test_model / test_objective / test_prepare_ukdale）；依赖：`requirements.txt`
