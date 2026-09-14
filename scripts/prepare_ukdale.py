@@ -427,12 +427,18 @@ def main():
                     help="（兼容别名）等价 --appliance-gap-min")
     ap.add_argument("--list-meters", action="store_true",
                     help="只打印 house 下各表号/样本数/时间范围，不生成 npz")
+    ap.add_argument("--no-log", action="store_true",
+                    help="禁用控制台输出留痕（默认写 <out>.log，与 npz/data_spec.json 同目录）")
     args = ap.parse_args()
 
     if args.list_meters:
         with h5py.File(args.h5_path, "r") as f:
             cmd_list_meters(f, args.house)
         return
+
+    # 控制台输出留痕（实录 45）：<out>.log 与 npz/data_spec.json 同目录——「缺口处理」等口径留痕不再依赖控制台
+    from runlog import setup_run_log
+    setup_run_log(Path(str(args.out) + ".log"), enabled=not args.no_log)
 
     # 通用名 + 兼容别名解析（冲突即报错，不接受静默覆盖）
     if (args.appliance_meter_id is not None and args.kettle_meter_id is not None

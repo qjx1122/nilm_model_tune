@@ -1325,3 +1325,15 @@
 - **回传要求**：24 份 stdout（或至少每 run 的 best_epoch 行）+ 24 份 evaluate JSON。
 - 是否进入 REPORT.md：否（双纪元均未到定稿）。
 - **补记（命名修正，同回合内）**：原交付的 configs/baseline_dw.yaml 与 H1 dw 纪元摸底档案（实录 35）撞名——H1 原档已恢复，H2 摸底改用 **configs/baseline_h2dw.yaml**（命令块已同步修正）。核查结论：两者 YAML 字段逐项全同（H1 摸底版已是 threshold 200 + val 30000）——H2 dw 摸底配置本身也是 H1 的逐字平移，故「三方对决」实为**三配方对决**：H1 摸底配方（w128/30-7/MAE 选型）vs H1 细搜冠军 d1（w192/L2/lr2e-4/25-5/composite）vs H2 kettle 细搜冠军 f5（w192/L1/lr3e-4/25-5/composite）。教训：**新建配置前先 `ls configs/` 查撞名**（跨纪元同名电器 dw/mw 高危；本轮 mw 系无撞纯属幸运）。
+
+### 执行实录 45（2026-09-14）：工具增强——控制台输出留痕功能（runlog.py）全脚本接入（治本 stdout 丢失）
+- **本任务角色**：实验/调参教练（工具链增强）
+- **背景**：用户执行实录 44 交付的 24 个 run 后，控制台 stdout 部分被冲掉无法回传（evaluate JSON 为权威不受影响，但 best_ep 分布/warning/早停曲线等辅助信息有档案价值）；上回合 Tee-Object 管道方案属治标。
+- **交付**：
+  - `scripts/runlog.py`：Tee stdout+stderr → UTF-8 日志文件（行缓冲，中途崩溃已写内容仍在）；文件头=时间戳/命令行/cwd，文件尾=结束时间+时长（atexit，traceback 亦入档）；幂等（二次调用不生效）；`--no-log` 完全关闭；
+  - 接入 8 脚本：train→`<out>/train.log`、evaluate→`<run-dir>/evaluate.log`、tune→`<out>/tune.log`（tune 的 subprocess 仅 git 查询、trial 进程内跑，Python 层 Tee 全覆盖）、prepare_ukdale→`<out>.log`（与 npz/data_spec.json 同目录，延续口径留痕家族）、diagnose_split/summarize_fine/probe_meter/inspect_h5→`logs/<名称>_<时间戳>.log`（logs/ 已 gitignore）；控制台行为不变，仅开头多一行「日志留痕: <路径>」；
+  - `tests/test_runlog.py` ×5（纯 stdlib，核心用例子进程隔离）：Tee 双写/端到端捕获（print+stderr+头尾）/禁用零残留/幂等/命名。
+- **验证**：py_compile ×9 全过；单测 5/5 PASS；numpy e2e 冒烟（合成 npz 跑 diagnose）：日志含头部/全表/判读提示/尾时长，`--no-log` 反例零残留（BrokenPipeError 系冒烟命令 `| head` 截断管道伪影，真实使用无碍）。
+- **用户侧效果**：git pull 后重跑 evaluate ×24，各 run 目录自动生成 evaluate.log——控制台冲掉不再丢；判读仍以 evaluate JSON 为权威（本功能补辅助档案）。
+- **沙箱第 18 次重置恢复（新形态）**：HEAD/index 回退 7824bb4 但工作区未丢——`git diff FETCH_HEAD` 出现「59 文件 5272 行删除」假象（陈旧 index 的 diff 语义：FETCH_HEAD 有而 index 无的路径按删除显示）；判别法=先验关键文件尾部内容年代（REPORT_TEST.md 尾=实录 44 补记 ✓），mixed reset 后 status 清零即确认无损失。
+- 是否进入 REPORT.md：否（工具变更非实验结论；README §4 已加留痕说明）。

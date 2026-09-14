@@ -133,6 +133,7 @@ transformer_nilm_project/
 │   ├── train.py
 │   ├── evaluate.py
 │   ├── tune.py
+│   ├── runlog.py
 │   └── run_smoke.py
 ├── tests/
 ├── requirements.txt
@@ -141,6 +142,8 @@ transformer_nilm_project/
 ├── run_real.ps1
 └── README.md
 ```
+
+> **控制台留痕（2026-09-14，执行实录 45）**：所有用户侧脚本默认把控制台输出（含 warning / traceback）同步写入日志文件——`train`/`evaluate`/`tune` 写各自输出目录（`train.log` / `evaluate.log` / `tune.log`），`prepare_ukdale` 写 `<out>.log`（与 npz / data_spec.json 同目录），其余脚本写 `logs/<名称>_<时间戳>.log`。控制台行为不变，每脚本可用 `--no-log` 关闭。
 
 ## 5. 先验证代码
 

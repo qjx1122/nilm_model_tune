@@ -106,7 +106,14 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--path", required=True)
     ap.add_argument("--max-meters", type=int, default=60)
+    ap.add_argument("--no-log", action="store_true",
+                    help="禁用控制台输出留痕（默认写 logs/inspect_h5_<时间戳>.log）")
     args = ap.parse_args()
+
+    # 控制台输出留痕（实录 45）：H5 结构清单落盘
+    from runlog import setup_run_log, default_log_path
+    setup_run_log(default_log_path("inspect_h5"), enabled=not args.no_log)
+
     inspect(args.path, args.max_meters)
 
 

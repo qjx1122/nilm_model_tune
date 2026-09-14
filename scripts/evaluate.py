@@ -2,7 +2,14 @@ import argparse, json
 from pathlib import Path
 p = argparse.ArgumentParser()
 p.add_argument("--run-dir", required=True)
+p.add_argument("--no-log", action="store_true",
+               help="禁用控制台输出留痕（默认写 <run-dir>/evaluate.log）")
 args = p.parse_args()
+
+# 控制台输出留痕（实录 45）：输出 JSON 与控制台同步落盘
+from runlog import setup_run_log
+setup_run_log(Path(args.run_dir) / "evaluate.log", enabled=not args.no_log)
+
 run = Path(args.run_dir)
 result = json.loads((run / "result.json").read_text(encoding="utf-8"))
 

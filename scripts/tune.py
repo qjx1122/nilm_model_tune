@@ -37,7 +37,13 @@ p.add_argument("--synthetic", action="store_true",
                help="用合成信号（仅链路验证，不是真实结果）")
 p.add_argument("--trials", type=int, default=None,
                help="覆盖 search.trials（烟雾测试传小值）")
+p.add_argument("--no-log", action="store_true",
+               help="禁用控制台输出留痕（默认写 <out>/tune.log）")
 args = p.parse_args()
+
+# 控制台输出留痕（实录 45）：逐 trial 训练曲线与汇总全部落盘
+from runlog import setup_run_log
+setup_run_log(Path(args.out) / "tune.log", enabled=not args.no_log)
 
 cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
 if args.synthetic or not args.data_path:

@@ -14,7 +14,13 @@ p.add_argument("--seed", type=int, default=None,
                help="覆盖配置里的 seed（细搜多种子复跑用；否则同一 yaml 每次结果相同）")
 p.add_argument("--test", action="store_true",
                help="显式评估 Test（覆盖 data.eval_test，缺省 False=冻结）。仅在最终锁定、准备碰 Test 的那一次使用")
+p.add_argument("--no-log", action="store_true",
+               help="禁用控制台输出留痕（默认写 <out>/train.log，与 result.json 同目录）")
 args = p.parse_args()
+
+# 控制台输出留痕（实录 45）：epoch 行 / warning / 末尾结果全部落盘，控制台缓冲被冲不再丢
+from runlog import setup_run_log
+setup_run_log(Path(args.out) / "train.log", enabled=not args.no_log)
 
 cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
 if args.seed is not None:

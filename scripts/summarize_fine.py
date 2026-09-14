@@ -34,7 +34,14 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--runs-dir", default="reports/fine")
+    ap.add_argument("--no-log", action="store_true",
+                    help="禁用控制台输出留痕（默认写 logs/summarize_<目录名>_<时间戳>.log）")
     args = ap.parse_args()
+
+    # 控制台输出留痕（实录 45）：mean±std 汇总表落盘
+    from runlog import setup_run_log, default_log_path
+    setup_run_log(default_log_path(f"summarize_{Path(args.runs_dir).name}"),
+                  enabled=not args.no_log)
 
     dirs = sorted(Path(args.runs_dir).iterdir())
     runs = []

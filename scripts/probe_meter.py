@@ -34,7 +34,13 @@ def main():
     p.add_argument("--cutoff", default=None,
                    help="对照截断时间戳（naive 按表时区解释）：统计其前后行数、"
                         "截断前明细与截断后前 5 行")
+    p.add_argument("--no-log", action="store_true",
+                   help="禁用控制台输出留痕（默认写 logs/probe_h<house>m<meter>_<时间戳>.log）")
     a = p.parse_args()
+
+    # 控制台输出留痕（实录 45）：表号普查输出落盘
+    from runlog import setup_run_log, default_log_path
+    setup_run_log(default_log_path(f"probe_h{a.house}m{a.meter}"), enabled=not a.no_log)
 
     key = f"/building{a.house}/elec/meter{a.meter}"
     df = pd.read_hdf(a.h5_path, key)

@@ -77,7 +77,13 @@ def main():
                     help="ON 事件阈值 W（显式给出则优先于 --appliance 默认表）")
     ap.add_argument("--ratios", nargs=3, type=float, default=[0.70, 0.15, 0.15],
                     help="train/val/test 比例（与 build_splits 一致）")
+    ap.add_argument("--no-log", action="store_true",
+                    help="禁用控制台输出留痕（默认写 logs/diagnose_<appliance>_<时间戳>.log）")
     args = ap.parse_args()
+
+    # 控制台输出留痕（实录 45）：阈值敏感性/普查输出落盘（logs/ 已 gitignore）
+    from runlog import setup_run_log, default_log_path
+    setup_run_log(default_log_path(f"diagnose_{args.appliance}"), enabled=not args.no_log)
 
     if args.on_threshold is not None:
         thr, src = float(args.on_threshold), "explicit"
