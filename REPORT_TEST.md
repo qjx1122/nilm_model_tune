@@ -1370,3 +1370,31 @@
 - **预注册判定**：①dw 基座=d1/f5 补种子后 n=5 配对字典序（S→F1→|EE|→MAE）；g1/g2 vs d1(n=3) 3/3+>2×SEM → 纳入批 2；②mw：m6/m7 vs m1(n=3) 显著优 → 替换决赛者再对称化；否则 **m1 直接锁定候选**进 Test 预注册。
 - **回传要求**：18 份 stdout + 18 份 evaluate JSON（或总日志整份）。
 - 是否进入 REPORT.md：否（两纪元均未锁定）。
+
+### 执行实录 48（2026-09-14）：双纪元锁定——dw d1（F1 字典序裁决）/ mw m1（决赛者确认）；**Test 预注册双交付**
+- **本任务角色**：实验/调参教练（判定树执行 + Test 预注册）
+- **用户执行（2026-09-14 17:33-19:22，实录 47 命令块）**：dw 补种子 ×4 + g1/g2 ×3 + mw 补种子 ×2 + m6/m7 ×3 + evaluate ×18（总日志完整回传，含全部 train 逐 epoch 曲线——best_ep 档案首次完整）。
+- **判读 1（dw 基座裁决，对称化 n=5 配对）**：
+  - S：d1 0.01376±0.0019 vs f5 0.01643±0.0055；ΔS(d1−f5) = −0.00266 < 2×SEM 0.00417（方向 4/5）——**S 仍平局**；
+  - 字典序第二判据 F1 配对：ΔF1 = +0.0088（4/5 方向）**> 1 量子**（1/609≈0.0016，超 5 量子）→ **d1 胜出**；
+  - f5 脆弱性证据：s21001 MAE 10.78（离群，σ ±2.38 vs d1 ±0.63）——单层架构对坏种子更敏感；d1 五种子全距 0.0112-0.0164 极稳；
+  - g1_d1do01 出局（方向 1/3，+0.00236）：**dropout 在强信号电器无效**（与 mw m1 显著优对照——dropout 正则假说边界：稀疏弱信号有效，稠密强信号无效）；g2_d1lr3e4 出局（方向 2/3，−0.00134<2×SEM）：s2024 0.00939/s7 0.01072 为 dw 史上最佳单值但 s42 +0.0023 拖累——**lr3e4 在 H2 dw 重演 H1「亚军魔咒」**（H1 d5=d1+lr3e4 亦亚军）；
+  - **锁定：d1 配方（configs/probe_dw_d1.yaml = H1 d1_t11d64 逐字平移）为 H2 dw 锁定候选**。val(n=5) 档案：S 0.0138±0.0019 / F1 0.9741±0.0032 / EE 1.16%±1.23% / MAE 5.42±0.63 / R² 0.953 / best_ep 8.8。
+- **判读 2（mw 决赛者确认）**：
+  - m6_m1L2 出局（方向 1/3，+0.00683；s7 best_ep 2 早停不稳）；m7_m1h4 出局（0/3，+0.01748 决定性劣化——h4+F1/EE 双伤）；组合探针回收失败，m4/m5 部件与 m1 正则引擎不兼容；
+  - **锁定：m1_do01（configs/fine_mw/m1_do01.yaml = f5 配方+dropout 0.10）为 H2 mw 锁定候选**。val(n=5) 档案：S 0.0606±0.0092 / F1 0.8582±0.0180 / EE 1.59%±1.43% / MAE 3.62±1.19 / R² 0.765 / best_ep 10.8；
+  - **批次效应第五现（入档）**：m1 n=3 0.05421 → n=5 0.06062（新种子 0.0719/0.0685 拖累；s21002 best_ep 3 早停）——与 dw d1/H1 d1·d5 同款；n=5 档案为锁定口径，不受影响。
+- **Test 预注册（双纪元，fresh seed ×--test 恰一次，各预算 2 次——本次为第 1 次）**：
+  - **dw**：seed **22000**，config=probe_dw_d1.yaml，out=reports\final_h2dw_d1_s22000；验收：**S_test ≤ 0.0288**（=val 0.01377+0.015）、F1≥0.75、R≥0.70、|EE|≤0.15；
+  - **mw**：seed **22001**，config=fine_mw/m1_do01.yaml，out=reports\final_h2mw_m1_s22001；验收：**S_test ≤ 0.0756**（=val 0.06062+0.015）、F1≥0.75、R≥0.70、|EE|≤0.15；
+  - 惯例：EE 方向不预测（铁律：三验全败）；四线全过=纪元收官，任一不过=预算内复盘一次。
+- **待用户（训练 ×2 + evaluate ×2，~4min）**：
+  ```powershell
+  python scripts\train.py --config configs\probe_dw_d1.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_dw.npz --seed 22000 --test --out reports\final_h2dw_d1_s22000
+  python scripts\train.py --config configs\fine_mw\m1_do01.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_mw.npz --seed 22001 --test --out reports\final_h2mw_m1_s22001
+  python scripts\evaluate.py --run-dir reports\final_h2dw_d1_s22000
+  python scripts\evaluate.py --run-dir reports\final_h2mw_m1_s22001
+  ```
+- **回传要求**：2 份 stdout（含 test 指标段）+ 2 份 evaluate JSON（或总日志整份）。
+- 是否进入 REPORT.md：待 Test 终局后一并（§9 H2 纪元群：两纪元+三排除档案）。
+- 沙箱第 19 次重置恢复（本地 7824bb4→3645c2b）。
