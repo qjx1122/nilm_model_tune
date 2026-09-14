@@ -1298,14 +1298,14 @@
   - **混淆变量声明**：探针=配方级平移（架构+w192+lr3e-4+25/5 composite vs baseline 架构+w128+lr5e-4+30/7 MAE），非纯架构迁移——回答「f5 配方整体可否平移」，答案为是；
   - **裁定：mw 免粗搜，直入细搜**（同 house 跨电器迁移首验成功：kettle→mw；「架构不迁移」结论边界收窄：跨 house 不迁移成立，**同 house 配方可迁移**）。
 - **本轮交付（双轨）**：
-  1. **dw 三方对决 ×9**（seeds 42/2024/7）：baseline_dw（摸底锚）+ probe_dw_f5（kettle 配方平移）+ probe_dw_d1（**H1 dw 冠军逐字平移**——d1 的 appliance/threshold 本就一致，配置零改动仅换数据）——首个双配方迁移对决（悬念：H2 dw 单峰形态近 kettle 型，d1 为 H1 双峰机型调出）；
+  1. **dw 三方对决 ×9**（seeds 42/2024/7）：baseline_h2dw（摸底锚）+ probe_dw_f5（kettle 配方平移）+ probe_dw_d1（**H1 dw 冠军逐字平移**——d1 的 appliance/threshold 本就一致，配置零改动仅换数据）——首个双配方迁移对决（悬念：H2 dw 单峰形态近 kettle 型，d1 为 H1 双峰机型调出）；
   2. **mw 细搜批 1 ×15**：m0=probe_mw_f5（已有 3 seeds 零成本）+ m1_do01/m2_lr2e4/m3_w128/m4_L2/m5_h4（单变量：正则/优化/感受野/深度/注意力几何）×同 seeds；
   3. evaluate ×24。
 - **预注册**：①dw 三方=配对 ΔS（探针 vs baseline，探针互斗同规则）：3/3 方向+>2×SEM → 该配方为 dw 细搜基座（免粗搜）；双败 → 独立粗搜；②mw 细搜批 1 判定树：S→F1→|EE|→MAE 字典序（配对 m0）；批 2=决赛者补种子对称化。
 - **脚注**：probe_mw_f5_s7 stdout 有粘贴截断（Epoch 001 行丢失+config 回显错位拼接）——evaluate JSON 为权威（best_ep 4、指标完整），不影响判读。
 - **待用户（训练 ×24 + evaluate ×24，~25-30min GPU）**：
   ```powershell
-  foreach ($c in "baseline_dw","probe_dw_f5","probe_dw_d1") {
+  foreach ($c in "baseline_h2dw","probe_dw_f5","probe_dw_d1") {
     foreach ($s in 42,2024,7) {
       python scripts\train.py --config configs\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_dw.npz --seed $s --out reports\${c}_s$s
     }
@@ -1315,7 +1315,7 @@
       python scripts\train.py --config configs\fine_mw\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_mw.npz --seed $s --out reports\mw_${c}_s$s
     }
   }
-  foreach ($d in "baseline_dw_s42","baseline_dw_s2024","baseline_dw_s7","probe_dw_f5_s42","probe_dw_f5_s2024","probe_dw_f5_s7","probe_dw_d1_s42","probe_dw_d1_s2024","probe_dw_d1_s7") {
+  foreach ($d in "baseline_h2dw_s42","baseline_h2dw_s2024","baseline_h2dw_s7","probe_dw_f5_s42","probe_dw_f5_s2024","probe_dw_f5_s7","probe_dw_d1_s42","probe_dw_d1_s2024","probe_dw_d1_s7") {
     python scripts\evaluate.py --run-dir reports\$d
   }
   foreach ($d in "mw_m1_do01_s42","mw_m1_do01_s2024","mw_m1_do01_s7","mw_m2_lr2e4_s42","mw_m2_lr2e4_s2024","mw_m2_lr2e4_s7","mw_m3_w128_s42","mw_m3_w128_s2024","mw_m3_w128_s7","mw_m4_L2_s42","mw_m4_L2_s2024","mw_m4_L2_s7","mw_m5_h4_s42","mw_m5_h4_s2024","mw_m5_h4_s7") {
@@ -1324,3 +1324,4 @@
   ```
 - **回传要求**：24 份 stdout（或至少每 run 的 best_epoch 行）+ 24 份 evaluate JSON。
 - 是否进入 REPORT.md：否（双纪元均未到定稿）。
+- **补记（命名修正，同回合内）**：原交付的 configs/baseline_dw.yaml 与 H1 dw 纪元摸底档案（实录 35）撞名——H1 原档已恢复，H2 摸底改用 **configs/baseline_h2dw.yaml**（命令块已同步修正）。核查结论：两者 YAML 字段逐项全同（H1 摸底版已是 threshold 200 + val 30000）——H2 dw 摸底配置本身也是 H1 的逐字平移，故「三方对决」实为**三配方对决**：H1 摸底配方（w128/30-7/MAE 选型）vs H1 细搜冠军 d1（w192/L2/lr2e-4/25-5/composite）vs H2 kettle 细搜冠军 f5（w192/L1/lr3e-4/25-5/composite）。教训：**新建配置前先 `ls configs/` 查撞名**（跨纪元同名电器 dw/mw 高危；本轮 mw 系无撞纯属幸运）。
