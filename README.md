@@ -143,7 +143,7 @@ transformer_nilm_project/
 └── README.md
 ```
 
-> **控制台留痕（2026-09-14，执行实录 45）**：所有用户侧脚本默认把控制台输出（含 warning / traceback）同步写入日志文件——`train`/`evaluate`/`tune` 写各自输出目录（`train.log` / `evaluate.log` / `tune.log`），`prepare_ukdale` 写 `<out>.log`（与 npz / data_spec.json 同目录），其余脚本写 `logs/<名称>_<时间戳>.log`。控制台行为不变，每脚本可用 `--no-log` 关闭。
+> **控制台留痕（2026-09-14，执行实录 45-46）**：所有用户侧脚本默认把控制台输出（含 warning / traceback）写入两级日志——①运行日志（每次运行独立文件）：`train`/`evaluate`/`tune` 写各自输出目录（`train.log` / `evaluate.log` / `tune.log`），`prepare_ukdale` 写 `<out>.log`（与 npz / data_spec.json 同目录），其余脚本写 `logs/<名称>_<时间戳>.log`；②**总日志**：每次运行同时**按序追加**到 `logs/console_all.log`——foreach 批次跑完后一个文件装下全部输出，直接整份回传。控制台行为不变；环境变量 `NILM_CONSOLE_LOG` 可指定总日志路径（`$env:NILM_CONSOLE_LOG = "D:\logs\session.log"`）或设 `off` 关闭；每脚本 `--no-log` 两级全关。
 
 ## 5. 先验证代码
 

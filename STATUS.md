@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】House2 多电器纪元群启动（实录 42 立项）：rice cooker=m9/wm=m12/dw=m13/mw=m15/toaster=m16 五纪元（fridge=m14 常开型排除本批·留口径升级后另议）；五阶段路线图（普查→口径→摸底→迁移探针优先的搜索裁定→各自 Test 预算 2 次）——普查完成（实录 43：算术全闭环；**分拣= dw 立纪元[corr 0.62-0.70 四纪元最强·单峰 2kW·优先级 1]/mw 立纪元[200W 口径现成·val ON 162]/wm 边缘[切碎+弱信号·敏感性后 viability 复核]/rice_cooker 排除[val 事件=0]/toaster 排除[val ON≈6]**）——三线判读落定（实录 44）：**dw 口径 200W 定谳**（四判据全过·与 H1 dw 口径数值一致=跨 house 复用首例）、**wm 排除**（500W 档 val ON 75<90+1000W 档 72<90 预注册铁律触发·用户可否决）、**mw 迁移成功**（f5 配方配对 ΔS −0.0183>2×SEM 显著优→免粗搜直入细搜；同 house 配方可迁移）→ 纪元群定员 **dw+mw 两纪元**；当前=用户重跑 evaluate ×24 回传（stdout 曾被控制台冲掉；工具增强已交付：全脚本内置留痕 runlog.py 实录 45，重跑自动落盘各 run 目录 evaluate.log）
+- 【进行中·用户任务】House2 多电器纪元群启动（实录 42 立项）：rice cooker=m9/wm=m12/dw=m13/mw=m15/toaster=m16 五纪元（fridge=m14 常开型排除本批·留口径升级后另议）；五阶段路线图（普查→口径→摸底→迁移探针优先的搜索裁定→各自 Test 预算 2 次）——普查完成（实录 43：算术全闭环；**分拣= dw 立纪元[corr 0.62-0.70 四纪元最强·单峰 2kW·优先级 1]/mw 立纪元[200W 口径现成·val ON 162]/wm 边缘[切碎+弱信号·敏感性后 viability 复核]/rice_cooker 排除[val 事件=0]/toaster 排除[val ON≈6]**）——三线判读落定（实录 44）：**dw 口径 200W 定谳**（四判据全过·与 H1 dw 口径数值一致=跨 house 复用首例）、**wm 排除**（500W 档 val ON 75<90+1000W 档 72<90 预注册铁律触发·用户可否决）、**mw 迁移成功**（f5 配方配对 ΔS −0.0183>2×SEM 显著优→免粗搜直入细搜；同 house 配方可迁移）→ 纪元群定员 **dw+mw 两纪元**；当前=用户重跑 evaluate ×24 回传（工具二迭代已交付：实录 46 总日志 logs/console_all.log 跨运行按序追加——重跑后一个文件装下 24 份完整输出，整份回传即可；每 run 的 evaluate.log 照旧）
 - 【已收官·2026-09-10】House1 dish_washer 纪元全流程闭环（实录 34-41：口径定夺 200W 加热相位→纪元锁定→摸底→粗搜 32[门槛首咬]→细搜三批次 30 runs→字典序判定树锁定 d1_t11d64→Test 四线全过 S_test 0.0349/F1 0.9231/EE +1.33%；Test 预算 2 用 1 封存；REPORT.md v1.2 §8+三纪元对照+跨纪元结论九条）——等待用户下一任务（候选：House2 其他电器/H1 其他电器/多电器统一框架/推理侧后处理[真周期事件合并]）
 - 【已收官·2026-09-10】House2 kettle 纪元全流程闭环（实录 24-33：身份链→probe 定谳→纪元锁定→摸底→粗搜 32→细搜两批次 34 runs→锁定 f5_t9→Test 四线全过 S_test 0.0252/F1 0.9398/EE −0.02% 死零；Test 预算 2 用 1 封存；REPORT.md v1.1 §7+两纪元对照+跨纪元结论五条）——等待用户下一任务（候选：House1 dw 纪元，须先 --on-threshold 100/200 敏感性；或其他 house/电器）
 - 本任务角色：工程实现工程师（泛化改造）；沙箱验证完毕，待用户回传后转实验/调参教练判读
@@ -78,17 +78,18 @@
 - [x] 2026-09-10 H2 五电器普查判读+分拣（实录 43）：prepare 算术全闭环（n+剔除=并集×5）；身份链过×5（aggOffW 238-331）；corr 谱 0.02-0.70 两数量级（电器方差占比=可学性上限）；分拣 dw✓(优先1·单峰2kW·H1 dw 机型不同)/mw✓(优先2·口径现成)/wm⚠️(边缘·敏感性后复核)/rice_cooker✗(val 事件=0)/toaster✗(val ON≈6)；configs/baseline_mw.yaml+probe_mw_f5.yaml 交付（f5 完整平移仅改 appliance+threshold，pyyaml 校验）
 - [x] 2026-09-14 三线判读（实录 44）：dw 口径 200W 定谳（四判据：20→200 断崖 68→35 evt+200-1000 平台/medW 2014 单峰/val ON 609/1.05 kWh 周期闭环·低功率相位能量仅 1.3%）；wm 排除（500/1000W 档 val ON 75/72<90 预注册触发）；mw 迁移成功（ΔS −0.01826 3/3 方向 t≈−2.66 显著；F1 +0.0218 全在 recall；|EE| 9.96→5.14%；val_score=S 逐 seed 闭环；混淆变量=配方级平移已声明）→ 免粗搜；交付 dw 三方 ×9 + mw 细搜批 1 ×15 配置与命令
 - [x] 2026-09-14 控制台留痕功能交付（实录 45）：scripts/runlog.py（Tee stdout+stderr→UTF-8 日志·头=时间戳/cmd/cwd·尾=结束+时长 atexit·幂等）接入 8 脚本（train/evaluate/tune→输出目录；prepare→<out>.log 与 npz 同目录；diagnose/summarize/probe/inspect→logs/）；--no-log 可关；tests/test_runlog.py ×5 全 PASS+numpy e2e 冒烟过
+- [x] 2026-09-14 总日志二迭代交付（实录 46）：两级留痕定型——运行日志（每 run 覆盖写）+ 总日志 logs/console_all.log（跨运行按序追加+空行分隔+每次自带 cmd/cwd 头）；env NILM_CONSOLE_LOG 可指定路径/off 关闭；单测 8/8+e2e 三态冒烟过；README §4 同步
 
 ## 进行中
-- （用户侧）evaluate ×24 重跑回传（dw 三方 ×9 + mw 细搜批 1 ×15 的 run 目录已就绪；git pull 后重跑命令=实录 44 命令块 C 段，跑完各 run 目录自动生成 evaluate.log，控制台冲掉不再丢）
-- （本侧）无阻塞；待 24 份 JSON → dw 三方配对判定（探针胜→免粗搜入细搜；双败→独立粗搜）+ mw 细搜判定树（S→F1→|EE|→MAE 配对 m0）
+- （用户侧）git pull（取两级留痕）→ evaluate ×24 重跑（实录 44 命令块 C 段）→ 回传 logs\console_all.log 整份（或 24 份 JSON）
+- （本侧）无阻塞；待 24 份数据 → dw 三方配对判定（探针胜→免粗搜入细搜；双败→独立粗搜）+ mw 细搜判定树（S→F1→|EE|→MAE 配对 m0）
 
 ## 下一步（TODO）
-1. 用户：git pull（取 runlog 留痕功能）→ evaluate ×24 重跑（实录 44 命令块 C 段）→ 回传 24 份 JSON（或贴各 run 目录 evaluate.log）
+1. 用户：git pull → evaluate ×24 重跑（实录 44 命令块 C 段）→ 回传 logs\console_all.log（总日志一个文件装全程）或 24 份 JSON
 2. 本侧判读（实录 44 预注册标准）→ dw 路线裁定（配方基座 or 独立粗搜）+ mw 细搜批 2 设计（决赛者补种子对称化）→ 各纪元 锁定→Test 预算 2 次
 3. wm/rice_cooker/toaster 排除档案随纪元群收官入 REPORT.md；fridge 常开型口径升级另议
 4. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
-5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果；现在已随 runlog 落盘留痕）
+5. （可选，后续）torch 2.14 的 enable_nested_tensor UserWarning 噪音清理（不影响结果；现在已随两级留痕落盘）
 
 ## 决策记录 / 踩坑
 - 2026-09-08：`ROLE.md.md` 与台账文件名（`ROLE.md`）不一致，且最近 commit 意图即「上传ROLE.md」→ 执行 `git mv ROLE.md.md ROLE.md`，无损、可回退
@@ -183,6 +184,7 @@
 - 2026-09-14（决策·mw 免粗搜）：f5 配方（kettle 锁定）平移 mw 配对显著优（3/3+>2×SEM）——同 house 跨电器配方迁移首验成功；「架构不迁移」结论边界修正为「跨 house 不迁移，同 house 配方可迁移」；探针性质=配方级（架构+窗口+协议+选型）非纯架构，已声明
 - 2026-09-14（踩坑·沙箱第十七次重置）：同款三症状 SOP 恢复零丢失（十六、十七连续两回合）；另 configs/fine_mw/ 目录须先建（write_text 不建父目录——脚本幂等重跑修复）
 - 2026-09-14（工具·控制台留痕）：stdout 丢失事件治本——所有用户侧脚本默认双写日志文件（evaluate JSON 仍是判读权威，日志补 best_ep/warning/早停曲线等辅助档案）；prepare 日志与 npz/data_spec.json 同目录延续口径留痕家族
+- 2026-09-14（工具·总日志）：回传单位从「逐 run 日志」升级为「一个总日志文件」——foreach 批次 24 份输出按序全存 logs/console_all.log；边界：并行进程会交错（串行批次无碍）、无自动轮转（可删）；env 覆盖优先级 NILM_CONSOLE_LOG > 默认路径，off/0/false/空=关闭
 - 2026-09-14（踩坑·沙箱第十八次重置·新形态）：HEAD/index 回退 7824bb4 但工作区未丢——git diff FETCH_HEAD 出现「整文件删除」假象（陈旧 index 的 diff 语义：commit 有而 index 无的路径按删除显示）；判别法=先看关键文件尾部内容年代，再 mixed reset 后验 status 清零；另 diagnose 等脚本无需 sys.path.insert（script 目录自动在 sys.path[0]，runlog 导入零适配）
 - 2026-09-10（踩坑·沙箱第十五次重置）：同新形态 SOP 恢复零丢失；连续重置第 7 回合（九至十五）
 - 2026-09-10（踩坑·沙箱第十四次重置）：同新形态 SOP 恢复零丢失；连续重置第 6 回合（九至十四）

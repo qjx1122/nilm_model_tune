@@ -1337,3 +1337,16 @@
 - **用户侧效果**：git pull 后重跑 evaluate ×24，各 run 目录自动生成 evaluate.log——控制台冲掉不再丢；判读仍以 evaluate JSON 为权威（本功能补辅助档案）。
 - **沙箱第 18 次重置恢复（新形态）**：HEAD/index 回退 7824bb4 但工作区未丢——`git diff FETCH_HEAD` 出现「59 文件 5272 行删除」假象（陈旧 index 的 diff 语义：FETCH_HEAD 有而 index 无的路径按删除显示）；判别法=先验关键文件尾部内容年代（REPORT_TEST.md 尾=实录 44 补记 ✓），mixed reset 后 status 清零即确认无损失。
 - 是否进入 REPORT.md：否（工具变更非实验结论；README §4 已加留痕说明）。
+
+### 执行实录 46（2026-09-14）：工具增强二迭代——总日志（跨运行追加）加入，两级留痕定型
+- **本任务角色**：实验/调参教练（工具链增强）
+- **用户需求**：在实录 45 的每 run 独立日志之外，另增「控制台内容汇总到一个总日志文件」功能——foreach 批次跑完后一个文件装下全部输出，直接整份回传。
+- **设计（两级留痕）**：
+  1. 运行日志（不变）：每 run 独立覆盖写（train→`<out>/train.log`、evaluate→`<run-dir>/evaluate.log`、tune→`<out>/tune.log`、prepare→`<out>.log`、其余→`logs/<名称>_<时间戳>.log`）；
+  2. **总日志（新增）**：每次运行同时**按序追加**到 `logs/console_all.log`（默认）——每次运行自带头部（时间戳/cmd/cwd）与尾部（结束+时长），相邻运行间空行分隔；控制台照常并多一行「总日志: <路径>」提示；
+  - 控制：环境变量 `NILM_CONSOLE_LOG`——设路径覆盖（`$env:NILM_CONSOLE_LOG = "D:\logs\session.log"`）、设 `off`（或 0/false/空）关闭总日志（运行日志不受影响）、`Remove-Item Env:\NILM_CONSOLE_LOG` 恢复默认；`--no-log` 仍两级全关。
+- **实现**：`runlog.py` 增 `total_log_path()`（env 解析）+ `setup_run_log(total_log=)` 参数（None=env/默认解析，False=强制关，路径=显式指定）；_Tee 扩展为多路写（控制台+运行日志+总日志）；总日志 append+行缓冲。
+- **验证**：单测 8/8 PASS（新增 3：env 三态解析/跨运行按序追加+空行分隔+运行日志覆盖写仍成立/off 只关总日志）；e2e 冒烟三态：默认两跑累积（2 头部+分隔）✓、off 不增长 ✓、自定义路径生效 ✓。
+- **边界声明**：并行进程写总日志会交错（foreach 串行批次无此问题）；总日志无自动轮转（logs/ 已 gitignore，文件过大可删）。
+- **用户侧效果**：git pull 后重跑 evaluate ×24——除各 run 目录 evaluate.log 外，`logs/console_all.log` 一个文件装下 24 份完整输出（含 JSON），回传只需贴这一个文件。
+- 是否进入 REPORT.md：否（工具变更；README §4 留痕说明已更新为两级版）。
