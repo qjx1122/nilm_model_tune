@@ -1,0 +1,41 @@
+# House2 microwave 细搜批 1 变体 m4_L2（REPORT_TEST.md 实录 44）：
+#   基座 m0 = configs/probe_mw_f5.yaml（f5 配方平移，实录 44 迁移成功：配对 ΔS −0.0183>2×SEM 免粗搜）。
+#   单变量：num_layers 1→2（深度探针——H1 dw 冠军 d1 用 L2）；其余逐字同 m0。seeds 42/2024/7 与 m0 配对（m0 已有 3 seeds 零成本）。
+#   判定树预注册：S→F1→|EE|→MAE（字典序）；批 2=决赛者补种子对称化。
+seed: 42
+device: auto
+data:
+  path: ''
+  appliance: microwave
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  max_samples_train: 30000
+  max_samples_val: 30000
+  max_samples_test: 6000
+  eval_test: false
+  window_size: 192
+model:
+  input_dim: 1
+  d_model: 64
+  nhead: 8
+  num_layers: 2
+  dim_feedforward: 128
+  dropout: 0.0
+training:
+  batch_size: 128
+  epochs: 25
+  lr: 0.0003
+  weight_decay: 0.0001
+  patience: 5
+  grad_clip: 1.0
+  loss: mse
+  select_metric: composite
+  objective:
+    weights:
+      mae: 0.4
+      f1: 0.4
+      energy_error: 0.2
+    mae_norm_watts: 2000.0
+metrics:
+  on_threshold_watts: 200.0

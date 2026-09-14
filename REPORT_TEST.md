@@ -1280,3 +1280,47 @@
 - 用户报错：`foreach ($d in base_mw_s42,base_mw_s2024,...)` 解析失败「参数列表中缺少参量」——**TUNING_GUIDE §4 踩坑 6 已有档的坑，本轮交付再次违反**（数字列表 `42,2024,7` 合法故 train 未报错；裸词字符串列表非法）。修正：evaluate ×6 改为逐行字面量命令（零解析风险）。纪律升级：**交付用户侧 PowerShell 批量命令时，字符串列表一律逐行展开或加引号，不再使用裸词列表**。
 - 另注：用户当前工作目录为 `NILM_Test2026\workspace-ai-nilm-win\nilm_new`（此前为 `NILM_Test2026\nilm_model_tune`，另一 checkout）——train/evaluate 同目录即可自洽，无需迁移；configs 已 pull（train 可跑即证）。
 - 沙箱第 16 次重置恢复（本地 7824bb4→0ecdb77，同款三症状）。
+
+### 执行实录 44（2026-09-14）：三线判读——**dw 口径 200W 定谳（四判据全过）**；**wm 排除（viability 铁律预注册执行）**；**mw 迁移成功（f5 配方配对显著优→免粗搜）**；dw 三方对决 & mw 细搜批 1 交付
+- **本任务角色**：实验/调参教练（三线判读 + 双轨批次设计）
+- **用户执行（2026-09-14，实录 43 交付）**：dw/wm 敏感性 ×8 + mw 摸底 ×3 + mw 迁移探针 ×3 + evaluate ×6（工作目录 nilm_model_tune）。
+- **判读 1（dw 口径定夺，四判据全过）**：
+  - ①阈值断层：20→200 事件 3.78→1.94/天（val 68→35）断崖；200→500→1000 平台（35/33/33；on_frac 0.0203/0.0202/0.0202）——低功率相位（泵/漂洗）与 2kW 主峰干净分离，200-2000W 功率空间近乎空置；
+  - ②单峰纯度：medW 2001→2014 后三档恒定（p95 2056）——ON 分布为 2kW 紧单峰；
+  - ③可学性：val ON@30000 = 606-609 ≫ 90；
+  - ④周期闭环：0.523 kWh/evt × ~2 相位/周期 = 1.05 kWh/周期 ✓ 典型 dw（~1 周期/天）；低功率相位能量占比仅 1.3%（均值功率 41.4→40.8 W）——排除无损。
+  - **定谳：threshold=200W**（与 H1 dw 口径数值一致——跨 house dw 口径复用首例；机型不同：H2 单峰 2kW vs H1 双峰 med 120）。用户可否决。
+- **判读 2（wm 排除，预注册执行）**：500W 档 val ON@30000 = **75 < 90** ✗、1000W 档 = **72 < 90** ✗（实录 43 预注册规则触发：500-1000W 档 <90 → 排除）；200W 档虽 141 过线但系电机 190W+加热 2.2kW 双峰相位混合口径（10.72 evt/天 vs 真实周期 0.2-0.6/天）+ corr 0.22-0.28 最弱。**wm 排除**（用户可否决，但需接受相位口径语义弱化+最弱信号+全流程成本）。H2 纪元群定员：**dw+mw 两纪元**。
+- **判读 3（mw 迁移探针，预注册执行：显著优）**：
+  - 配对（seeds 42/2024/7）：ΔS(probe−base) = −0.02717/−0.00474/−0.02286，均值 **−0.01826**，方向 3/3 ✓，|ΔS| 0.0183 > 2×SEM_paired 0.0137（t≈−2.66）→ **显著优**；
+  - 算术闭环：probe val_score 与 S 公式手算逐 seed 全等（0.06340/0.07724/0.06969）——composite 选型即 S；
+  - 分量：F1 0.8303→0.8522（+0.0218，3/3；**增益全在 recall** 0.7716→0.8078，precision 持平 0.901→0.902）；R² 0.744→0.769（3/3）；|EE| 9.96%→5.14%；MAE 2.91→3.54（3/3 劣化，S 贡献仅 0.00013 可忽略）；baseline EE 三 seed 全负（−5.3/−10.4/−14.2%）——MAE 选型欠预测倾向，与 dw 摸底同款；
+  - **混淆变量声明**：探针=配方级平移（架构+w192+lr3e-4+25/5 composite vs baseline 架构+w128+lr5e-4+30/7 MAE），非纯架构迁移——回答「f5 配方整体可否平移」，答案为是；
+  - **裁定：mw 免粗搜，直入细搜**（同 house 跨电器迁移首验成功：kettle→mw；「架构不迁移」结论边界收窄：跨 house 不迁移成立，**同 house 配方可迁移**）。
+- **本轮交付（双轨）**：
+  1. **dw 三方对决 ×9**（seeds 42/2024/7）：baseline_dw（摸底锚）+ probe_dw_f5（kettle 配方平移）+ probe_dw_d1（**H1 dw 冠军逐字平移**——d1 的 appliance/threshold 本就一致，配置零改动仅换数据）——首个双配方迁移对决（悬念：H2 dw 单峰形态近 kettle 型，d1 为 H1 双峰机型调出）；
+  2. **mw 细搜批 1 ×15**：m0=probe_mw_f5（已有 3 seeds 零成本）+ m1_do01/m2_lr2e4/m3_w128/m4_L2/m5_h4（单变量：正则/优化/感受野/深度/注意力几何）×同 seeds；
+  3. evaluate ×24。
+- **预注册**：①dw 三方=配对 ΔS（探针 vs baseline，探针互斗同规则）：3/3 方向+>2×SEM → 该配方为 dw 细搜基座（免粗搜）；双败 → 独立粗搜；②mw 细搜批 1 判定树：S→F1→|EE|→MAE 字典序（配对 m0）；批 2=决赛者补种子对称化。
+- **脚注**：probe_mw_f5_s7 stdout 有粘贴截断（Epoch 001 行丢失+config 回显错位拼接）——evaluate JSON 为权威（best_ep 4、指标完整），不影响判读。
+- **待用户（训练 ×24 + evaluate ×24，~25-30min GPU）**：
+  ```powershell
+  foreach ($c in "baseline_dw","probe_dw_f5","probe_dw_d1") {
+    foreach ($s in 42,2024,7) {
+      python scripts\train.py --config configs\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_dw.npz --seed $s --out reports\${c}_s$s
+    }
+  }
+  foreach ($c in "m1_do01","m2_lr2e4","m3_w128","m4_L2","m5_h4") {
+    foreach ($s in 42,2024,7) {
+      python scripts\train.py --config configs\fine_mw\$c.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_mw.npz --seed $s --out reports\mw_${c}_s$s
+    }
+  }
+  foreach ($d in "baseline_dw_s42","baseline_dw_s2024","baseline_dw_s7","probe_dw_f5_s42","probe_dw_f5_s2024","probe_dw_f5_s7","probe_dw_d1_s42","probe_dw_d1_s2024","probe_dw_d1_s7") {
+    python scripts\evaluate.py --run-dir reports\$d
+  }
+  foreach ($d in "mw_m1_do01_s42","mw_m1_do01_s2024","mw_m1_do01_s7","mw_m2_lr2e4_s42","mw_m2_lr2e4_s2024","mw_m2_lr2e4_s7","mw_m3_w128_s42","mw_m3_w128_s2024","mw_m3_w128_s7","mw_m4_L2_s42","mw_m4_L2_s2024","mw_m4_L2_s7","mw_m5_h4_s42","mw_m5_h4_s2024","mw_m5_h4_s7") {
+    python scripts\evaluate.py --run-dir reports\$d
+  }
+  ```
+- **回传要求**：24 份 stdout（或至少每 run 的 best_epoch 行）+ 24 份 evaluate JSON。
+- 是否进入 REPORT.md：否（双纪元均未到定稿）。

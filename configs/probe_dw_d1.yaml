@@ -1,0 +1,40 @@
+# House2 dish_washer 迁移探针 B = H1 dish_washer 锁定配置 d1_t11d64 逐字平移（REPORT_TEST.md 实录 44）：
+#   d1 的 appliance=dish_washer / threshold 200 本就一致，配置零改动，仅换数据（--data-path ukdale_h2_dw.npz）。
+#   注意：d1 为 H1 双峰机型调出，H2 为单峰 2kW——本探针检验「锁定配方跨 house 同名电器」迁移边界。
+seed: 42
+device: auto
+data:
+  path: ''
+  appliance: dish_washer
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  max_samples_train: 30000
+  max_samples_val: 30000
+  max_samples_test: 6000
+  eval_test: false
+  window_size: 192
+model:
+  input_dim: 1
+  d_model: 64
+  nhead: 8
+  num_layers: 2
+  dim_feedforward: 128
+  dropout: 0.0
+training:
+  batch_size: 128
+  epochs: 25
+  lr: 0.0002
+  weight_decay: 1.0e-05
+  patience: 5
+  grad_clip: 1.0
+  loss: mse
+  select_metric: composite
+  objective:
+    weights:
+      mae: 0.4
+      f1: 0.4
+      energy_error: 0.2
+    mae_norm_watts: 2000.0
+metrics:
+  on_threshold_watts: 200.0

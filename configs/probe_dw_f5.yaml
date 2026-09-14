@@ -1,0 +1,41 @@
+# House2 dish_washer 迁移探针 A = H2 kettle 锁定配置 f5_t9 平移（REPORT_TEST.md 实录 44）：
+#   仅改 appliance=dish_washer + threshold 500→200。H2 dw 为单峰 2kW 机型（med 2014），
+#   形态近 kettle 型高功率事件——kettle 配方可能优于为 H1 双峰机型（med 120）调出的 d1。
+#   与 probe_dw_d1 构成首个「双配方迁移对决」；判定：配对 ΔS 3/3+>2×SEM → 免粗搜入细搜。
+seed: 42
+device: auto
+data:
+  path: ''
+  appliance: dish_washer
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  max_samples_train: 30000
+  max_samples_val: 30000
+  max_samples_test: 6000
+  eval_test: false
+  window_size: 192
+model:
+  input_dim: 1
+  d_model: 64
+  nhead: 8
+  num_layers: 1
+  dim_feedforward: 128
+  dropout: 0.0
+training:
+  batch_size: 128
+  epochs: 25
+  lr: 0.0003
+  weight_decay: 0.0001
+  patience: 5
+  grad_clip: 1.0
+  loss: mse
+  select_metric: composite
+  objective:
+    weights:
+      mae: 0.4
+      f1: 0.4
+      energy_error: 0.2
+    mae_norm_watts: 2000.0
+metrics:
+  on_threshold_watts: 200.0
