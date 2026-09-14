@@ -1275,3 +1275,8 @@
   ```
 - **回传要求**：8 份敏感性输出全文 + 6 份 stdout + 6 份 evaluate JSON（一次回传）。
 - 是否进入 REPORT.md：否（口径与迁移未定）。
+
+#### 实录 43 补记（2026-09-14）：evaluate 命令修复——PowerShell 裸词列表二犯
+- 用户报错：`foreach ($d in base_mw_s42,base_mw_s2024,...)` 解析失败「参数列表中缺少参量」——**TUNING_GUIDE §4 踩坑 6 已有档的坑，本轮交付再次违反**（数字列表 `42,2024,7` 合法故 train 未报错；裸词字符串列表非法）。修正：evaluate ×6 改为逐行字面量命令（零解析风险）。纪律升级：**交付用户侧 PowerShell 批量命令时，字符串列表一律逐行展开或加引号，不再使用裸词列表**。
+- 另注：用户当前工作目录为 `NILM_Test2026\workspace-ai-nilm-win\nilm_new`（此前为 `NILM_Test2026\nilm_model_tune`，另一 checkout）——train/evaluate 同目录即可自洽，无需迁移；configs 已 pull（train 可跑即证）。
+- 沙箱第 16 次重置恢复（本地 7824bb4→0ecdb77，同款三症状）。
