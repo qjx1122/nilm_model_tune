@@ -1211,3 +1211,29 @@
 - **Test 预算审计（dw 纪元闭合）**：预算 2 次，实际触碰 **1 次**（本次终局；摸底/粗搜/细搜 30+32+30 runs 全程 test:None）——三纪元中第二个体面闭合（H2 同款；H1 时代摸底误碰欠账已由缺省翻转修复）。
 - **收官动作**：REPORT.md v1.2（§8 dw 纪元+三纪元对照+跨纪元结论扩充四条）；TUNING_GUIDE 第四纪元战史+踩坑 12；STATUS 收官；session 纪要；commit/push。
 - 是否进入 REPORT.md：**是**（验收通过触发，v1.2）。
+
+### 执行实录 42（2026-09-10）：House2 多电器纪元群立项——五电器制备+身份链+形态普查交付（rice cooker/wm/dw/mw/toaster；fridge 另议）
+- **本任务角色**：实验/调参教练（多纪元群设计）
+- **立项依据**：用户选定方向（三纪元收官后）；表号沿用实录 23 用户 parse 全文定谳：rice cooker=m9（4/16 批，交叠≈176 天）、wm=m12/dw=m13/mw=m15/toaster=m16（5/20 批，交叠≈143 天）；mains=m1（H2 kettle 纪元已验证）。fridge=m14 常开型**排除本批**（on_frac≈1，事件口径失效——须换连续负荷分解语义，留待口径升级后另议）。
+- **多纪元群路线图（五阶段）**：
+  1. **本轮：制备+身份链+形态普查 ×5**（prepare ×5 + diagnose ×5，秒-分钟级）——验 aggOffW/corr/evt 形态/ON 功率分布（相位结构线索）；
+  2. 口径定夺：周期类（wm/dw）预计须阈值敏感性（H1 dw 教训：20W 默认切碎+低功率相位不可学）；短事件类（rice cooker/mw/toaster）视形态定（默认表：mw 200W；rice cooker/toaster 回退 500W；rice cooker 有保温相位 ~40W 须警惕 H1 dw 同款陷阱）；
+  3. 摸底 ×5（baseline 架构+val 30000+各自 threshold；viability 口径：val ON@30000 ≥90）；
+  4. 搜索策略裁定：**跨电器迁移探针**（f5_t9 短事件配置/d1_t11d64 周期配置平移 ×5 电器）先行的成本远低于 5 次独立粗搜——跨纪元结论「架构不迁移」将在同 house 不同电器上首次量化检验（H2 内信号环境相同，w192/L 协议可能部分迁移）；探针败→独立粗搜（tuning_h2 模板）；
+  5. 各纪元独立 Test 预算 2 次（预注册纪律照旧）。
+- **工作量预告（如实告知）**：5 纪元全流程 ≈ 每电器 1.5-2.5h GPU（摸底 3+粗搜 32+细搜 18-30+Test 1），总计 ~8-12h——建议分电器逐个推进（或用户指定子集/优先级；周期类 wm/dw 与短事件类 rice cooker/mw/toaster 可分组）。
+- **待用户（阶段 1：prepare ×5 + diagnose ×5，分钟级）**：
+  ```powershell
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --mains-ids 1 --appliance-meter-id 9 --appliance rice_cooker --out D:\Work\testPython\datasets\ukdale_h2_ricecooker.npz
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --mains-ids 1 --appliance-meter-id 12 --appliance washing_machine --out D:\Work\testPython\datasets\ukdale_h2_wm.npz
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --mains-ids 1 --appliance-meter-id 13 --appliance dish_washer --out D:\Work\testPython\datasets\ukdale_h2_dw.npz
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --mains-ids 1 --appliance-meter-id 15 --appliance microwave --out D:\Work\testPython\datasets\ukdale_h2_mw.npz
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 2 --mains-ids 1 --appliance-meter-id 16 --appliance toaster --out D:\Work\testPython\datasets\ukdale_h2_toaster.npz
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_ricecooker.npz --appliance rice_cooker
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_wm.npz --appliance washing_machine
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_dw.npz --appliance dish_washer
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_mw.npz --appliance microwave
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_toaster.npz --appliance toaster
+  ```
+- **回传要求**：10 份输出全文（prepare 含「缺口处理」行——档案可复现纪律；diagnose 含表头行——阈值来源留痕）。
+- 是否进入 REPORT.md：否（普查未跑）。
