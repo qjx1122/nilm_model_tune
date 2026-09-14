@@ -292,3 +292,22 @@
 - 关键决策：口径先行（200W 相位定义的价值>全部调参）；n 不对称先补种子（配对对称铁律）；字典序判定树终结平局（预注册规则替代临场权衡）
 - 未决问题：无（等待下一任务；dw 真周期事件合并 min-gap 记为推理侧未来工作）
 - 相关文件/分支：arena/01a07f1d-nilm-model-tune；configs/fine_dw/d1_t11d64.yaml（最终配置）/ configs/baseline_dw.yaml / configs/tuning_dw.yaml / REPORT_TEST.md（实录 34-41）/ REPORT.md v1.2 §8 / TUNING_GUIDE.md §3-4
+
+
+## 会话纪要追加：House2 多电器纪元群（2026-09-14 收官，实录 42-50）
+
+**任务**：House2 五电器（rice cooker m9/wm m12/dw m13/mw m15/toaster m16；fridge m14 常开型另议）各自走全流程。
+
+**结果**：
+- 分拣（实录 43-44）：dw✓/mw✓ 立纪元；wm（500/1000W 档 val ON 75/72<90）/rice_cooker（val 零事件）/toaster（val ON≈6）诚实排除；fridge 留口径升级另议。
+- H2 dw：口径 200W 四判据定谳（与 H1 同值=跨 house 口径复用首例）；三方迁移对决双探针显著优免粗搜；F1 字典序裁决 d1 胜；**Test（seed 22000）S_test 0.0160/F1 0.9794/EE −3.42%/R 0.9754 四线全过=五纪元最佳**——H1 d1_t11d64 逐字平移。
+- H2 mw：f5 配方迁移成功免粗搜；细搜 m1_do01（+dropout 0.10）锁定；**Test 两跑档案：#1（22001，ep3 早熟）S 0.1018/EE +25.26% 两线爆 → #2（22002，ep16 完整收敛）S 0.0554/EE +14.15% 压线四线全过收官**——复盘规则（同配置 fresh seed）首次执行即兑现；EE 压线=稀疏分母效应（test 段 ~2 kWh）。
+- 工具增强（插曲）：控制台两级留痕（runlog.py：运行日志+总日志 logs/console_all.log，实录 45-46）——治本 stdout 丢失。
+
+**关键 configs**：configs/probe_dw_d1.yaml（=H2 dw 锁定）、configs/fine_mw/m1_do01.yaml（=H2 mw 锁定）、baseline_h2dw/baseline_mw/probe_mw_f5/probe_dw_f5、fine_mw/m1-m7、fine_h2dw/g1-g2。
+
+**commits 链（本纪元群）**：d900700（立项）→0ecdb77（普查分拣）→d4679f0（命令修复补记）→f91054b（三线判读）→40bc62d（命名修正）→503902d（留痕功能）→e662a6a（总日志）→3645c2b（双轨判读）→fde8800（双锁定+Test 预注册）→6f1b747（dw 收官+mw #1 失败）→（本回合实录 50 收官）。
+
+**跨纪元结论十四条**固化于 REPORT.md v1.3 §9.5（新增 #10 迁移三级边界/#11 dropout 假说边界/#12 EE 分母效应/#13 viability 铁律/#14 Test 失败复盘规则）；人话版 TUNING_GUIDE 第五纪元六条。
+
+**沙箱重置**：第 15-19 次（九至十九累计），SOP 全部零丢失恢复；第 18 次为新形态（HEAD/index 回退但工作区未丢，diff FETCH_HEAD「整文件删除」假象判别法入档）。
