@@ -1237,3 +1237,41 @@
   ```
 - **回传要求**：10 份输出全文（prepare 含「缺口处理」行——档案可复现纪律；diagnose 含表头行——阈值来源留痕）。
 - 是否进入 REPORT.md：否（普查未跑）。
+
+### 执行实录 43（2026-09-10）：House2 五电器普查判读——**分拣：dw/mw 立纪元、wm 边缘待敏感性、rice_cooker/toaster 诚实排除**；dw/wm 敏感性 + mw 摸底&迁移探针交付
+- **本任务角色**：实验/调参教练（普查判读 + 分轮设计）
+- **用户执行命令（2026-09-10，实录 42 交付版，prepare ×5 + diagnose ×5）**：见实录 42 命令块（npz=ukdale_h2_{ricecooker,wm,dw,mw,toaster}.npz，mains=m1）。
+- **输出关键数字（prepare，算术全闭环 n+剔除=并集）**：mains 网格 3,377,384 恒定；rice_cooker n=2,143,455（148.9 天，并集=mains+1，32 缝，最大段 42.7 天）；wm n=1,727,623（120.0 天，7 缝，最大 67.1 天）；dw n=1,727,700（120.0 天，最大 75.8 天）；mw n=1,727,699（120.0 天，6 缝，最大 75.8 天）；toaster n=1,726,680（119.9 天，15 缝）。五电器表期与安装批自洽（m9=4/16 批交叠 176 天档；m12/13/15/16=5/20 批交叠 143 天档）。
+- **判读 1（身份链）**：五电器 aggOffW 238-331 全部健康（关断时基线数百 W）；corr 分层——dw **0.62-0.70（四纪元最强信号）** / wm 0.22-0.28 / mw 0.19-0.23 / rice_cooker 0.08-0.10 / toaster 0.02-0.04。
+- **判读 2（viability 分拣，val ON@30000≥90 口径）**：
+  - **❌ rice_cooker 排除**：@500W val/test 事件数 **0**（train 仅 11 次/104 天=0.11/天）；能量全在 <500W（val 2.3 kWh/18 天≈保温相位 ~5W 均值）；corr 0.08-0.10——**F1 无分辨率，不可立纪元**（数据证据充分，非主观放弃）。
+  - **❌ toaster 排除**：全期 61 事件（train 48/val 5/test 8）；val ON@30000≈**6 ≪90**；corr 0.02-0.04——同上排除。
+  - **⚠️ wm 边缘（保留观察）**：@20W val ON 288 名义过线，但 20W 严重切碎（0.014 kWh/evt vs 真实周期 0.5-1.5 kWh；19.8 evt/天 vs 真实 ~0.2-0.6 周期/天）+ corr 0.22-0.28 最弱 + 电机相位 ~190W 对比度弱——**预期高阈值口径下 val ON 可能跌破 90**（周期数太少：val 18 天仅 ~4-10 周期）；须敏感性后 viability 复核，不达标则降级排除。
+  - **✅ dw 立纪元（优先级 1）**：信号最强（corr 0.62-0.70）；**单峰 2kW**（med 1978-2001/p95 2037-2052，与 H1 dw 双峰 med 120 完全不同——不同机型，2kW 主导型）；20W 切碎 0.26 kWh/evt（真实周期 0.7-1/天 → ~4 相位/周期）→ 须阈值敏感性定相位口径（预期 500-1000W）。
+  - **✅ mw 立纪元（优先级 2）**：**200W 口径现成可用**（evt 3.2-4.7/天、单峰 1300W、0.035 kWh/evt=典型 1-2 分钟使用 ✓）；val ON@30000≈162 ✓；身份链过。
+- **判读 3（跨纪元洞察）**：同 house 五电器 corr 谱 0.02-0.70 跨两个数量级——电器在总负荷中的方差占比决定可学性上限；「强信号电器优先」是多电器群的正确排序（dw→mw→wm）。
+- **本轮交付（三组）**：
+  1. **dw/wm 阈值敏感性 ×8**（20/200/500/1000，秒级；dw 判据同 H1 dw 四判据含周期结构闭环；wm 附 viability 复核口径=500W 档 val ON@30000）；
+  2. **mw 摸底 ×3**（configs/baseline_mw.yaml：baseline 架构 30/7+threshold 200+val 30000）+ evaluate ×3；
+  3. **mw 迁移探针 ×3**（configs/probe_mw_f5.yaml：f5_t9 完整平移仅改 appliance+threshold——**同 house 跨电器迁移首验**；与摸底同 seeds 42/2024/7 配对判定：显著优→免粗搜直入确认批；打平/败→独立粗搜）。
+- **预注册判定标准**：①dw 口径=四判据（断层/单峰纯度/可学性 val ON≥90/周期闭环）+用户可否决；②wm 若 500-1000W 档 val ON@30000<90 → 排除（分辨率铁律）；③mw 迁移=配对 seeds 三取二方向一致+ΔS 超 2×SEM 判显著。
+- **待用户（敏感性 ×8 + mw 训练 ×6 + evaluate ×6，~10-15min）**：
+  ```powershell
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_dw.npz --appliance dish_washer --on-threshold 20
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_dw.npz --appliance dish_washer --on-threshold 200
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_dw.npz --appliance dish_washer --on-threshold 500
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_dw.npz --appliance dish_washer --on-threshold 1000
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_wm.npz --appliance washing_machine --on-threshold 20
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_wm.npz --appliance washing_machine --on-threshold 200
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_wm.npz --appliance washing_machine --on-threshold 500
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h2_wm.npz --appliance washing_machine --on-threshold 1000
+  foreach ($s in 42,2024,7) {
+    python scripts\train.py --config configs\baseline_mw.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_mw.npz --seed $s --out reports\base_mw_s$s
+    python scripts\train.py --config configs\probe_mw_f5.yaml --data-path D:\Work\testPython\datasets\ukdale_h2_mw.npz --seed $s --out reports\probe_mw_f5_s$s
+  }
+  foreach ($d in base_mw_s42,base_mw_s2024,base_mw_s7,probe_mw_f5_s42,probe_mw_f5_s2024,probe_mw_f5_s7) {
+    python scripts\evaluate.py --run-dir reports\$d
+  }
+  ```
+- **回传要求**：8 份敏感性输出全文 + 6 份 stdout + 6 份 evaluate JSON（一次回传）。
+- 是否进入 REPORT.md：否（口径与迁移未定）。
