@@ -72,7 +72,13 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--h5-path", required=True)
     ap.add_argument("--house", type=int, default=1)
+    ap.add_argument("--no-log", action="store_true",
+                    help="禁用控制台输出留痕（默认写 logs/parsemeta_h<house>_<时间戳>.log）")
     args = ap.parse_args()
+
+    # 控制台输出留痕（实录 52；补实录 45 八脚本清单之漏）：表→电器映射是口径档案的一部分
+    from runlog import setup_run_log, default_log_path
+    setup_run_log(default_log_path(f"parsemeta_h{args.house}"), enabled=not args.no_log)
 
     target = f"building{args.house}"
     with h5py.File(args.h5_path, "r") as f:

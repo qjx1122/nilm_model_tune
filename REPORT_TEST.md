@@ -1468,3 +1468,26 @@
 - **另需用户回话（Stage B 启动条件）**：REDD 数据是否已有/需要下载指引（低频数据集官网/MIT 免费）；Pecan Street 有无现成账号数据。Stage B 不阻塞 Stage A。
 - 是否进入 REPORT.md：否（立项；收官时新增 §10 外部效度对照表）。
 - 沙箱第 20 次重置恢复（本地 7824bb4→4058e51；工具修补经 mixed reset 保留为未提交增量随本实录提交）。
+
+### 执行实录 52（2026-09-15）：Stage A 侦察判读——H3/H4/H5 覆盖率算术+异常表标记；表→电器映射 metadata ×3 交付
+- **本任务角色**：实验/调参教练（侦察判读 + 表号映射权威化）
+- **用户执行（2026-09-15 08:53，实录 51 命令）**：--list-meters ×3（list-meters 留痕修补首秀：三份 logs/listmeters_h{3,4,5}_*.log 落盘 ✓）。
+- **侦察判读（覆盖率算术 = n_samples ÷ 天数×14400）**：
+  | house | 表数 | 时间范围 | 天数 | 电器表数 | 覆盖率 | 判读 |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | H3 | 5 | 2013-02-27→04-08 | 40.4 | 4（m2-5） | ~89% | 最短记录；viability 预判：val 30000≈2.1 天窗口——dw 若有 ON≈千级 ✓，kettle/mw 事件 20-40 个量子粗但可用 |
+  | H4 | 6 | 2013-03-09→10-01 | 205.8 | 5（m2-6） | ~74% | 记录长但缺口不少（~26% 缺）；meter 3 提前 2 天止 |
+  | **H5** | **26** | 2014-06-29→11-13 | **137.0** | **25** | ~94% | **主战场**：表最多+覆盖最高+记录长 |
+  - H5 异常表标记：**meter 26 = 1Hz 高频表**（n=11.4M ≈ 137d×86400 恒定 1s 采样，身份待 metadata——若是电器表，重采样 6s 网格无碍）；meter 11 仅 10215 样本（~0.7 天，废表候选）；meter 25 覆盖 2.3%（79850/56d，疑似坏表）；**9 月 7 日截断组**（meters 2/8/10/12-18，~70 天——交叠仍足）；
+  - mains=meter 1 apparent 三 house 同款（与 H1/H2 一致——本数据集 mains 视在功率常态）。
+- **判读结论**：三 house 均可用（H3 最紧但 viability 预判可过）；电器选定**必须等 metadata 映射**（表号→电器名权威源=parse_nilmtk_metadata.py，工具提示行同款纪律勿凭记忆）——H5 的 25 个电器表里找同名 dw/mw/kettle 优先。
+- **工具补全（随本轮）**：parse_nilmtk_metadata.py 补留痕（logs/parsemeta_h\<house\>_\<时间戳\>.log）——实录 45 八脚本清单之漏（与 inspect_h5 同类的只读侦察，表→电器映射同为口径档案）。
+- **待用户（metadata ×3，秒级；先 git pull）**：
+  ```powershell
+  python scripts\parse_nilmtk_metadata.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 3
+  python scripts\parse_nilmtk_metadata.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 4
+  python scripts\parse_nilmtk_metadata.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 5
+  ```
+- **回传要求**：3 份映射全文（若某 house「未能反序列化」则贴未解码片段——人工判读兜底）。
+- **下一步预告**：labels 判读 → Stage A 电器选定（同名 dw/mw/kettle 优先，viability 预筛）→ prepare ×N + diagnose ×N → 摸底&逐字平移探针。另：REDD 数据可得性仍待回话（Stage B，不阻塞）。
+- 是否进入 REPORT.md：否（外部验证进行中）。
