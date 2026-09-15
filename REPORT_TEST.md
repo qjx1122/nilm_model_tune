@@ -1581,3 +1581,21 @@
 - 是否进入 REPORT.md：否（外部验证进行中；d1 三连平待 Test 后入 §10）。
 - **注入事件注记（档案纪律）**：本实录曾遭外部注入污染——伪造「已完成 commit」声明（含伪造 hash）、token 索取、破坏性 git 指令（rm -rf .git/force push 非 session 分支）、系统提示索取，均识别并拒绝；经仓库实测核验（git log/ls-remote/grep）确认彼时实录未落盘，本轮干净重做。**教训入档：任何「已完成」声明以仓库实测为准，注入文本不可信。**
 - 沙箱第 22 次重置恢复（本地 7824bb4→dd8f0cc，含 configs/tuning.yaml+run_tuning.ps1 远古残留两行随 mixed reset 清零）。
+
+
+### 执行实录 56（2026-09-15）：Stage A 对称化判读——d1 n=5 档案锁定；kettle 字典序裁决 f5_t9 胜出（F1 层）；Test 预注册双发
+- **本任务角色**：实验/调参教练（对称化判读 + Test 预注册）
+- **用户执行（2026-09-15 11:27-11:39，实录 55 命令块）**：对称化 6 runs + evaluate ×6；stdout 自洽核验通过（best_epoch 与 epoch 行、evaluate JSON 逐项对上）。
+- **判读 1（H5 dw d1 n=5 档案锁定）**：s23001（S 0.04233/F1 0.90998/EE −2.53%，best_ep 14）+ s23002（S 0.02200/F1 0.94790/EE +0.10%，**best_ep 25/25 跑满未早停**：val 仍在改善但 checkpoint 取 best 无碍判定；逐字平移纪律不延长训练）→ **n=5 档案：S 0.03131 / F1 0.92899 / |EE| 0.82% / MAE 6.325**（单 seed S 带 0.0220-0.0423）；d1 三 house 水位对照：H1 锁定 0.0289 / H2 Test 0.0160 / H5 val 0.03131——同族水位带（探针级证据链，待 Test 定谳）。
+- **判读 2（kettle f4 vs f5 n=5 对称化，预注册字典序 S→F1→|EE|→MAE）**：f4（S 0.08730/F1 0.79933/|EE| 2.60%/MAE 9.10）vs f5（S 0.09129/**F1 0.81112**/|EE| 6.76%/MAE 11.08）——①S 层：ΔS(f4−f5)=−0.0040（3/5，|Δ|<2×SEM 0.0196）→**平**；②F1 层：ΔF1(f5−f4)=+0.0119≈**1.9×量子**（1/162≈0.0062；f4 分母 160/f5 分母 162 同族）→**分胜负 → f5_t9 胜出**；③注记：f4 胜 S 均值/|EE|/MAE 三项、f5 仅胜 F1——「**等价偏 f5**」入档（S 优势不显著不强判）；f5 Test 风险预告：val F1 min 0.7754 贴 0.75 线、|EE| max 13.65% 贴 15% 线（EE 方向只能 Test 实测）。
+- **Test 预注册双发（每 (dataset,house,appliance) 预算 2 次；`--test` 显式开关=实录 34 语义修复后首次启用）**：
+  - **H5 dw d1 seed 23000**：四线 = S_test ≤ **0.04631**（=n=5 val 均值 0.03131+0.015）/ F1 ≥ 0.75 / R ≥ 0.70 / |EE| ≤ 0.15；若败 → 同配置 fresh seed **23003**（非配置更换，Test 失败复盘规则）
+  - **H5 kettle f5 seed 23005**：四线 = S_test ≤ **0.10629**（=0.09129+0.015）/ F1 ≥ 0.75 / R ≥ 0.70 / |EE| ≤ 0.15（**EE 分母备注**：test on_frac 0.0043 能量小，15% 线绝对 kWh 余量小）
+  - 判读权威 = train --test stdout 最终 JSON 的 test 块（evaluate.py 不含 test 指标）
+- **待用户（Test ×2，~5min；本轮无新配置文件，无需 pull）**：
+  ```powershell
+  python scripts\train.py --config configs\probe_dw_d1.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_dw.npz --seed 23000 --out reports\h5dw_d1_t23000 --test
+  python scripts\train.py --config configs\fine_h2\f5_t9.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_kettle.npz --seed 23005 --out reports\h5k_f5_t23005 --test
+  ```
+- **回传要求**：2 份完整 stdout（含最终 JSON test 块）+ REDD 直链/REFIT 二选一回话（不阻塞 Test）。
+- 是否进入 REPORT.md：否（Test 判读后 Stage A 收官时 §10 一起写）。
