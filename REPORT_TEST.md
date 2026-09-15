@@ -1491,3 +1491,38 @@
 - **回传要求**：3 份映射全文（若某 house「未能反序列化」则贴未解码片段——人工判读兜底）。
 - **下一步预告**：labels 判读 → Stage A 电器选定（同名 dw/mw/kettle 优先，viability 预筛）→ prepare ×N + diagnose ×N → 摸底&逐字平移探针。另：REDD 数据可得性仍待回话（Stage B，不阻塞）。
 - 是否进入 REPORT.md：否（外部验证进行中）。
+
+### 执行实录 53（2026-09-15）：labels 判读——**H4 混表排除（外部验证发现 #1）**；Stage A 选定 4 目标（H3 kettle + H5 kettle/dw/mw）；prepare ×4 + diagnose ×7 交付
+- **本任务角色**：实验/调参教练（labels 判读 + 外部验证目标选定）
+- **用户执行（2026-09-15，实录 52 命令）**：parse_nilmtk_metadata ×3。
+- **判读 1（H3，4 电器表）**：m2 kettle（同名 ✓）/ m3 electric space heater / m4 laptop / m5 projector——**选定 kettle(m2)**：H1 F4 逐字平移候选 + 40.4 天短记录顺带验证 viability 铁律（六条目标 #2；val 30000≈2.08 天窗口，kettle on_frac 预计 0.005-0.01 → val ON@30000 150-300 预判可过，以实测为准）。
+- **判读 2（H4 整 house 排除——外部验证发现 #1，用户可否决）**：
+  - **混表红旗**：m3 = kettle+**radio** 共享表；m6 = washing machine+**microwave**+**breadmaker** 三电器共享；m2 = TV+DVD+STB+light 四共享——**submetering 共享表 = target 信号不纯**，事件口径的 P/R/F1/EE 语义失效（FN/FP 无法归因到目标电器）；
+  - m4 boiler / m5 freezer 常开型（口径外）；
+  - 结论：H4 无合格同名目标，**整 house 排除诚实留档**——真实数据集 submetering 混表问题是外部验证的首个负结果发现（对未来跨数据集验证同样适用：labels 查共享表是必修步骤）。
+- **判读 3（H5，25 电器表全部 full coverage 137d）**：同名三电器全配齐——**m18 kettle / m22 dish_washer / m23 microwave**；不选：m24 washer dryer（H2 wm 同族已排除）/ m19 fridge freezer（常开型）/ m20-21 oven·stove（无同名）/ m15 toaster（H2 同族已排除）/ m26（未标注 1Hz 表，labels 无映射）。
+- **Stage A 最终选定 4 目标**：
+  | 目标 | 表 | 平移配方 | 验证意义 |
+  | --- | --- | --- | --- |
+  | H3 kettle | m2 | F4（H1 锁定）逐字 | 同名跨 house 第 2 例 + 短记录 viability |
+  | H5 kettle | m18 | **F4 vs f5_t9 双配方对决**（H1 配方 vs H2 配方） | 同名第 3 例 + 「哪个 house 的配方更可迁移」 |
+  | H5 dw | m22 | d1 逐字平移 | 同名第 2 例·最强电器·口径四判据复验（机型未知） |
+  | H5 mw | m23 | m1_do01 平移 | 同名第 2 例·dropout 假说边界复验 |
+- **流程纪律**：口径不假设复用——diagnose 先行判 viability+口径复验（dw 机型未知须四档敏感性重走四判据；kettle 500W/mw 200W 用默认表但须普查确认形态），过了再摸底&探针（下一轮）。
+- **待用户（prepare ×4 + diagnose ×7，分钟级）**：
+  ```powershell
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 3 --mains-ids 1 --appliance-meter-id 2 --appliance kettle --out D:\Work\testPython\datasets\ukdale_h3_kettle.npz
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 5 --mains-ids 1 --appliance-meter-id 18 --appliance kettle --out D:\Work\testPython\datasets\ukdale_h5_kettle.npz
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 5 --mains-ids 1 --appliance-meter-id 22 --appliance dish_washer --out D:\Work\testPython\datasets\ukdale_h5_dw.npz
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 5 --mains-ids 1 --appliance-meter-id 23 --appliance microwave --out D:\Work\testPython\datasets\ukdale_h5_mw.npz
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h3_kettle.npz --appliance kettle
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h5_kettle.npz --appliance kettle
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h5_mw.npz --appliance microwave
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h5_dw.npz --appliance dish_washer --on-threshold 20
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h5_dw.npz --appliance dish_washer --on-threshold 200
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h5_dw.npz --appliance dish_washer --on-threshold 500
+  python scripts\diagnose_split.py --npz D:\Work\testPython\datasets\ukdale_h5_dw.npz --appliance dish_washer --on-threshold 1000
+  ```
+- **回传要求**：4 份 prepare 输出（含缺口处理行）+ 7 份 diagnose 表（或总日志整份）。
+- **预算预告**：4 目标全流程 ≈ 55-60 runs（~1.5-2h GPU），分轮推进（本轮普查 → 下轮摸底&探针 24 runs → Test）。
+- 是否进入 REPORT.md：否（外部验证进行中；H4 混表发现待收官入 §10）。

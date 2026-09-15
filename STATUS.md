@@ -5,7 +5,7 @@
 - 生效范围：本 session 全部任务（用户另行指定角色时覆盖）
 
 ## 当前目标
-- 【进行中·用户任务】跨数据集外部验证纪元群（实录 51 立项）：两阶段——A=UK-DALE H3/H4/H5 跨 house 侦察+同名电器逐字平移探针；B=REDD 真外部（新 prepare_redd.py+口径重定夺·美国功率谱不同）；六条结论外部效度预注册（迁移边界/viability 铁律/口径可迁移性/dropout 边界/EE 分母/方法论）——侦察完成（实录 52：H3 40d 4 电器表~89%/H4 206d 5 表~74% 缺口多/H5 **137d 25 表~94% 主战场**+1Hz meter26/废表 m11/m25/9-7 截断组标记）→ 当前=用户跑 metadata ×3（表→电器映射权威化，秒级；REDD 可得性仍待回话）
+- 【进行中·用户任务】跨数据集外部验证纪元群（实录 51 立项）：两阶段——A=UK-DALE H3/H4/H5 跨 house 侦察+同名电器逐字平移探针；B=REDD 真外部（新 prepare_redd.py+口径重定夺·美国功率谱不同）；六条结论外部效度预注册（迁移边界/viability 铁律/口径可迁移性/dropout 边界/EE 分母/方法论）——侦察完成（实录 52：H3 40d 4 电器表~89%/H4 206d 5 表~74% 缺口多/H5 **137d 25 表~94% 主战场**+1Hz meter26/废表 m11/m25/9-7 截断组标记）——labels 判读（实录 53）：**H4 整 house 排除**（混表红旗：m3=kettle+radio/m6=wm+mw+breadmaker 共享表→target 不纯·外部验证发现 #1·用户可否决）；**Stage A 选定 4 目标**=H3 kettle(m2·F4 平移+短记录 viability)+H5 kettle(m18·F4 vs f5 双配方对决)+H5 dw(m22·d1 平移)+H5 mw(m23·m1_do01 平移)→ 当前=用户跑 prepare ×4 + diagnose ×7（分钟级；REDD 可得性仍待回话）
 - 【已收官·2026-09-14】House2 多电器纪元群闭环（实录 42-50）：dw✓（S_test 0.0160 五纪元最佳·d1 跨 house 逐字平移）+ mw✓（S_test 0.0554·Test 两跑档案 #1 早熟爆/#2 完整收敛四线全过·EE 14.15% 压线）+ wm/rice_cooker/toaster 诚实排除（viability 铁律）+ fridge 另议；两纪元均迁移免粗搜（总 ~63 runs vs 独立粗搜 ~160+ 省 60%）；REPORT.md v1.3 §9（五纪元总对照+跨纪元结论十四条）+TUNING_GUIDE 第五纪元六条：rice cooker=m9/wm=m12/dw=m13/mw=m15/toaster=m16 五纪元（fridge=m14 常开型排除本批·留口径升级后另议）；五阶段路线图（普查→口径→摸底→迁移探针优先的搜索裁定→各自 Test 预算 2 次）——普查完成（实录 43：算术全闭环；**分拣= dw 立纪元[corr 0.62-0.70 四纪元最强·单峰 2kW·优先级 1]/mw 立纪元[200W 口径现成·val ON 162]/wm 边缘[切碎+弱信号·敏感性后 viability 复核]/rice_cooker 排除[val 事件=0]/toaster 排除[val ON≈6]**）——三线判读落定（实录 44）：**dw 口径 200W 定谳**（四判据全过·与 H1 dw 口径数值一致=跨 house 复用首例）、**wm 排除**（500W 档 val ON 75<90+1000W 档 72<90 预注册铁律触发·用户可否决）、**mw 迁移成功**（f5 配方配对 ΔS −0.0183>2×SEM 显著优→免粗搜直入细搜；同 house 配方可迁移）→ 纪元群定员 **dw+mw 两纪元**；——**dw 免粗搜**（实录 47：双探针均显著优 f5 t=−2.94/d1 t=−9.21·composite 选型 EE 协议效应第三现·S 已达 0.0126=H1 dw 锁定值 44%；d1 vs f5 平局待裁决）；**mw m1_do01 唯一决赛者**（ΔS −0.0159 3/3+>2×SEM·dropout 假说命中·F1/MAE/EE 全面优；m4 观察·m2/m3/m5 出局）——**双纪元锁定**（实录 48：dw d1 配方 S 平局→F1 字典序裁决 +0.0088>5 量子·g1/g2 出局·dropout 强信号无效边界+lr3e4 亚军魔咒重演；mw m1_do01·m6/m7 出局·批次效应第五现 n=3 0.0542→n=5 0.0606 入档）→ **Test 预注册双交付**：dw seed 22000（S_test≤0.0288）/ mw seed 22001（S_test≤0.0756），fresh seed ×--test 恰一次各预算 2 次——**dw 四线全过收官**（实录 49：S_test 0.0160≤0.0288·漂移 +0.0022·F1 0.9794 历代最高·|EE| 3.42%·五纪元 Test 最佳）；**mw Test #1 失败**（S_test 0.1018>0.0756+EE +25.26%>15% 两线爆·EE 主犯·F1/R 过线；诊断=早停早熟 ep3+EE 稀疏放大 test 分母 2 kWh·无数据缺陷→复盘规则=同配置 fresh seed）→ 当前=用户跑 mw Test 第 2 次（seed 22002，预算最后一次）
 - 【已收官·2026-09-10】House1 dish_washer 纪元全流程闭环（实录 34-41：口径定夺 200W 加热相位→纪元锁定→摸底→粗搜 32[门槛首咬]→细搜三批次 30 runs→字典序判定树锁定 d1_t11d64→Test 四线全过 S_test 0.0349/F1 0.9231/EE +1.33%；Test 预算 2 用 1 封存；REPORT.md v1.2 §8+三纪元对照+跨纪元结论九条）——等待用户下一任务（候选：House2 其他电器/H1 其他电器/多电器统一框架/推理侧后处理[真周期事件合并]）
 - 【已收官·2026-09-10】House2 kettle 纪元全流程闭环（实录 24-33：身份链→probe 定谳→纪元锁定→摸底→粗搜 32→细搜两批次 34 runs→锁定 f5_t9→Test 四线全过 S_test 0.0252/F1 0.9398/EE −0.02% 死零；Test 预算 2 用 1 封存；REPORT.md v1.1 §7+两纪元对照+跨纪元结论五条）——等待用户下一任务（候选：House1 dw 纪元，须先 --on-threshold 100/200 敏感性；或其他 house/电器）
@@ -86,16 +86,17 @@
 - [x] 2026-09-14 mw Test #2 四线全过+**纪元群收官**（实录 50）：S_test 0.0554≤0.0756（漂移 −0.0052 负向）/F1 0.9333/R 0.9130/|EE| +14.15% 压线；best_ep 16 完整收敛——早停早熟假说被重试验证（#1 ep3 两爆→#2 ep16 全过）；Test 两跑档案诚实入档；交付 REPORT.md v1.3 §9+TUNING_GUIDE 第五纪元+session 纪要
 - [x] 2026-09-15 跨数据集外部验证立项（实录 51）：两阶段设计（A=UK-DALE H3/H4/H5 跨 house；B=REDD 真外部需新 prepare_redd.py+口径重定夺）；六条结论外部效度预注册；工具修补（--list-meters 侦察模式补留痕 logs/listmeters_h*.log）；侦察命令 ×3 交付；工作量预告 4-8h 分阶段
 - [x] 2026-09-15 Stage A 侦察判读（实录 52）：覆盖率算术（H3 89%/H4 74%/H5 94%）；H3 40 天最紧 viability 预判可过；H5 主战场（25 电器表）+异常表标记（1Hz m26/废 m11/疑似坏 m25/9-7 截断组 8 表）；mains=m1 apparent 三 house 同款；工具补全 parse_nilmtk_metadata.py 留痕（实录 45 清单之漏）；metadata ×3 交付
+- [x] 2026-09-15 labels 判读+Stage A 选定（实录 53）：H4 整 house 排除（混表红旗 m3/m6/m2 共享表 target 不纯+boiler/freezer 常开——外部验证发现 #1：labels 查共享表为跨数据集必修步骤）；H5 同名三电器全配齐（m18 kettle/m22 dw/m23 mw 全 full coverage 137d）；选定 4 目标（H3k+H5k+H5dw+H5mw）；H5 kettle 双配方对决设计（F4 vs f5_t9=哪个 house 配方更可迁移）；prepare ×4+diagnose ×7 交付
 
 ## 进行中
-- （用户侧）metadata ×3：parse_nilmtk_metadata.py house 3/4/5（实录 52 命令，秒级；先 git pull 取 parsemeta 留痕补丁）
-- （本侧）无阻塞；待 labels 判读 → Stage A 电器选定（同名 dw/mw/kettle 优先）→ prepare+diagnose ×N → 摸底&逐字平移探针；REDD 可得性待回话（不阻塞 A）
+- （用户侧）prepare ×4 + diagnose ×7（实录 53 命令块，分钟级）→ 回传（普查+口径复验；dw 机型未知须四档敏感性）
+- （本侧）无阻塞；待普查判读（viability+四判据复验）→ 摸底 baseline ×4 + 逐字平移探针 ×4-5 配置交付（24 runs）→ Test 预算 2 次×4 目标
 
 ## 下一步（TODO）
-1. 用户：metadata ×3（实录 52 命令块）→ 回传 3 份映射全文 + REDD 数据可得性回话
-2. 本侧 labels 判读 → 电器选定+prepare/diagnose 命令交付 → 摸底&逐字平移探针（3 seeds）→ 显著优/合理 → Test 预算 2 次
+1. 用户：prepare ×4 + diagnose ×7（实录 53 命令块）→ 回传 11 份输出 + REDD 数据可得性回话
+2. 本侧普查判读（viability 铁律+dw 四判据复验）→ 摸底&探针批次交付（~24 runs）→ 判定（探针显著优/合理→Test 预算 2 次；探针败=迁移边界反例入档）→ §10 外部效度对照表
 3. 收尾仪式：session 纪要追加、STATUS 更新、commit/push
-4. （可选，后续）torch 2.14 UserWarning 清理（已被两级留痕自动落盘，优先级低）
+4. （可选，后续）torch 2.14 UserWarning 清理（优先级低）
 
 ## 决策记录 / 踩坑
 - 2026-09-08：`ROLE.md.md` 与台账文件名（`ROLE.md`）不一致，且最近 commit 意图即「上传ROLE.md」→ 执行 `git mv ROLE.md.md ROLE.md`，无损、可回退
@@ -204,6 +205,8 @@
 - 2026-09-14（决策·纪元群迁移路线全胜）：dw/mw 两纪元均免粗搜（迁移探针显著优先于 32-trial 独立搜索）——三级迁移边界入档（跨纪元不迁移/同 house 配方可迁移/同名+口径相似可逐字平移）；纪元群总成本 ~63 runs 省 60%
 - 2026-09-15（决策·外部验证两阶段+口径不假设复用）：Stage A 同数据集 unseen house 先行（侦察零成本）；Stage B REDD 真外部次之（新管道+完整口径定夺——美国 120V 功率谱不同，H1/H2 阈值不可直接搬）；外部效度对照表六条预注册，收官时逐条 confirmed/refuted（若跨数据集意外平移成功=迁移结论须修正，反例同样入档）
 - 2026-09-15（踩坑·沙箱第二十次重置）：同款三症状 SOP 恢复零丢失；工具修补（edit 后 mixed reset）作为未提交增量随立项提交——顺序：先 edit 后 reset 时 edit 保留（reset 只动 HEAD/index 不动工作区）
+- 2026-09-15（决策·H4 混表排除·外部验证发现 #1）：submetering 共享表（kettle+radio 同表/wm+mw+breadmaker 三合一）= target 信号不纯，事件口径 P/R/F1/EE 语义失效——整 house 排除留档；用户可否决（但须接受混表语义弱化）；纪律=labels 判读必查共享表
+- 2026-09-15（决策·H5 kettle 双配方对决）：H1 F4 与 H2 f5_t9 两个 kettle 锁定配方都平移 H5——同时回答同名第 3 例与「哪个 house 的配方更可迁移」；摸底 baseline 照旧作配对锚
 - 2026-09-14（踩坑·沙箱第十八次重置·新形态）：HEAD/index 回退 7824bb4 但工作区未丢——git diff FETCH_HEAD 出现「整文件删除」假象（陈旧 index 的 diff 语义：commit 有而 index 无的路径按删除显示）；判别法=先看关键文件尾部内容年代，再 mixed reset 后验 status 清零；另 diagnose 等脚本无需 sys.path.insert（script 目录自动在 sys.path[0]，runlog 导入零适配）
 - 2026-09-10（踩坑·沙箱第十五次重置）：同新形态 SOP 恢复零丢失；连续重置第 7 回合（九至十五）
 - 2026-09-10（踩坑·沙箱第十四次重置）：同新形态 SOP 恢复零丢失；连续重置第 6 回合（九至十四）
