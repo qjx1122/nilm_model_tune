@@ -1599,3 +1599,19 @@
   ```
 - **回传要求**：2 份完整 stdout（含最终 JSON test 块）+ REDD 直链/REFIT 二选一回话（不阻塞 Test）。
 - 是否进入 REPORT.md：否（Test 判读后 Stage A 收官时 §10 一起写）。
+
+
+### 执行实录 57（2026-09-15）：Stage A Test #1 判读——**双 S 线爆（形态迥异）**→ 预注册 fresh seed 二次（每目标预算末次）
+- **本任务角色**：实验/调参教练（Test 四线判读）
+- **用户执行（2026-09-15 11:50-11:55，实录 56 命令块）**：Test ×2（`--test` 显式开关首次实战）。
+- **判读 1（H5 dw d1 seed 23000，best_ep 17）= S 线爆（1/4）**：**S_test 0.08247 > 0.04631（超 78%）**；F1 0.8367 ✓ / R 0.8200 ✓ / |EE| 7.78% ✓ 三线过。val-test 落差：F1 0.929→0.837（−0.092）、|EE| 0.82%→7.78%、R² 0.85→0.766。**★ seed 因素证据**：本 seed best_ep val score 0.0463 已超 n=5 带（0.0220-0.0423）上界=抽到偏弱 seed（mw seed 22001 先例同构：单 seed test 波动）→ fresh seed 23003 正路，非配置缺陷。
+- **判读 2（H5 kettle f5 seed 23005，best_ep 13）= S 线爆（2/4，贴线）+ |EE| 线爆**：**S_test 0.10863 > 0.10629（超 2.2% 贴线）**；F1 0.8163 ✓ / R 0.8000 ✓；**|EE| +16.60% > 15% ✗**。三个机理注记：①**EE 方向翻转**：val n=5 EE −0.2~−13.6%（欠预测）→ test +16.6%（过预测）——「EE 方向只能 Test 实测」第 N 次实证；②**F1 在 test 持平**（val 0.811→test 0.816）：字典序选 f5 的 F1 优势保持，败在 EE——实录 56 风险预告（val |EE| max 13.65% 贴线）命中；③**f4 反事实不跑**（Test 失败复盘规则：二次=同配置 fresh seed，配置修正仅限数据/口径缺陷；f4 的 |EE| 优势不可外推——EE 方向只能 Test 实测）。
+- **stdout 瑕疵注记**：dw 训练日志 Epoch 015 行缺失（疑似复制遗漏；train.log/总日志为准，best_ep 17 与 JSON 有效，不影响判定）。
+- **预注册（Test #2=每目标预算第 2 次=末次）**：过 → Stage A 收官（正面外部验证）；爆 → **接受失败档案**（H5 该目标外部验证负结果，双重价值）**or 口径协商（用户决策）**；不换配置不延长训练。跑完即收官判读（REPORT §10 外部效度对照表 + 六条预注册逐条裁决 + 跨纪元结论增补）。
+- **待用户（Test #2 ×2，~5min；无新配置无需 pull）**：
+  ```powershell
+  python scripts\train.py --config configs\probe_dw_d1.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_dw.npz --seed 23003 --out reports\h5dw_d1_t23003 --test
+  python scripts\train.py --config configs\fine_h2\f5_t9.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_kettle.npz --seed 23007 --out reports\h5k_f5_t23007 --test
+  ```
+- **回传要求**：2 份完整 stdout（含 test 块）+ REDD 直链/REFIT 二选一回话（收官判读同轮可写）。
+- 是否进入 REPORT.md：否（Test #2 判读后 Stage A 收官一起写 §10）。
