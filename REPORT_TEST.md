@@ -1526,3 +1526,33 @@
 - **回传要求**：4 份 prepare 输出（含缺口处理行）+ 7 份 diagnose 表（或总日志整份）。
 - **预算预告**：4 目标全流程 ≈ 55-60 runs（~1.5-2h GPU），分轮推进（本轮普查 → 下轮摸底&探针 24 runs → Test）。
 - 是否进入 REPORT.md：否（外部验证进行中；H4 混表发现待收官入 §10）。
+
+### 执行实录 54（2026-09-15）：Stage A 普查判读——**viability 铁律再排除两个（H3 kettle/H5 mw），Stage A 收敛为 2 目标（H5 kettle/H5 dw）**；H5 双目标摸底&逐字平移探针交付；REDD 下载指引
+- **本任务角色**：实验/调参教练（普查判读 + 探针批次设计）
+- **用户执行（2026-09-15 09:35-09:36，实录 53 命令）**：prepare ×4 + diagnose ×7。
+- **prepare 算术（全闭环 ±1 边界）**：H3 kettle n=526,123（36.5 天，7 缝最大 7.3d）；H5 kettle n=1,006,412（**69.9 天——m18 属 9-7 截断组，实录 52 预判命中**，1 缝 67d 尾段剔除）；H5 dw n=1,901,005（132.0 天，5 缝 5.0d）；H5 mw n=1,900,957（132.0 天）。
+- **判读 1（viability 筛查，val ON@30000≥90 预注册铁律）**：
+  - **❌ H3 kettle 排除（66<90）**：短记录铁律触发（36.5 天→val 段 5.48 天仅 12 事件）；附加证据：test 段漂移 val 2.19 vs test 8.94 evt/day（4×）——即使 viability 过，test 解释性也弱；**用户可否决**。viability 目标 #2 于此确认：铁律对短记录按设计生效（外部效度正结果）。
+  - **❌ H5 mw 排除（12≪90）**：事件率仅 0.69-0.71/day（vs H2 3.2-4.7）+val 14 evt；**基线异常注记**：implied 常驻功率 43.2 W（train 95.9 kWh/92.41d）而 ON 事件贡献仅 0.95 W → **~42 W 表底常驻**（standby 或共享回路），kWh/day 1.038 几乎全来自基线非事件；test corr 崩塌 0.0349（train 0.127）；**用户可否决**。
+  - **✅ H5 kettle 过线（162）**：口径 500W 确认（medW 2873-2895=UK 3kW 壶与 H1/H2 同族；kWh/evt 0.10-0.11 典型）；corr 0.36-0.40 健康。
+  - **✅ H5 dw 过线（291@200W）**：四判据全过——①断层 20→200 断崖（train 235→96 evt，2.54→1.04/day）+200-500-1000 平台（96/98/99）；②medW@200+ 恒 1661 紧单峰（p95 1692）——**第三机型**（H1 双峰 med 120 / H2 单峰 2014 / H5 单峰 1661）；③val ON@30000=291；④kWh/evt 0.36-0.44（1661W×13min）×2-3 相位=0.7-1.3 kWh/周期闭环；低功率相位能量 6.8% 排除无损。**口径 200W 第三 house 定谳（跨 house 口径复用第 2 例延伸）**。
+- **判读 2（Stage A 收敛）**：4 目标 → **2 目标**（H5 kettle + H5 dw）；两排除均为预注册铁律机械执行（与 wm/rice_cooker/toaster 同款——viability 铁律外部效度双确认）。
+- **本轮交付（15 runs ~15min）**：H5 kettle 三方（baseline_h5k + **F4 逐字平移**（fine_v5/f4_v2do00_w96.yaml，字段核实 kettle/500/w96 无需改动）+ **f5_t9 逐字平移**（fine_h2/f5_t9.yaml，kettle/500）——双配方对决）+ H5 dw 双方（baseline_h5dw + **d1 逐字平移**（probe_dw_d1.yaml 复用，dw/200，仅换 data-path））× seeds 42/2024/7 + evaluate ×15。
+- **预注册判定**：①H5 kettle：f4/f5 各 vs baseline 配对（3/3+>2×SEM=显著优）；f4 vs f5 互斗=「哪个 house 配方更可迁移」直接裁决；②H5 dw：d1 vs baseline 显著优/合理 → Test 预算 2 次（seed 23000+ Stage A fresh 族）；d1 败 → **d1 平移首败=迁移边界反例**（同名第 3 例不过=三级边界须修正，双重价值）；③探针全败的 house → 独立粗搜 or 收敛放弃（用户决策）。
+- **REDD 下载指引（Stage B，已交付用户）**：官方 http://redd.csail.mit.edu/ → Download Data → low_freq.tar.bz2（低频 6 houses ~457MB 压缩）；账密制——发邮件至页面所列地址自动回复，或社区通用 redd/disaggregatetheenergy；解压至 D:\Work\testPython\datasets\low_freq\（house_1..6：labels.dat + channel_*.dat）；本侧将写 prepare_redd.py 直读 .dat（复用 prepare_ukdale 管道语义：6s 网格/缺口桥接/剔除/data_spec.json 留痕，无 NILMTK 依赖）。
+- **待用户（15 runs + evaluate ×15）**：
+  ```powershell
+  foreach ($s in 42,2024,7) {
+    python scripts\train.py --config configs\baseline_h5k.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_kettle.npz --seed $s --out reports\h5k_base_s$s
+    python scripts\train.py --config configs\fine_v5\f4_v2do00_w96.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_kettle.npz --seed $s --out reports\h5k_f4_s$s
+    python scripts\train.py --config configs\fine_h2\f5_t9.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_kettle.npz --seed $s --out reports\h5k_f5_s$s
+    python scripts\train.py --config configs\baseline_h5dw.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_dw.npz --seed $s --out reports\h5dw_base_s$s
+    python scripts\train.py --config configs\probe_dw_d1.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_dw.npz --seed $s --out reports\h5dw_d1_s$s
+  }
+  foreach ($d in "h5k_base_s42","h5k_base_s2024","h5k_base_s7","h5k_f4_s42","h5k_f4_s2024","h5k_f4_s7","h5k_f5_s42","h5k_f5_s2024","h5k_f5_s7","h5dw_base_s42","h5dw_base_s2024","h5dw_base_s7","h5dw_d1_s42","h5dw_d1_s2024","h5dw_d1_s7") {
+    python scripts\evaluate.py --run-dir reports\$d
+  }
+  ```
+- **回传要求**：15 份 stdout + 15 份 evaluate JSON（或总日志整份）+ REDD 下载进展回话。
+- 是否进入 REPORT.md：否（外部验证进行中）。
+- 沙箱第 21 次重置恢复（本地 7824bb4→bf1fd6e）。

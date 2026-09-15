@@ -1,0 +1,34 @@
+# House5 kettle 摸底 baseline（REPORT_TEST.md 实录 54）：
+#   架构/训练 = baseline.yaml 同款（30/7 MAE 选型）；纪元适配 = threshold 500（实录 54 口径确认：
+#   medW 2873-2895 UK 3kW 壶与 H1/H2 同族、kWh/evt 0.10-0.11 典型）+ val 30000（val ON@30000=162 ✓）。
+#   H5 双配方对决锚点：fine_v5/f4_v2do00_w96.yaml（H1 锁定）vs fine_h2/f5_t9.yaml（H2 锁定）——
+#   两个旧冠军逐字平移（appliance/threshold 本就一致，仅 --data-path 换 H5 npz），回答「哪个 house 的配方更可迁移」。
+seed: 42
+device: auto
+data:
+  path: ''
+  appliance: kettle
+  window_size: 128
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  max_samples_train: 30000
+  max_samples_val: 30000
+  max_samples_test: 6000
+model:
+  input_dim: 1
+  d_model: 64
+  nhead: 4
+  num_layers: 2
+  dim_feedforward: 128
+  dropout: 0.1
+training:
+  batch_size: 128
+  epochs: 30
+  lr: 0.0005
+  weight_decay: 0.0001
+  patience: 7
+  grad_clip: 1.0
+  loss: mse
+metrics:
+  on_threshold_watts: 500.0
