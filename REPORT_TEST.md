@@ -1441,3 +1441,30 @@
   - 两纪元均**免粗搜**（迁移探针路线全胜：dw 双探针显著优 t=−2.94/−9.21；mw f5 显著优 t=−3.62）——纪元群总 GPU 成本 ≈ 摸底 6+探针 6+对决 9+细搜 33+补种子 6+Test 3 ≈ 63 runs，对照五纪元独立粗搜预算（5×32 trials≈160+ runs）省约 60%。
 - **本轮交付**：REPORT.md **v1.3**（§9 纪元群：分拣/双纪元/三排除档案/五纪元 Test 总对照/跨纪元结论扩充至十四条）；TUNING_GUIDE 第五纪元（纪元群六条人话教训）；STATUS 收官态；session 纪要追加。
 - 是否进入 REPORT.md：**是（v1.3 §9，本轮已写入）**。
+
+### 执行实录 51（2026-09-15）：跨数据集外部验证纪元群立项——两阶段设计+六条结论外部效度预注册+Stage A 侦察交付
+- **本任务角色**：实验/调参教练（外部验证纪元群设计）
+- **立项依据**：用户选定候选方向 #3（纪元群收官后清单）；五纪元结论（REPORT.md v1.3 十四条）目前全部来自 UK-DALE H1/H2 同管道数据——外部效度未验。
+- **两阶段设计**：
+  - **Stage A：跨 house（UK-DALE H3/H4/H5，同数据集 unseen house）**——迁移三级边界第 4 级检验（同名电器+口径相似+同协议→逐字平移的第 2/3 例）；零成本侦察先行（--list-meters ×3，表号/样本数/时间范围→交叠期判读）→ 电器选定（同名优先 dw/mw/kettle——锁定配方现成）→ prepare → 摸底+逐字平移探针（3 seeds）→ 显著优/合理 → Test 预算 2 次；探针败 → 双重价值（该 house 独立粗搜 or 迁移边界反例入档）；
+  - **Stage B：跨数据集（REDD 优先，真外部）**——美国 120V/不同采集硬件/1-min 采样；需**新 prepare_redd.py**（本侧写，REDD house_N/labels.dat+channel_*.dat 格式→6s 网格）+ 用户下载数据（低频 ~1GB）；**口径不可假设复用**（美国电器功率谱不同：kettle ~1500W 非 2-3kW）——完整走普查→口径定夺→摸底→探针流程；Pecan Street 需注册 API 列备选。
+- **六条验证目标预注册（外部效度对照表，收官时逐条判 confirmed/refuted）**：
+  1. 迁移三级边界（#10）：A=同名跨 house 平移第 2/3 例；B=跨数据集预期**不可**平移（若意外成功=结论须修正）；
+  2. viability 铁律（#13）：corr 谱+val ON 分辨率在新 house/数据集复验（H3/H4 短记录可能直接触发排除——本身即验证）；
+  3. 口径可迁移性（dw 200W 业务语义定义）：H1/H2 同值后第 3/4 例（H5/REDD）；预期口径语义可迁移但**阈值须重定夺**（功率谱不同）；
+  4. dropout 假说边界（#11）：稀疏电器（mw 类）dropout 收益复验；
+  5. EE 分母效应（#12）：稀疏电器短 test 段 EE 放大复验；
+  6. 方法论可移植性（判定树/复盘规则/配对对称纪律）：协议全套照用不改。
+- **验收口径**：沿用四线（S_test≤val 均值+0.015/F1≥0.75/R≥0.70/|EE|≤0.15+稀疏分母备注）；Test 预算每 (dataset,house,appliance) 2 次。
+- **工作量预告（如实）**：Stage A 每电器 ~1-1.5h GPU（prepare+摸底 3+探针 3+Test 1-2）×2-4 电器；Stage B 额外数据下载+新脚本联调 ~1 回合+全流程同 A。总 ~4-8h，分阶段推进。
+- **工具修补（随立项）**：prepare_ukdale.py --list-meters 侦察模式此前早退于留痕装配（输出不落日志）——现补上（logs/listmeters_h<house>_<时间戳>.log），表号普查输出同为口径档案（实录 23 同款纪律）。
+- **待用户（Stage A 侦察 ×3，秒级零成本；先 git pull 取工具修补）**：
+  ```powershell
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 3 --list-meters
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 4 --list-meters
+  python scripts\prepare_ukdale.py --h5-path D:\Work\testPython\datasets\ukdale.h5 --house 5 --list-meters
+  ```
+- **回传要求**：3 份输出全文（各表行数+时间范围——交叠期与电器可用性判读依据；现在自动落 logs\ 留痕）。
+- **另需用户回话（Stage B 启动条件）**：REDD 数据是否已有/需要下载指引（低频数据集官网/MIT 免费）；Pecan Street 有无现成账号数据。Stage B 不阻塞 Stage A。
+- 是否进入 REPORT.md：否（立项；收官时新增 §10 外部效度对照表）。
+- 沙箱第 20 次重置恢复（本地 7824bb4→4058e51；工具修补经 mixed reset 保留为未提交增量随本实录提交）。

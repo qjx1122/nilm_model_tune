@@ -431,13 +431,16 @@ def main():
                     help="禁用控制台输出留痕（默认写 <out>.log，与 npz/data_spec.json 同目录）")
     args = ap.parse_args()
 
+    # 控制台输出留痕（实录 45；实录 51 扩展到 --list-meters 侦察模式）：
+    #   正常模式 → <out>.log（与 npz/data_spec.json 同目录——「缺口处理」等口径留痕不再依赖控制台）
+    #   侦察模式 → logs/listmeters_h<house>_<时间戳>.log（表号普查输出同为口径档案）
+    from runlog import setup_run_log, default_log_path
     if args.list_meters:
+        setup_run_log(default_log_path(f"listmeters_h{args.house}"), enabled=not args.no_log)
         with h5py.File(args.h5_path, "r") as f:
             cmd_list_meters(f, args.house)
         return
 
-    # 控制台输出留痕（实录 45）：<out>.log 与 npz/data_spec.json 同目录——「缺口处理」等口径留痕不再依赖控制台
-    from runlog import setup_run_log
     setup_run_log(Path(str(args.out) + ".log"), enabled=not args.no_log)
 
     # 通用名 + 兼容别名解析（冲突即报错，不接受静默覆盖）
