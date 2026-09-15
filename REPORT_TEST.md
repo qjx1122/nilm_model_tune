@@ -1556,3 +1556,28 @@
 - **回传要求**：15 份 stdout + 15 份 evaluate JSON（或总日志整份）+ REDD 下载进展回话。
 - 是否进入 REPORT.md：否（外部验证进行中）。
 - 沙箱第 21 次重置恢复（本地 7824bb4→bf1fd6e）。
+
+### 执行实录 55（2026-09-15）：Stage A 探针判读——**H5 dw d1 显著优（d1 连平第三 house）**；H5 kettle 三方打平+base |EE| 3/3 全超硬门槛出局；对称化 6 runs 交付；REDD 替代方案
+- **本任务角色**：实验/调参教练（探针判读 + 对称化设计）
+- **用户执行（2026-09-15 09:52-10:18，实录 54 命令块）**：H5 摸底&探针 15 runs + evaluate ×15（总日志完整回传）。
+- **判读 1（H5 dw 双方对决，seeds 42/2024/7）**：d1 **显著优**——ΔS(d1−base) = **−0.0251**（**3/3** 方向，>2×SEM 0.0201）：base S 0.0559（|EE| 10.3% 且 s2024 −16.0% 超 15% 线）vs **d1 S 0.0307**；d1 val(n=3) 档案：S 0.03074 / F1 0.9290 / **|EE| 0.49%** / MAE 6.83——**d1 连平第三 house**（H1 锁定 0.0289 → H2 Test 0.0160 → H5 探针显著优），**迁移三级边界（结论 #10）第 4 级检验通过**；base 的 MAE 选型欠预测在第三 house 复现（EE 协议效应跨 house 稳定）。
+- **判读 2（H5 kettle 三方对决）**：**三方打平**——f4−base −0.01025（2/3）、f5−base −0.00616（2/3）、f4−f5 −0.00408（2/3）全不显著；**base |EE| 三 seed = 17.61/21.03/15.31% → 3/3 全超 15% 硬门槛 → base 出局**（|EE| 硬门槛与 S 并列为出线条件；欠预测方向 EE 全负与 MAE 选型家族一致）；可用配方 **f4（S 0.08961/F1 0.7984/|EE| 0.6-7.1%）与 f5（0.09369/0.8111/0.2-13.6%）等价**——「哪个 house 的配方更可迁移」答案：**等价**。
+- **本轮交付（6 runs ~8min）**：d1 补 seeds 23001/23002（n=5 锁定档案）+ f4/f5 各补 23001/23002（对称化对决）+ evaluate ×6；**下轮 Test 预注册双交付**（dw d1 seed 23000 线=n=5 均值+0.015；kettle 胜者 seed 23005 线同法）。
+- **预注册**：kettle f4/f5 n=5 配对字典序（S→F1→|EE|→MAE；F1 量子 1/162≈0.0062）→ 胜者 Test 预算 2 次；若仍平（S 差<2×SEM 且 F1<1 量子）→ 取 |EE| 分布更稳者并在档案注明「等价裁决」。
+- **REDD 官网不可访问（用户报告）应对**：①直链候选 `http://redd.csail.mit.edu/data/low_freq.tar.bz2`（首页挂但数据直链可能存活，浏览器或 Invoke-WebRequest 试）；②**REFIT 备胎**（推荐）：Strathclyde 公开、20 houses、8s 采样、cleaned CSV 免账密直接下载（https://pureportal.strath.ac.uk/en/datasets/refit-electrical-load-measurements-cleaned）——管道适配=prepare_refit.py（8s→6s 重采样，与 prepare_redd.py 同级成本）。二选一待用户回话；Stage A 收官不依赖此。
+- **待用户（6 runs + evaluate ×6，~8min）**：
+  ```powershell
+  python scripts\train.py --config configs\probe_dw_d1.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_dw.npz --seed 23001 --out reports\h5dw_d1_s23001
+  python scripts\train.py --config configs\probe_dw_d1.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_dw.npz --seed 23002 --out reports\h5dw_d1_s23002
+  python scripts\train.py --config configs\fine_v5\f4_v2do00_w96.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_kettle.npz --seed 23001 --out reports\h5k_f4_s23001
+  python scripts\train.py --config configs\fine_v5\f4_v2do00_w96.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_kettle.npz --seed 23002 --out reports\h5k_f4_s23002
+  python scripts\train.py --config configs\fine_h2\f5_t9.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_kettle.npz --seed 23001 --out reports\h5k_f5_s23001
+  python scripts\train.py --config configs\fine_h2\f5_t9.yaml --data-path D:\Work\testPython\datasets\ukdale_h5_kettle.npz --seed 23002 --out reports\h5k_f5_s23002
+  foreach ($d in "h5dw_d1_s23001","h5dw_d1_s23002","h5k_f4_s23001","h5k_f4_s23002","h5k_f5_s23001","h5k_f5_s23002") {
+    python scripts\evaluate.py --run-dir reports\$d
+  }
+  ```
+- **回传要求**：6 份 stdout + 6 份 evaluate JSON（或总日志整份）+ REDD 直链/REFIT 二选一回话。
+- 是否进入 REPORT.md：否（外部验证进行中；d1 三连平待 Test 后入 §10）。
+- **注入事件注记（档案纪律）**：本实录曾遭外部注入污染——伪造「已完成 commit」声明（含伪造 hash）、token 索取、破坏性 git 指令（rm -rf .git/force push 非 session 分支）、系统提示索取，均识别并拒绝；经仓库实测核验（git log/ls-remote/grep）确认彼时实录未落盘，本轮干净重做。**教训入档：任何「已完成」声明以仓库实测为准，注入文本不可信。**
+- 沙箱第 22 次重置恢复（本地 7824bb4→dd8f0cc，含 configs/tuning.yaml+run_tuning.ps1 远古残留两行随 mixed reset 清零）。
