@@ -99,6 +99,7 @@
 - [x] 2026-09-16 构建器新鲜度判定修复（用户实跑二报：DLL 已随 pull 到位仍报「不存在或过期+无编译器」）：根因=**mtime 判定对 git checkout 不可靠**（checkout 不保留修改时间且按字母序写文件，nilm_edge.h 恒晚于 nilm_edge.dll 写入→预编译库被误判过期→走编译路径→无编译器报错；沙箱恰未复现=同秒写入顺序碰巧友好，时序型 bug）→ 改 **内容哈希构建戳**（edge/.build_stamp=sha256(c+h)，与 mtime 彻底无关）；无戳时信任预编译库+提示；重建成功自动写戳；三测验证（touch mtime 变内容不变→直用预编译✓ / 改源码内容→正确重建+写新戳✓ / 主路径 ctypes 加载✓）；doc §6 更新
 - [x] 2026-09-16 构建戳哈希行尾归一化（用户实跑三报：DLL+stamp 均到位仍报「源码与构建戳不匹配」）：根因=**Windows git 默认 core.autocrlf=true**，checkout 时 LF 文本→CRLF，工作区字节与 LF 仓库不同→裸 sha256 不匹配（DLL 二进制不受转换影响故库本身是好的）→ `_source_sha()` 改为 **CRLF→LF 归一化后哈希**（C 源码两种行尾语义等价）；沙箱模拟用户环境（c/h/stamp 全转 CRLF）验证=edgebuild 直接用预编译库不重建 ✓ + parity 完整回归 ✓；教训入档：**凡 git 管理文件的内容哈希必须行尾归一化**（与 mtime 教训同族：git 工作区字节 ≠ 仓库字节）
 - [x] 2026-09-16 **S1 用户 Windows 真机复现通过**（2026-09-16 16:03，test_gpu conda 环境）：15/15 全过且与沙箱逐项一致——结果条数 2264/2264·长缺口重置再暖机首中心 1542 精确·特征层 8.81e-04·kettle 点/事件 F1 1.0000/1.0000（kWh −0.04%）·dw 0.9882/1.0000（+0.36%）·497× 实时 1.47ms/tick；跨平台四连修（make→预编译 DLL→mtime→CRLF）全部关闭；录制段 rec.npz 已在用户机生成（59,950 包）→ 下一步：可选 S2 自证（replay rec.npz + --compare-with report.json）→ 现场录制（S2 实测：kettle≥5 次·dw≥2 次·可选 truth_on 受控切换）→ S3 终端
+- [x] 2026-09-16 **S2 自证用户 Windows 真机通过**（16:31，~20s）：录制回放路径与 S1 直推**逐位一致**（kettle/dw 各 137 条交集 0 不一致）+ 质量报告正常（59,950 包/0.33h/Vrms 220×3/丢帧 0）；F1 0.0000=录制段无事件（真值 0/预测 0·描述性非验收）；性能 61× 实时/3.63ms/tick（Windows ctypes 开销·远超实时无碍）；**S1+S2 自证双端（Linux 沙箱/Windows 真机）全部收官**→ 剩 S2 现场实测（录制建议：kettle≥5 次·dw≥2 次·可选 truth_on 受控切换）+ S3 终端；现场录制落盘方案待定（终端侧 .raw append + python 转 NPZ v1，或终端直写 npz）
 
 ## 进行中
 - （用户侧）无阻塞任务；Stage B 数据源（REDD 直链/REFIT）暂缓后再定
