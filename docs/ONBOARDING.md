@@ -237,6 +237,7 @@ python scripts\infer.py --run-dir reports\h5k_f5_t23007 --npz D:\datasets\new_ho
 - **边界对齐**：首尾各 `window//2` 点无预测（seq2point 中心点语义）。
 - **边缘可行**：~0.1M 参数、单通道输入、逐窗口一次前向 → 网关/树莓派实时推理成立；训练分钟级 → per-site 现场重训可行。
 - **多电器**：每电器独立 run 目录，各跑一次 infer，输出叠加即分项账单（注意：各电器独立拆分，**分项之和 vs 总表一致性未做约束**）。
+- **边缘终端实时推理**（6400Hz 三相周波流、动态库形态）：见 **`docs/EDGE_DEPLOYMENT.md`**（P0 已交付：`edge/` 纯 C 引擎 + `scripts/export_edge_bundle.py` 部署包导出 + parity 测试）。
 - **漂移监控**（dw 教训）：上线后持续监控事件率/medW/日均 kWh；test 段事件构成漂移可击穿任何静态验收预期——建议按周/月对账子表（若有）或人工抽检。
 
 ---

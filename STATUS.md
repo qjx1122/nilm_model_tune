@@ -93,6 +93,7 @@
 - [x] 2026-09-15 Stage A Test #1 判读（实录 57）：双 S 线爆——dw d1 23000 仅 S 爆（0.08247>0.04631·三线过·偏弱 seed 证据 val 0.0463 超带）；k f5 23005 S 爆贴线+|EE| 爆（16.60%>15%·val 负→test 正翻转·F1 test 持平）→ fresh seed 二次（23003/23007=预算末次）；EE 方向只能 Test 实测再实证；f4 反事实不跑（规则）
 - [x] 2026-09-15 Stage A Test #2 判读+收官（实录 58）：kettle 23007 **四线全过**（S 0.08900≤0.10629/F1 0.80/R 0.80/EE +3.70%）=外部验证正结果（家族链 H1 F4→H2 f5_t9→H5 f5_t9）；dw 23003 S 线再爆（0.06424>0.04631·三线过·段级漂移非噪声）→**用户裁定：接受失败档案**；Stage B **暂缓**；REPORT v1.4 §10（10.1 对照表/10.2 六条裁决/10.3 发现清单五条）；沙箱第 23 次重置恢复
 - [x] 2026-09-16 新电器接入操作手册 + 推理脚本：`docs/ONBOARDING.md`（七阶段管道全景/最少数据项与质量红线/普查四判据/配置模板逐字段/平移探针判据/Test 预注册四线/infer.py 双场景用法/生产 Go-No-Go 清单/常见坑速查）+ `scripts/infer.py`（run 目录 best.pt+result.json → 逐点功率拆分；**归一化统计量纪律：跨数据推理必须 --stats-from 训练 npz**；烟测通过=合成数据端到端 19936 点·事件数与真值一致·npz/CSV 双输出·aggregate-only 跨数据模式）；README §2 加指针
+- [x] 2026-09-16 边缘部署 P0 交付（用户锁定 D 接口：动态库/float 工程量+时间戳/128点×6通道每 20ms 一包/丢帧上包重推/终端本机/三相同采）：`edge/nilm_edge.[ch]`+Makefile（纯 C99 零依赖：周波→P/Vrms/Irms/S→6s 桶（空桶 carry≤30min·长缺口重置暖机）→1024 环形缓冲→seq2point 前向（双精度激活·pe 训练同源导出）→每模型 256 深度结果 FIFO）+ `scripts/export_edge_bundle.py`（run 目录+训练 npz→model.bin NEDG 布局+manifest）+ `tests/test_edge_parity.py`（**端到端 parity 全过**：tiny 训练链路含 3 桶缺口 carry n=45/45·Δagg rel 3.97e-15·Δpred max 0.00005W；真实配置 w96/d64/L2 随机权重 n=9/9·Δpred 0.00009W；ON 全一致；暖机语义 ✓）+ `docs/EDGE_DEPLOYMENT.md`（接口约定/API/包格式/构建集成/P1 待办=E1 黄金集+零样本决策+口径实验+监控/P2=因果窗+谐波）；ONBOARDING §7.3 互链；poll 语义修正=只留最新→FIFO 队列（不丢事件段）
 
 ## 进行中
 - （用户侧）无阻塞任务；Stage B 数据源（REDD 直链/REFIT）暂缓后再定
