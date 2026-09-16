@@ -43,6 +43,9 @@
 | `scripts/export_edge_bundle.py` | 部署包导出：run 目录（best.pt+result.json）+ 训练 npz → `model.bin` + `manifest.json` |
 | `scripts/edge_stream_test.py` | **分阶段验证 harness**：S1 合成周波流（内置三相场景→训练→导出→流式推送→15 项功能验收）；S2 录制回放（--mode replay：质量报告+事件指标+--compare-with 确定性对拍） |
 | `tests/test_edge_parity.py` | 端到端 parity：tiny 训练链路 + 真实配置随机权重 + 缺口 carry + 暖机（§7） |
+| `edge/recorder.h` / `edge/recorder.c` + 预编译 `recorder.dll`/`librecorder.so` | **周波录制器**（C99 零依赖）：终端在推送引擎的同时双写 .raw（现场录制落盘，§7.2） |
+| `scripts/raw_to_recnpz.py` | .raw v1 → NPZ v1 转换器（质量摘要+截断容错+truth_on 事件标注展开+--split-hours 分卷） |
+| `tests/test_recorder_loop.py` | **全链路彩排**：双写→.raw→转换→回放 vs 在线逐位一致（§7.2 验收） |
 | 本文档 | 接口/API/格式/构建/集成/待办 |
 
 ## 3. 引擎数据流与语义（nilm_edge.c）
@@ -177,6 +180,7 @@ python scripts\edge_stream_test.py --mode replay --wave-file 现场录制.npz ^
     --out-dir reports/edge_s2 [--realtime] [--compare-with 基准report.json]
 ```
 
+- 现场录制：终端侧双写 `.raw` 再转换（方案与验收见 **§7.2**）；
 - 录制文件格式（NPZ v1）：`wave` float32 [n,768]（每行一包，128 点×6 通道交错
   [uA,iA,uB,iB,uC,iC]）+ `ts` float64 [n]（秒，单调不减）+ 可选 `truth_on_<appliance>`
   int8 [n]（受控切换实验真值）+ 可选 `meta` json。长录制按小时分文件，`--wave-file` 可多次；
@@ -187,6 +191,52 @@ python scripts\edge_stream_test.py --mode replay --wave-file 现场录制.npz ^
   子表或受控切换（truth_on 键）→ 即成本地黄金集（§8 E1 的现场版）。
 
 **S3 终端实测（待现场）**：终端加载 libnilm_edge（§6 集成样例）→ 与 S2 同口径验收；联调清单 §9。
+
+### 7.2 现场录制落盘方案（v1，2026-09-16 交付）
+
+**终端集成（双写）**：在既有的推送点同时调用引擎与录制器——一条代码路径完成「实时推理+现场录制」：
+
+```c
+#include "nilm_edge.h"
+#include "recorder.h"
+
+nilm_rec_open("rec_20260916.raw", 128, 6);          /* 启动时一次 */
+/* 采集回调（每 20ms）：*/
+nilm_edge_push_packet(pkt->wave, 128, 6, pkt->ts);   /* 实时推理 */
+nilm_rec_packet(pkt->wave, 128, 6, pkt->ts);         /* 同步录制（同参数）*/
+nilm_rec_close();                                    /* 停机时（冲刷落盘）*/
+```
+
+预编译库直接入仓（`edge/recorder.dll` Windows x86_64 / `edge/librecorder.so` Linux；亦可将
+`recorder.c/h` 直接编入终端工程，零动态库依赖）。磁盘占用：**3080 B/包 ≈ 147 MB/小时**（50 包/s）。
+
+**.raw v1 格式**：头 64B（magic `NILMRAW1` / 版本 / points / channels / fs=6400 / f0=50）+
+定长记录流（wave float32×768 + ts float64，append）。截断尾记录按长度自动识别丢弃（转换器
+已实现并测试）。
+
+**转换与回放**：
+
+```powershell
+python scripts\raw_to_recnpz.py --raw rec_20260916.raw --out rec.npz [--events events.csv] [--split-hours 1]
+python scripts\edge_stream_test.py --mode replay --wave-file rec.npz --bundle bundle_kettle\model.bin --out-dir reports\edge_s2
+```
+
+- 转换器输出：质量摘要（包数/时长/时间戳单调性/疑似丢帧/Vrms 三相）+ NPZ v1（可直接回放）；
+- `--events events.csv`（受控切换实验真值）：每行 `appliance,start,end`（epoch 秒，end 开区间）
+  → 展开 `truth_on_<appliance>` 键 → 回放即出 F1（本地黄金集）；
+- `--split-hours N`：长录制按 N 小时分卷（`<out>_000.npz…`），回放 `--wave-file` 可多次拼接。
+
+**彩排验收（2026-09-16 通过，`tests/test_recorder_loop.py`）**：
+
+| 步骤 | 结果 |
+| --- | --- |
+| 在线双写 41,950 包（引擎+录制器同点调用，14min 流） | live.raw 129.2 MB ✓ |
+| 转换后 wave/ts vs 在线推送 | **逐位一致** ✓ |
+| 同 bundle 回放（新引擎实例）结果 vs 在线结果 | **125/125 条逐位一致** ✓ |
+| 截断容错（人为去尾 1000B） | 尾记录自动丢弃+警告，其余完好 ✓ |
+| 停机结算语义 | 在线段结尾 `nilm_edge_flush()` 与回放段对齐（末桶部分数据结算）✓ |
+
+复跑：`python tests/test_recorder_loop.py`（~15s；自动定位/构建录制器库）。
 
 ## 8. 剩余待办（P0 未覆盖 = 上轮差距分析映射）
 
