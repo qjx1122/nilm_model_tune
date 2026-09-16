@@ -35,9 +35,15 @@ _INSTALL_HINT = """解决任选其一：
 
 
 def _source_sha():
+    """sha256(nilm_edge.c + nilm_edge.h)，**行尾归一化后**计算。
+
+    Windows git 默认 core.autocrlf=true：checkout 时 LF→CRLF，工作区字节与 LF 仓库不同，
+    裸字节哈希会误判「源码改过」（2026-09-16 用户实跑教训）。C 源码 CRLF/LF 语义等价
+    （主流编译器均接受），故按归一化内容判定新鲜度。
+    """
     h = hashlib.sha256()
     for f in (SRC, HDR):
-        h.update(f.read_bytes())
+        h.update(f.read_bytes().replace(b"\r\n", b"\n"))
     return h.hexdigest()
 
 

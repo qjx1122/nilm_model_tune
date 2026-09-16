@@ -104,6 +104,9 @@ zig 交叉编译，仅依赖系统 DLL），Linux 用 `edge/libnilm_edge.so`。�
 mtime**（git checkout 不保留修改时间且写入顺序不定，mtime 判定曾把用户机上的预编译库误判过期）。
 戳匹配 → 直接加载；源码改过或库缺失 → 自动找编译器重建（gcc/clang/cl/zig cc，均带
 `-DNILM_EDGE_BUILDING`）；无编译器时明确报错附指引。手动重建：`python edge/edgebuild.py [--force]`。
+哈希按**行尾归一化**（CRLF→LF）计算——Windows git 默认 `core.autocrlf=true` 在 checkout 时把
+文本转为 CRLF，裸字节哈希会把预编译库误判「源码改过」（2026-09-16 用户实跑教训 #2）；
+C 源码 CRLF/LF 语义等价，DLL/so 为二进制不受 git 转换影响。
 
 ```bash
 # 源码变更后的 Windows 重建选项（任选其一）：
