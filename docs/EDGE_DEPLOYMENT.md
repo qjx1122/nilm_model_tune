@@ -100,9 +100,10 @@ python scripts\export_edge_bundle.py --run-dir reports\h5k_f5_t23007 ^
 
 **开箱即用（无需本机编译器）**：仓库附带预编译库——Windows 用 `edge/nilm_edge.dll`（x86_64，
 zig 交叉编译，仅依赖系统 DLL），Linux 用 `edge/libnilm_edge.so`。测试与 harness 统一经
-`edge/edgebuild.py` 加载：预编译库存在且不比源码旧 → 直接加载；源码变更 → 自动寻找编译器重建
-（gcc/clang/cl/zig cc，均带 `-DNILM_EDGE_BUILDING` 导出宏）；无编译器且库缺失时给出安装指引。
-手动重建：`python edge/edgebuild.py [--force]`。
+`edge/edgebuild.py` 加载：新鲜度按 **内容哈希构建戳**（`edge/.build_stamp`=sha256(c+h)）判定，**不依赖
+mtime**（git checkout 不保留修改时间且写入顺序不定，mtime 判定曾把用户机上的预编译库误判过期）。
+戳匹配 → 直接加载；源码改过或库缺失 → 自动找编译器重建（gcc/clang/cl/zig cc，均带
+`-DNILM_EDGE_BUILDING`）；无编译器时明确报错附指引。手动重建：`python edge/edgebuild.py [--force]`。
 
 ```bash
 # 源码变更后的 Windows 重建选项（任选其一）：
