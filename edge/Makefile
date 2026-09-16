@@ -10,6 +10,14 @@ test: all
 	python3 ../tests/test_edge_parity.py
 
 clean:
-	rm -f libnilm_edge.so
+	rm -f libnilm_edge.so librecorder.so recorder.dll
 
-.PHONY: all test clean
+.PHONY: all test clean recorder
+
+recorder: librecorder.so recorder.dll
+
+librecorder.so: recorder.c recorder.h
+	$(CC) $(CFLAGS) -DNILM_REC_BUILDING -shared -o $@ recorder.c
+
+recorder.dll: recorder.c recorder.h
+	python -m ziglang cc -target x86_64-windows-gnu -O2 -std=c99 -fPIC -shared -DNILM_REC_BUILDING recorder.c -o $@
