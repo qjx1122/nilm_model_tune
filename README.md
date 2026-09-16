@@ -100,6 +100,8 @@ python scripts\diagnose_split.py --npz D:\datasets\ukdale_dw.npz --appliance dis
 
 注意：每个 (house, appliance) 组合是**独立数据纪元**——Test 触碰预算各自 2 次，须重新走「身份验证 → 摸底 → 搜索 → 锁定 → Test」全流程（纪律同 REPORT.md §3）。
 
+> **新电器 / 新 house 接入完整操作手册**（数据准备 → 普查 viability → 摸底 → 平移探针/细搜 → Test 验收 → 推理部署 → 生产准入 Go/No-Go 清单）：见 **`docs/ONBOARDING.md`**（2026-09-16 v1，含推理脚本 `scripts/infer.py` 用法）。
+
 ## 3. Windows + Conda
 
 ```powershell
