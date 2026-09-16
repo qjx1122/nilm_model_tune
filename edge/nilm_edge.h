@@ -24,7 +24,7 @@ extern "C" {
 #endif
 
 #define NILM_EDGE_MAX_MODELS 8
-#define NILM_EDGE_RESULT_RING 256 /* 每模型结果 FIFO 深度（6s 结果条数） */
+#define NILM_EDGE_RESULT_RING 2048 /* 每模型结果 FIFO 深度（6s 结果条数）。\n * 2048≈3.4h 不轮询容忍；长缺口(>30min)恢复包会瞬时 carry 入队 ~300 条，256 会溢出丢最旧 */
 
 typedef struct {
     double center_ts;   /* 预测中心点时间戳（秒，= 该 6s 桶起点） */
@@ -50,7 +50,7 @@ int  nilm_edge_push_packet(const float *wave, int points, int channels, double t
 
 /* 轮询模型结果（FIFO）：按时间顺序取出最早一条未读结果填 *out 并返回 1；
  * 无未读返回 0；<0=错误。循环调用直到返回 0 可取空（不丢 6s 事件段）；
- * 积压超过 256 条时丢弃最旧。 */
+ * 积压超过 2048 条时丢弃最旧。 */
 int  nilm_edge_poll(int model_id, NilmEdgeResult *out);
 
 /* 提前结束当前未满 6s 的桶（可选：停机/长间隔前调用，触发一次最终聚合+推理）。 */

@@ -343,12 +343,14 @@ static void infer_one(EdgeModel *M)
 
 static void push_value(double v, double ts)
 {
+    /* 注意：不清 carry_run——carry 链中每个空桶都会经此推送，若在此清零，
+     * 连续空桶计数永远无法累积到 CARRY_LIMIT，长缺口重置永不触发（S1 实测bug）。
+     * carry_run 只在真实数据包到达（push_packet 累计段）时清零。 */
     E.raw_val[E.raw_count % RAW_RING_MAX] = v;
     E.raw_ts[E.raw_count % RAW_RING_MAX] = ts;
     E.raw_count++;
     E.last_value = v;
     E.have_last = 1;
-    E.carry_run = 0;
     for (int i = 0; i < E.n_models; i++)
         infer_one(&E.models[i]);
 }
@@ -423,6 +425,7 @@ int nilm_edge_push_packet(const float *wave, int points, int channels, double ts
         }
     }
     E.bucket_n += points;
+    E.carry_run = 0;   /* 真实数据到达：连续空桶计数归零 */
     return 0;
 }
 

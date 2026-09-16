@@ -38,8 +38,9 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `edge/nilm_edge.h` / `edge/nilm_edge.c` / `edge/Makefile` | 纯 C99 零依赖动态库（libnilm_edge.so；Windows 下同源编译为 dll）：波形特征层 + 6s 桶引擎 + 环形缓冲 + Transformer seq2point 前向（双精度激活） |
+| `edge/nilm_edge.h` / `edge/nilm_edge.c` / `edge/Makefile` | 纯 C99 零依赖动态库（libnilm_edge.so；Windows 下同源编译为 dll）：波形特征层 + 6s 桶引擎 + 环形缓冲 + Transformer seq2point 前向（双精度激活）；结果 FIFO 每模型 **2048** 深度（≈3.4h 不轮询容忍） |
 | `scripts/export_edge_bundle.py` | 部署包导出：run 目录（best.pt+result.json）+ 训练 npz → `model.bin` + `manifest.json` |
+| `scripts/edge_stream_test.py` | **分阶段验证 harness**：S1 合成周波流（内置三相场景→训练→导出→流式推送→15 项功能验收）；S2 录制回放（--mode replay：质量报告+事件指标+--compare-with 确定性对拍） |
 | `tests/test_edge_parity.py` | 端到端 parity：tiny 训练链路 + 真实配置随机权重 + 缺口 carry + 暖机（§7） |
 | 本文档 | 接口/API/格式/构建/集成/待办 |
 
@@ -50,7 +51,7 @@
 3. **空桶 carry**：终端断流导致整桶无数据 → 用上一桶值填充（等价训练制备期 ffill 语义）；连续空桶 >300（30min）→ 判长缺口，**清缓冲重置暖机**（等价制备期 long-gap 剔除）；
 4. **环形缓冲**：6s 功率值入 1024 深度环形缓冲；每模型 window 点齐即触发一次前向；
 5. **前向**：与训练严格同构——窗口 `[center−W/2, center+W/2)`、归一化统计量=训练 npz train 段（导出冻结进部署包）、pe 位置编码=训练同源导出；输出 denorm 为 W；
-6. **结果 FIFO**：每模型 256 深度结果队列（时间序），poll 逐条取出——**不丢 6s 事件段**。
+6. **结果 FIFO**：每模型 2048 深度结果队列（时间序），poll 逐条取出——**不丢 6s 事件段**（S1 实测：长缺口恢复链瞬时入队 ~300 条，256 深度会丢最旧）。
 
 **延迟（中心窗语义，与训练一致）**：预测中心落后最新数据 `(W − W/2 − 1)×6s`：
 window=192 → **570s**；window=96 → **282s**。暖机：开机后 W 个 6s 桶内无结果（19.2/9.6min）。
@@ -130,6 +131,46 @@ while (nilm_edge_poll(kettle, &r) == 1)
 复跑：`python tests/test_edge_parity.py`（自动 make；依赖 numpy/torch）。
 **注意**：parity=数值等价（C 引擎 vs torch 参考在同一 6s 功率序列上），**不等于业务精度**——
 业务精度须过 §8 E1 黄金集（真实站点波形+子表真值四线验收）。
+
+### 7.1 分阶段验证计划与结果（2026-09-16）
+
+**S1 合成周波流（✅ 已通过，2026-09-16）**——`python scripts/edge_stream_test.py --mode synth --out-dir reports/edge_s1 --record rec.npz`
+
+内置三相场景（基线+冰箱/电视背景负荷+kettle/dw 事件+噪声谐波；20s D4 短缺口+31min 长缺口）→
+6 天 6s 序列渲染训练 tiny 双模型 → 导出部署包 → 4h=720,000 包流式推送 → 15 项验收全过：
+
+| 验收项 | 结果 |
+| --- | --- |
+| 结果条数（语义推算精确命中） | 2264/2264（含长缺口 carry 300 + 重置再暖机 63 的完整推算） |
+| 暖机/末端中心/长缺口重置+再暖机/短缺口 D4 连续 | 全 ✓（首中心桶 232、末端滞后 186s、恢复后首中心 1542 精确命中） |
+| 特征层功率 vs 场景解析值 | max rel err **8.81e-04** ≤ 0.005 |
+| kettle 点级/事件级 F1 | **1.0000 / 1.0000**（368/368 点、12/12 事件、kWh −0.04%） |
+| dish_washer 点级/事件级 F1 | **0.9882 / 1.0000**（kWh +0.36%、起始偏移 −1 桶） |
+| 性能 | **581× 实时**，引擎 1.03 ms/tick（双模型并行） |
+
+S1 的过程价值：首跑暴露并修复 **3 个真 bug**——①引擎 carry 计数被 carry 推送自身清零→长缺口
+永不重置（nilm_edge.c 已修：仅真实数据包到达才清零）；②harness 波形生成器只写 6/768 列
+（布局错）；③样本时间轴误用周波间隔 20ms 而非采样间隔 1/6400s（sin 相位恒定）。
+「先合成后现场」的分阶段设计立竿见影。
+
+**S2 现场录制回放（harness 就绪+自证通过；现场数据待录）**
+
+```powershell
+python scripts\edge_stream_test.py --mode replay --wave-file 现场录制.npz ^
+    --bundle bundle_kettle\model.bin --bundle bundle_dw\model.bin ^
+    --out-dir reports/edge_s2 [--realtime] [--compare-with 基准report.json]
+```
+
+- 录制文件格式（NPZ v1）：`wave` float32 [n,768]（每行一包，128 点×6 通道交错
+  [uA,iA,uB,iB,uC,iC]）+ `ts` float64 [n]（秒，单调不减）+ 可选 `truth_on_<appliance>`
+  int8 [n]（受控切换实验真值）+ 可选 `meta` json。长录制按小时分文件，`--wave-file` 可多次；
+- 输出：录制质量报告（包数/时长/疑似丢帧/Vrms 三相）+ 模型结果（事件段/kWh；有真值则 F1）；
+- **自证（2026-09-16 通过）**：S1 录制样例段（59,950 包）回放，与 S1 直推结果**逐位一致**
+  （kettle/dw 各 137 条交集 0 不一致）——「生成器直推」与「录制文件回放」两路径等价；
+- 现场录制建议：段内含目标电器若干次真实使用（kettle ≥5 次、dw ≥2 次）；有条件时加装临时
+  子表或受控切换（truth_on 键）→ 即成本地黄金集（§8 E1 的现场版）。
+
+**S3 终端实测（待现场）**：终端加载 libnilm_edge（§6 集成样例）→ 与 S2 同口径验收；联调清单 §9。
 
 ## 8. 剩余待办（P0 未覆盖 = 上轮差距分析映射）
 
