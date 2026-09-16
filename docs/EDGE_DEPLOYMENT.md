@@ -38,7 +38,8 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `edge/nilm_edge.h` / `edge/nilm_edge.c` / `edge/Makefile` | 纯 C99 零依赖动态库（libnilm_edge.so；Windows 下同源编译为 dll）：波形特征层 + 6s 桶引擎 + 环形缓冲 + Transformer seq2point 前向（双精度激活）；结果 FIFO 每模型 **2048** 深度（≈3.4h 不轮询容忍） |
+| `edge/nilm_edge.h` / `edge/nilm_edge.c` / `edge/Makefile` | 纯 C99 零依赖动态库：波形特征层 + 6s 桶引擎 + 环形缓冲 + Transformer seq2point 前向（双精度激活）；结果 FIFO 每模型 **2048** 深度（≈3.4h 不轮询容忍） |
+| `edge/nilm_edge.dll` / `edge/libnilm_edge.so` / `edge/edgebuild.py` | **预编译库直接入仓**（Windows x86_64 DLL 由 zig 交叉编译·8 符号导出已验证；Linux .so）+ 跨平台构建器（预编译优先，源码变更才自动找编译器重建 gcc/clang/cl/zig，**不依赖 make**） |
 | `scripts/export_edge_bundle.py` | 部署包导出：run 目录（best.pt+result.json）+ 训练 npz → `model.bin` + `manifest.json` |
 | `scripts/edge_stream_test.py` | **分阶段验证 harness**：S1 合成周波流（内置三相场景→训练→导出→流式推送→15 项功能验收）；S2 录制回放（--mode replay：质量报告+事件指标+--compare-with 确定性对拍） |
 | `tests/test_edge_parity.py` | 端到端 parity：tiny 训练链路 + 真实配置随机权重 + 缺口 carry + 暖机（§7） |
@@ -97,11 +98,22 @@ python scripts\export_edge_bundle.py --run-dir reports\h5k_f5_t23007 ^
 
 ## 6. 构建与终端集成
 
+**开箱即用（无需本机编译器）**：仓库附带预编译库——Windows 用 `edge/nilm_edge.dll`（x86_64，
+zig 交叉编译，仅依赖系统 DLL），Linux 用 `edge/libnilm_edge.so`。测试与 harness 统一经
+`edge/edgebuild.py` 加载：预编译库存在且不比源码旧 → 直接加载；源码变更 → 自动寻找编译器重建
+（gcc/clang/cl/zig cc，均带 `-DNILM_EDGE_BUILDING` 导出宏）；无编译器且库缺失时给出安装指引。
+手动重建：`python edge/edgebuild.py [--force]`。
+
 ```bash
-make -C edge            # Linux: libnilm_edge.so（gcc -O2 -std=c99，零外部依赖，仅 libm）
-# Windows 终端: clang -shared -O2 -std=c99 nilm_edge.c -o nilm_edge.dll -lm
-#               或 MSVC: cl /O2 /LD nilm_edge.c /Fe:nilm_edge.dll
+# 源码变更后的 Windows 重建选项（任选其一）：
+pip install ziglang && python -m ziglang cc -target x86_64-windows-gnu -O2 -std=c99 -fPIC -shared -DNILM_EDGE_BUILDING edge/nilm_edge.c -o edge/nilm_edge.dll
+conda install -c msys2 m2w64-gcc && x86_64-w64-mingw32-gcc -O2 -std=c99 -shared -DNILM_EDGE_BUILDING edge/nilm_edge.c -o edge/nilm_edge.dll
+# VS Build Tools 开发者环境: cl /O2 /LD /DNILM_EDGE_BUILDING nilm_edge.c /Fe:nilm_edge.dll
+# Linux 惯例保留: make -C edge
 ```
+
+终端主程序集成两种形态：①加载 DLL + 包含 `nilm_edge.h`（`NILM_EDGE_API`=dllimport）；
+②直接把 `nilm_edge.c/.h` 编入终端工程（零动态库依赖）。
 
 终端主程序集成样例（C）：
 

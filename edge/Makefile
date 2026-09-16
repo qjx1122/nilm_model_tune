@@ -1,5 +1,5 @@
 CC ?= cc
-CFLAGS ?= -O2 -std=c99 -Wall -Wextra -fPIC
+CFLAGS ?= -O2 -std=c99 -Wall -Wextra -fPIC -DNILM_EDGE_BUILDING
 
 all: libnilm_edge.so
 

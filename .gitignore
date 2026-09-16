@@ -10,3 +10,8 @@ venv/
 data/
 checkpoints/
 logs/
+# MSVC 本地构建产物（预编译 dll 入仓，obj/lib/exp 不入）
+edge/*.obj
+edge/*.lib
+edge/*.exp
+edge/*.pdb

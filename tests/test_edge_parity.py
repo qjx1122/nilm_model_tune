@@ -35,8 +35,10 @@ class Result(ctypes.Structure):
 
 
 def build_lib():
-    subprocess.run(["make", "-s", "-C", str(ROOT / "edge")], check=True)
-    lib = ctypes.CDLL(str(ROOT / "edge" / "libnilm_edge.so"))
+    """构建并加载边缘库（跨平台，无 make 依赖；详见 edge/edgebuild.py）。"""
+    sys.path.insert(0, str(ROOT / "edge"))
+    from edgebuild import build as build_library
+    lib = ctypes.CDLL(str(build_library()))
     lib.nilm_edge_start.restype = ctypes.c_int
     lib.nilm_edge_add_model.argtypes = [ctypes.c_char_p]
     lib.nilm_edge_add_model.restype = ctypes.c_int

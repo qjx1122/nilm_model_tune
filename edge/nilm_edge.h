@@ -23,6 +23,18 @@
 extern "C" {
 #endif
 
+/* 符号导出：构建 DLL 时定义 NILM_EDGE_BUILDING → dllexport；消费方包含本头 →
+ * dllimport（Windows 链接导入库）；Linux/macOS 下为空。 */
+#if defined(_WIN32) || defined(__CYGWIN__)
+  #ifdef NILM_EDGE_BUILDING
+    #define NILM_EDGE_API __declspec(dllexport)
+  #else
+    #define NILM_EDGE_API __declspec(dllimport)
+  #endif
+#else
+  #define NILM_EDGE_API
+#endif
+
 #define NILM_EDGE_MAX_MODELS 8
 #define NILM_EDGE_RESULT_RING 2048 /* 每模型结果 FIFO 深度（6s 结果条数）。\n * 2048≈3.4h 不轮询容忍；长缺口(>30min)恢复包会瞬时 carry 入队 ~300 条，256 会溢出丢最旧 */
 
@@ -35,32 +47,32 @@ typedef struct {
 } NilmEdgeResult;
 
 /* 初始化引擎（进程一次）。返回 0=成功，<0=失败。 */
-int  nilm_edge_start(void);
+NILM_EDGE_API int  nilm_edge_start(void);
 
 /* 加载部署包（export_edge_bundle.py 导出的 model.bin），返回 model_id（0..N-1），<0=失败。
  * 多模型（kettle/dw/mw…）共享同一功率流，各自独立 window/统计量/阈值；power_type 须一致。 */
-int  nilm_edge_add_model(const char *bundle_path);
+NILM_EDGE_API int  nilm_edge_add_model(const char *bundle_path);
 
 /* 推入一包周波数据。
  * wave：points×channels 交错浮点工程量，通道顺序 [uA,iA,uB,iB,uC,iC]；
  * points：本包采样点数（典型 128）；channels：必须为 6；
  * ts：本包时间戳（秒，单调不减；丢帧由调用方按协议用上一包数据填充后重推）。
  * 返回 0=成功，<0=失败（见 nilm_edge_last_error）。 */
-int  nilm_edge_push_packet(const float *wave, int points, int channels, double ts);
+NILM_EDGE_API int  nilm_edge_push_packet(const float *wave, int points, int channels, double ts);
 
 /* 轮询模型结果（FIFO）：按时间顺序取出最早一条未读结果填 *out 并返回 1；
  * 无未读返回 0；<0=错误。循环调用直到返回 0 可取空（不丢 6s 事件段）；
  * 积压超过 2048 条时丢弃最旧。 */
-int  nilm_edge_poll(int model_id, NilmEdgeResult *out);
+NILM_EDGE_API int  nilm_edge_poll(int model_id, NilmEdgeResult *out);
 
 /* 提前结束当前未满 6s 的桶（可选：停机/长间隔前调用，触发一次最终聚合+推理）。 */
-int  nilm_edge_flush(void);
+NILM_EDGE_API int  nilm_edge_flush(void);
 
 /* 释放全部资源。 */
-void nilm_edge_shutdown(void);
+NILM_EDGE_API void nilm_edge_shutdown(void);
 
-const char *nilm_edge_version(void);
-const char *nilm_edge_last_error(void);
+NILM_EDGE_API const char *nilm_edge_version(void);
+NILM_EDGE_API const char *nilm_edge_last_error(void);
 
 #ifdef __cplusplus
 }
