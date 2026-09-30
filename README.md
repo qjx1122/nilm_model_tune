@@ -104,6 +104,7 @@ python scripts\diagnose_split.py --npz D:\datasets\ukdale_dw.npz --appliance dis
 python scripts\export_meter_csv.py --h5-path D:\datasets\ukdale.h5 --house 5 --meter 18 22 23
 # → house_5_meter_18.csv / house_5_meter_22.csv / house_5_meter_23.csv（两列 time,power_w）
 # 可选：--out-dir 输出目录 / --resample-sec 6|60|0（0=原始采样）/ --power-type active|apparent
+# 时间段：--start "2015-04-01 00:00:00" --end "..."（UTC，含端点，可只给一端）；多表公共段：--common-span（各表数据范围交集，与 --start/--end 再求交）
 ```
 
 注意：每个 (house, appliance) 组合是**独立数据纪元**——Test 触碰预算各自 2 次，须重新走「身份验证 → 摸底 → 搜索 → 锁定 → Test」全流程（纪律同 REPORT.md §3）。

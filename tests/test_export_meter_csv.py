@@ -107,3 +107,73 @@ def test_missing_meter_helpful_error(tmp_path):
     assert r.returncode != 0
     assert "99" in (r.stdout + r.stderr) and "10" in (r.stdout + r.stderr)  # 附可用表
     print("表号不存在报错 ✓")
+
+
+def _make_h5_staggered(path):
+    """错落范围：meter1 全量 [02:40:00, 04:39:54)；meter2 [02:50:00, 04:19:54]；
+    meter3 完全错开（+1 天，与 1/2 无交集）。"""
+    n = 1200
+    t0 = 1_500_000_000
+    ts = (t0 + np.arange(n) * 6).astype(np.int64)
+    vals = {1: np.full(n, 300.0), 2: np.full(n, 250.0), 3: np.full(n, 100.0)}
+    idxs = {1: ts, 2: ts[100:1000], 3: ts + 86400}
+    with pd.HDFStore(str(path), "w") as store:
+        for mid in (1, 2, 3):
+            store.put(f"/building1/elec/meter{mid}",
+                      pd.DataFrame(vals[mid][:len(idxs[mid]), None],
+                                   index=pd.Index(idxs[mid], dtype=np.int64),
+                                   columns=pd.MultiIndex.from_tuples([("power", "active")])),
+                      format="fixed")
+    return t0, idxs
+
+
+def test_time_range(tmp_path):
+    h5 = tmp_path / "ukdale.h5"
+    _make_h5(h5)                     # kettle 事件 02:50:00–02:52:54（30 样本）
+    out = tmp_path / "rng"
+    r = _run(h5, tmp_path, "--meter", "10", "--start", "2017-07-14 02:50:30",
+             "--end", "2017-07-14 02:51:30", "--out-dir", str(out))
+    assert r.returncode == 0, r.stdout + r.stderr
+    df = pd.read_csv(out / "house_1_meter_10.csv")
+    assert len(df) == 11                       # 61s/6s 含两端
+    assert df.time.iloc[0] == "2017-07-14 02:50:30"    # 边界含端点
+    assert df.time.iloc[-1] == "2017-07-14 02:51:30"
+    assert (df.power_w > 1000).all()           # 全落在 kettle 事件内
+    print("时间段导出 ✓")
+
+
+def test_common_span(tmp_path):
+    h5 = tmp_path / "ukdale.h5"
+    t0, idxs = _make_h5_staggered(h5)
+    out = tmp_path / "common"
+    r = _run(h5, tmp_path, "--meter", "1", "2", "--common-span", "--out-dir", str(out))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "公共时间段" in r.stdout or "--common-span" in r.stdout
+    lo = pd.Timestamp(max(idxs[1][0], idxs[2][0]), unit="s", tz="UTC")
+    hi = pd.Timestamp(min(idxs[1][-1], idxs[2][-1]), unit="s", tz="UTC")
+    n_expect = int((hi - lo).total_seconds() // 6) + 1
+    for mid in (1, 2):
+        df = pd.read_csv(out / f"house_1_meter_{mid}.csv")
+        assert df.time.iloc[0] == lo.strftime("%Y-%m-%d %H:%M:%S"), (mid, df.time.iloc[0])
+        assert df.time.iloc[-1] == hi.strftime("%Y-%m-%d %H:%M:%S"), (mid, df.time.iloc[-1])
+        assert len(df) == n_expect, (mid, len(df))
+    # 组合：--common-span ∩ --start（公共段内再裁剪，两表同起点）
+    out2 = tmp_path / "common_start"
+    r2 = _run(h5, tmp_path, "--meter", "1", "2", "--common-span",
+              "--start", "2017-07-14 02:51:00", "--out-dir", str(out2))
+    assert r2.returncode == 0, r2.stdout + r2.stderr
+    for mid in (1, 2):
+        df = pd.read_csv(out2 / f"house_1_meter_{mid}.csv")
+        assert df.time.iloc[0] == "2017-07-14 02:51:00"
+        assert len(df) == n_expect - 10       # 公共段起点 +60s → 少 10 格
+    print("公共时间段导出 ✓")
+
+
+def test_common_span_empty(tmp_path):
+    h5 = tmp_path / "ukdale.h5"
+    _make_h5_staggered(h5)           # meter3 与 1/2 完全错开
+    r = _run(h5, tmp_path, "--meter", "1", "3", "--common-span",
+             "--out-dir", str(tmp_path / "x"))
+    assert r.returncode != 0
+    assert "公共时间段" in (r.stdout + r.stderr)
+    print("空交集报错 ✓")
