@@ -105,6 +105,7 @@ python scripts\export_meter_csv.py --h5-path D:\datasets\ukdale.h5 --house 5 --m
 # → house_5_meter_18.csv / house_5_meter_22.csv / house_5_meter_23.csv（两列 time,power_w）
 # 可选：--out-dir 输出目录 / --resample-sec 6|60|0（0=原始采样）/ --power-type active|apparent
 # 时间段：--start "2015-04-01 00:00:00" --end "..."（UTC，含端点，可只给一端）；多表公共段：--common-span（各表数据范围交集，与 --start/--end 再求交）
+# 多表+时间段/公共段 → 自动合并为单 CSV：house_{h}_meter_{m1}_{m2}_..._{mN}.csv（列=time+meter_{id}×N，表号按命令行顺序；--separate 恢复按表分文件）
 ```
 
 注意：每个 (house, appliance) 组合是**独立数据纪元**——Test 触碰预算各自 2 次，须重新走「身份验证 → 摸底 → 搜索 → 锁定 → Test」全流程（纪律同 REPORT.md §3）。
