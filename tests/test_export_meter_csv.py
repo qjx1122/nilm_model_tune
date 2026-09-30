@@ -142,31 +142,36 @@ def test_time_range(tmp_path):
     print("时间段导出 ✓")
 
 
-def test_common_span(tmp_path):
+def test_common_span_merged(tmp_path):
     h5 = tmp_path / "ukdale.h5"
     t0, idxs = _make_h5_staggered(h5)
     out = tmp_path / "common"
     r = _run(h5, tmp_path, "--meter", "1", "2", "--common-span", "--out-dir", str(out))
     assert r.returncode == 0, r.stdout + r.stderr
     assert "公共时间段" in r.stdout or "--common-span" in r.stdout
+    assert "合并导出" in r.stdout
+    f = out / "house_1_meter_1_2.csv"
+    assert f.exists() and not (out / "house_1_meter_1.csv").exists()
+    df = pd.read_csv(f)
+    assert list(df.columns) == ["time", "meter_1", "meter_2"]
     lo = pd.Timestamp(max(idxs[1][0], idxs[2][0]), unit="s", tz="UTC")
     hi = pd.Timestamp(min(idxs[1][-1], idxs[2][-1]), unit="s", tz="UTC")
     n_expect = int((hi - lo).total_seconds() // 6) + 1
-    for mid in (1, 2):
-        df = pd.read_csv(out / f"house_1_meter_{mid}.csv")
-        assert df.time.iloc[0] == lo.strftime("%Y-%m-%d %H:%M:%S"), (mid, df.time.iloc[0])
-        assert df.time.iloc[-1] == hi.strftime("%Y-%m-%d %H:%M:%S"), (mid, df.time.iloc[-1])
-        assert len(df) == n_expect, (mid, len(df))
-    # 组合：--common-span ∩ --start（公共段内再裁剪，两表同起点）
+    assert df.time.iloc[0] == lo.strftime("%Y-%m-%d %H:%M:%S")
+    assert df.time.iloc[-1] == hi.strftime("%Y-%m-%d %H:%M:%S")
+    assert len(df) == n_expect
+    assert df.meter_1.isna().sum() == 0 and df.meter_2.isna().sum() == 0
+    assert np.allclose(df.meter_1.values, 300.0)
+    assert np.allclose(df.meter_2.values, 250.0)
+    # 组合：--common-span ∩ --start（公共段内再裁剪）
     out2 = tmp_path / "common_start"
     r2 = _run(h5, tmp_path, "--meter", "1", "2", "--common-span",
               "--start", "2017-07-14 02:51:00", "--out-dir", str(out2))
     assert r2.returncode == 0, r2.stdout + r2.stderr
-    for mid in (1, 2):
-        df = pd.read_csv(out2 / f"house_1_meter_{mid}.csv")
-        assert df.time.iloc[0] == "2017-07-14 02:51:00"
-        assert len(df) == n_expect - 10       # 公共段起点 +60s → 少 10 格
-    print("公共时间段导出 ✓")
+    df2 = pd.read_csv(out2 / "house_1_meter_1_2.csv")
+    assert df2.time.iloc[0] == "2017-07-14 02:51:00"
+    assert len(df2) == n_expect - 10            # 公共段起点 +60s → 少 10 格
+    print("公共时间段合并导出 ✓")
 
 
 def test_common_span_empty(tmp_path):
@@ -177,3 +182,54 @@ def test_common_span_empty(tmp_path):
     assert r.returncode != 0
     assert "公共时间段" in (r.stdout + r.stderr)
     print("空交集报错 ✓")
+
+
+def test_merged_range_cli_order_and_partial(tmp_path):
+    h5 = tmp_path / "ukdale.h5"
+    _make_h5_staggered(h5)          # meter1 自 02:40:00；meter2 自 02:50:00
+    out = tmp_path / "mrg"
+    r = _run(h5, tmp_path, "--meter", "2", "1",
+             "--start", "2017-07-14 02:40:00", "--end", "2017-07-14 03:00:00",
+             "--out-dir", str(out))
+    assert r.returncode == 0, r.stdout + r.stderr
+    f = out / "house_1_meter_2_1.csv"          # 文件名按命令行顺序
+    assert f.exists()
+    df = pd.read_csv(f)
+    assert list(df.columns) == ["time", "meter_2", "meter_1"]
+    assert len(df) == 201                       # (03:00:00-02:40:00)/6+1
+    assert df.meter_1.isna().sum() == 0         # meter1 全覆盖
+    assert df.meter_2.isna().sum() == 100       # 02:40:00–02:49:54 无数据 → 空格
+    v2 = df.meter_2.dropna()
+    assert df.time[v2.index[0]] == "2017-07-14 02:50:00"
+    assert np.allclose(v2.values, 250.0)
+    print("合并导出（CLI 顺序+部分覆盖空格）✓")
+
+
+def test_merged_guards(tmp_path):
+    h5 = tmp_path / "ukdale.h5"
+    _make_h5_staggered(h5)
+    # 原始采样 + 合并 → 报错（需共同网格）
+    r = _run(h5, tmp_path, "--meter", "1", "2", "--resample-sec", "0",
+             "--start", "2017-07-14 02:40:00", "--out-dir", str(tmp_path / "g1"))
+    assert r.returncode != 0 and "网格" in (r.stdout + r.stderr)
+    # 表号重复 → 报错
+    r = _run(h5, tmp_path, "--meter", "1", "1",
+             "--start", "2017-07-14 02:40:00", "--out-dir", str(tmp_path / "g2"))
+    assert r.returncode != 0 and "重复" in (r.stdout + r.stderr)
+    # --separate：多表+时间段仍按表分文件
+    out = tmp_path / "g3"
+    r = _run(h5, tmp_path, "--meter", "1", "2", "--separate",
+             "--start", "2017-07-14 02:50:00", "--end", "2017-07-14 03:00:00",
+             "--out-dir", str(out))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (out / "house_1_meter_1.csv").exists() and (out / "house_1_meter_2.csv").exists()
+    assert not (out / "house_1_meter_1_2.csv").exists()
+    # 单表+时间段：不受合并影响（两列）
+    out2 = tmp_path / "g4"
+    r = _run(h5, tmp_path, "--meter", "2",
+             "--start", "2017-07-14 02:50:00", "--end", "2017-07-14 02:51:00",
+             "--out-dir", str(out2))
+    assert r.returncode == 0, r.stdout + r.stderr
+    df = pd.read_csv(out2 / "house_1_meter_2.csv")
+    assert list(df.columns) == ["time", "power_w"] and len(df) == 11
+    print("合并守卫（原始采样/重复表号/--separate/单表回归）✓")
